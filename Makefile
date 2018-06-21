@@ -49,6 +49,9 @@ docker_build: $(DOCKER_BUILD_TARGETS)
 docker_push: $(DOCKER_PUSH_TARGETS)
 push: build docker_push
 
+lint:
+	@git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor)
+
 # Code generation
 #################
 # This target runs all required generators against our API types.
