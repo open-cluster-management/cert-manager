@@ -5,7 +5,7 @@ include Configfile
 # challenge requests, and any other future provider that requires additional
 # image dependencies will use this same tag.
 ifeq ($(APP_VERSION),)
-APP_VERSION := canary
+APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.0.1)
 endif
 
 # Get a list of all binaries to be built
@@ -107,11 +107,30 @@ go_fmt:
 ################
 $(DOCKER_BUILD_TARGETS):
 	$(eval DOCKER_BUILD_CMD := $(subst docker_build_,,$@))
-	docker build \
-		$(DOCKER_BUILD_FLAGS) \
-		-t $(IMAGE_REPO)/$(APP_NAME)-$(DOCKER_BUILD_CMD):$(BUILD_TAG) \
-		-f $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile \
-		$(DOCKERFILES)
+
+	$(eval WORKING_CHANGES := $(shell git status --porcelain))
+	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
+	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
+	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+
+	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockefile)
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_BUILD_CMD))
+
+	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
+	$(eval IMAGE_NAME_S390X ?= ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	$(eval DOCKER_FILE = $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile$(DOCKER_FILE_EXT))
+
+	@echo "App: $(IMAGE_NAME_ARCH) $(IMAGE_VERSION)"	
+	@echo "DOCKER_FILE: $(DOCKER_FILE)"
+
+	docker build -t $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+           --build-arg "VCS_REF=$(VCS_REF)" \
+           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
+           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
+           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+		   -f $(DOCKER_FILE) $(DOCKERFILES)
+		   
 
 $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
