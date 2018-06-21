@@ -1,11 +1,4 @@
-PACKAGE_NAME := github.ibm.com/IBMPrivateCloud/ibm-cert-manager
-REGISTRY := quay.io/jetstack
-APP_NAME := cert-manager
-IMAGE_TAGS := canary
-GOPATH ?= $HOME/go
-HACK_DIR ?= hack
-BUILD_TAG := build
-
+include Configfile
 
 # AppVersion is set as the AppVersion to be compiled into the controller binary.
 # It's used as the default version of the 'acmesolver' image to use for ACME
@@ -116,7 +109,7 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval DOCKER_BUILD_CMD := $(subst docker_build_,,$@))
 	docker build \
 		$(DOCKER_BUILD_FLAGS) \
-		-t $(REGISTRY)/$(APP_NAME)-$(DOCKER_BUILD_CMD):$(BUILD_TAG) \
+		-t $(IMAGE_REPO)/$(APP_NAME)-$(DOCKER_BUILD_CMD):$(BUILD_TAG) \
 		-f $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile \
 		$(DOCKERFILES)
 
@@ -124,8 +117,8 @@ $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
 	set -e; \
 		for tag in $(IMAGE_TAGS); do \
-		docker tag $(REGISTRY)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$(BUILD_TAG) $(REGISTRY)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$${tag} ; \
-		docker push $(REGISTRY)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$${tag}; \
+		docker tag $(IMAGE_REPO)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$(BUILD_TAG) $(IMAGE_REPO)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$${tag} ; \
+		docker push $(IMAGE_REPO)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$${tag}; \
 	done
 
 include Makefile.docker
