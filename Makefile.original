@@ -1,4 +1,4 @@
-PACKAGE_NAME := github.ibm.com/IBMPrivateCloud/ibm-cert-manager
+PACKAGE_NAME := github.com/jetstack/cert-manager
 REGISTRY := quay.io/jetstack
 APP_NAME := cert-manager
 IMAGE_TAGS := canary
@@ -6,6 +6,12 @@ GOPATH ?= $HOME/go
 HACK_DIR ?= hack
 BUILD_TAG := build
 
+# Domain name to use in e2e tests. This is important for ACME HTTP01 e2e tests,
+# which require a domain that resolves to the ingress controller to be used for
+# e2e tests.
+E2E_NGINX_CERTIFICATE_DOMAIN=
+
+PEBBLE_IMAGE_REPO=quay.io/munnerz/pebble
 
 # AppVersion is set as the AppVersion to be compiled into the controller binary.
 # It's used as the default version of the 'acmesolver' image to use for ACME
@@ -41,7 +47,7 @@ DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
 
 # Alias targets
 ###############
-image: build
+
 build: $(CMDS) docker_build
 verify: generate_verify deploy_verify hack_verify go_verify
 verify_pr: hack_verify_pr
@@ -104,11 +110,24 @@ go_fmt:
 		exit 1; \
 	fi
 
+e2e_test:
+	# Build the e2e tests
+	go test -o e2e-tests -c ./test/e2e
+	mkdir -p "$$(pwd)/_artifacts"
+	# TODO: make these paths configurable
+	# Run e2e tests
+	KUBECONFIG=$$HOME/.kube/config CERTMANAGERCONFIG=$$HOME/.kube/config \
+		./e2e-tests \
+			-acme-nginx-certificate-domain=$(E2E_NGINX_CERTIFICATE_DOMAIN) \
+			-cloudflare-email=$${CLOUDFLARE_E2E_EMAIL} \
+			-cloudflare-api-key=$${CLOUDFLARE_E2E_API_TOKEN} \
+			-acme-cloudflare-domain=$${CLOUDFLARE_E2E_DOMAIN} \
+			-pebble-image-repo=$(PEBBLE_IMAGE_REPO) \
+			-report-dir=./_artifacts
 
 # Docker targets
 ################
 $(DOCKER_BUILD_TARGETS):
-    @echo $(DOCKER_BUILD_TARGETS)
 	$(eval DOCKER_BUILD_CMD := $(subst docker_build_,,$@))
 	docker build \
 		$(DOCKER_BUILD_FLAGS) \
@@ -123,5 +142,3 @@ $(DOCKER_PUSH_TARGETS):
 		docker tag $(REGISTRY)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$(BUILD_TAG) $(REGISTRY)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$${tag} ; \
 		docker push $(REGISTRY)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$${tag}; \
 	done
-
-include Makefile.docker
