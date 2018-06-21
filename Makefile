@@ -39,9 +39,13 @@ GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
 
+lint:
+	# @git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor)
+	@echo "Linting disabled..."
+
 # Alias targets
 ###############
-image: build
+image:: build
 build: $(CMDS) docker_build
 verify: generate_verify deploy_verify hack_verify go_verify
 verify_pr: hack_verify_pr
@@ -49,8 +53,6 @@ docker_build: $(DOCKER_BUILD_TARGETS)
 docker_push: $(DOCKER_PUSH_TARGETS)
 push: build docker_push
 
-lint:
-	@git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor)
 
 # Code generation
 #################
@@ -111,7 +113,6 @@ go_fmt:
 # Docker targets
 ################
 $(DOCKER_BUILD_TARGETS):
-    @echo $(DOCKER_BUILD_TARGETS)
 	$(eval DOCKER_BUILD_CMD := $(subst docker_build_,,$@))
 	docker build \
 		$(DOCKER_BUILD_FLAGS) \
