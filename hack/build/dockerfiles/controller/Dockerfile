@@ -8,7 +8,7 @@ ARG IMAGE_DESCRIPTION
 RUN apk add --no-cache ca-certificates && \
   addgroup -S certmanager && adduser -S -G certmanager certmanager
 
-ADD cert-manager-controller_linux_amd64 /usr/bin/cert-manager
+ADD icp-cert-manager-controller_linux_amd64 /usr/bin/cert-manager
 
 USER certmanager
 

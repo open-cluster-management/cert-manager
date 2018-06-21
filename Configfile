@@ -20,9 +20,9 @@ endif
 MANIFEST_VERSION ?= v0.7.0
 DEFAULT_S390X_IMAGE ?= ibmcom/pause-s390x:3.0
 
-PACKAGE_NAME := github.ibm.com/IBMPrivateCloud/ibm-cert-manager
-APP_NAME := cert-manager
-IMAGE_TAGS := canary
+PACKAGE_NAME = github.ibm.com/IBMPrivateCloud/ibm-cert-manager
+APP_NAME = icp-cert-manager
+IMAGE_TAGS = canary
 GOPATH ?= $HOME/go
 HACK_DIR ?= hack
-BUILD_TAG := build
+BUILD_TAG = build
