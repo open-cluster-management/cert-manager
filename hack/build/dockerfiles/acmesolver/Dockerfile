@@ -8,7 +8,7 @@ ARG IMAGE_DESCRIPTION
 RUN apk add --no-cache ca-certificates && \
     adduser -S -u 100 acmesolver
 
-ADD icp-cert-manager-acmesolver_linux_amd64 /usr/bin/acmesolver
+ADD icp-cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
 
 USER 100
 ENTRYPOINT ["/usr/bin/acmesolver"]

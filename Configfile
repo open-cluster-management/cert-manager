@@ -18,7 +18,7 @@ ifeq ($(ARCH), x86_64)
 else
 	IMAGE_NAME_ARCH_EXT = -$(ARCH)
     DOCKER_FILE_EXT = .$(ARCH)
-	GOARCH = ppc64le
+	GOARCH = $(ARCH)
 endif
 
 MANIFEST_VERSION ?= v0.7.0
