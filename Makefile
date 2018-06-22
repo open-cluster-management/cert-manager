@@ -18,6 +18,8 @@ TYPES_FILES := $(shell find pkg/apis -name types.go)
 DOCKER_BUILD_TARGETS := $(addprefix docker_build_, $(CMDS))
 # docker_push_controller, docker_push_apiserver etc
 DOCKER_PUSH_TARGETS := $(addprefix docker_push_, $(CMDS))
+# docker_push_controller, docker_push_apiserver etc
+DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
 
 # Go build flags
 GOOS := linux
@@ -27,7 +29,7 @@ GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $
 
 .PHONY: verify build docker_build push generate generate_verify deploy_verify \
 	$(CMDS) go_test go_fmt e2e_test go_verify hack_verify hack_verify_pr \
-	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS)
+	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS)
 
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
@@ -154,7 +156,7 @@ $(DOCKER_PUSH_TARGETS):
 
 
 $(DOCKER_RELEASE_TARGETS):
-	$(eval DOCKER_RELEASE_CMD := $(subst docker_push_,,$@))
+	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
 	$(eval IMAGE_NAME_S390X ?= ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
