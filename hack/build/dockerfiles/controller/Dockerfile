@@ -4,6 +4,7 @@ ARG VCS_REF
 ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
+ARG GOARCH
 
 RUN apk add --no-cache ca-certificates && \
   addgroup -S certmanager && adduser -S -G certmanager certmanager
