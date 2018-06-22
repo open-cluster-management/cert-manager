@@ -23,7 +23,7 @@ DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
 
 # Go build flags
 GOOS := linux
-GOARCH := amd64
+
 GIT_COMMIT := $(shell git rev-parse HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
