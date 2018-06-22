@@ -4,11 +4,12 @@ ARG VCS_REF
 ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
+ARG GOARCH
 
 RUN apk add --no-cache ca-certificates && \
   addgroup -S certmanager && adduser -S -G certmanager certmanager
 
-ADD icp-cert-manager-controller_linux_amd64 /usr/bin/cert-manager
+ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
 
 USER certmanager
 
