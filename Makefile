@@ -46,6 +46,8 @@ docker_build: $(DOCKER_BUILD_TARGETS)
 docker_push: $(DOCKER_PUSH_TARGETS)
 push: build docker_push
 multi-arch-all: docker_push
+release-all: docker_release
+docker_release: $(DOCKER_RELEASE_TARGETS)
 
 
 # Code generation
@@ -150,4 +152,18 @@ $(DOCKER_PUSH_TARGETS):
 	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest.yaml
 	manifest-tool push from-spec /tmp/manifest.yaml
 
+
+$(DOCKER_RELEASE_TARGETS):
+	$(eval DOCKER_RELEASE_CMD := $(subst docker_push_,,$@))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
+	$(eval IMAGE_NAME_S390X ?= ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
+	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
+
+	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	docker tag $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	
 include Makefile.docker
