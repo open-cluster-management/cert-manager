@@ -3,12 +3,16 @@ FROM alpine:3.6
 RUN apk add --no-cache ca-certificates && \
   addgroup -S certmanager && adduser -S -G certmanager certmanager
 
-ADD cert-manager-ingress-shim_linux_amd64 /usr/bin/ingress-shim
+ADD icp-cert-manager-ingress-shim_linux_amd64 /usr/bin/ingress-shim
 
 USER certmanager
 
 ENTRYPOINT ["/usr/bin/ingress-shim"]
-ARG VCS_REF
-LABEL org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.vcs-url="https://github.com/jetstack/cert-manager" \
-      org.label-schema.license="Apache-2.0"
+# http://label-schema.org/rc1/
+LABEL org.label-schema.vendor="IBM" \
+      org.label-schema.name="$IMAGE_NAME" \
+      org.label-schema.description="$IMAGE_DESCRIPTION" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url=$VCS_URL \
+      org.label-schema.license="Licensed Materials - Property of IBM" \
+      org.label-schema.schema-version="1.0"
