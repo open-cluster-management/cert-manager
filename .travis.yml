@@ -43,7 +43,7 @@ after_success:
           if [[ "$BUILD_AGGREGATE_STATUS" == "others_succeeded" ]]; then
             echo "All jobs succeeded! Creating multi arch image..."
             make manifest-tool
-            make multi-arch
+            make multi-arch-all
           else
             echo "Some jobs failed" && exit 1
           fi

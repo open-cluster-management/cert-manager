@@ -45,6 +45,7 @@ verify_pr: hack_verify_pr
 docker_build: $(DOCKER_BUILD_TARGETS)
 docker_push: $(DOCKER_PUSH_TARGETS)
 push: build docker_push
+multi-arch-all: docker_push
 
 
 # Code generation
@@ -106,8 +107,8 @@ go_fmt:
 # Docker targets
 ################
 $(DOCKER_BUILD_TARGETS):
+    
 	$(eval DOCKER_BUILD_CMD := $(subst docker_build_,,$@))
-
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
@@ -134,10 +135,19 @@ $(DOCKER_BUILD_TARGETS):
 
 $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
-	set -e; \
-		for tag in $(IMAGE_TAGS); do \
-		docker tag $(IMAGE_REPO)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$(BUILD_TAG) $(IMAGE_REPO)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$${tag} ; \
-		docker push $(IMAGE_REPO)/$(APP_NAME)-$(DOCKER_PUSH_CMD):$${tag}; \
-	done
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
+	$(eval IMAGE_NAME_S390X ?= ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
+	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+
+	manifest-tool inspect $(IMAGE_NAME_S390X) \
+		|| (docker pull $(DEFAULT_S390X_IMAGE) \
+		&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
+		&& docker push $(IMAGE_NAME_S390X))
+
+	cp manifest.yaml /tmp/manifest.yaml
+	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest.yaml
+	manifest-tool push from-spec /tmp/manifest.yaml
 
 include Makefile.docker
