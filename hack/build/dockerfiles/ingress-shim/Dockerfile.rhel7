@@ -1,0 +1,26 @@
+FROM registry.access.redhat.com/rhel7/rhel
+
+# TODO: add args like the other dockerfiles here
+
+RUN yum -y update install ca-certificates && \
+    rm -rf /var/cache/yum/* && \
+    groupadd -r certmanager && \
+    adduser -r -g certmanager -u 100 certmanager 
+
+# original: apk add --no-cache ca-certificates && \
+# addgroup -S certmanager && adduser -S -G certmanager  -u 100 certmanager
+
+# Find out how this name was generated
+ADD icp-cert-manager-ingress-shim_linux_amd64 /usr/bin/ingress-shim
+
+USER certmanager
+
+ENTRYPOINT ["/usr/bin/ingress-shim"]
+# http://label-schema.org/rc1/
+LABEL org.label-schema.vendor="IBM" \
+      org.label-schema.name="$IMAGE_NAME" \
+      org.label-schema.description="$IMAGE_DESCRIPTION" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url=$VCS_URL \
+      org.label-schema.license="Licensed Materials - Property of IBM" \
+      org.label-schema.schema-version="1.0"
