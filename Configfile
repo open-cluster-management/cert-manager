@@ -13,7 +13,14 @@ IMAGE_NAME_ARCH_EXT =
 MANIFEST_TOOL_NAME =
 GOARCH = 
 
-ifeq ($(ARCH), x86_64)
+OS ?= $(shell uname -r | cut -d '.' -f6)
+
+ifeq ($(OS), rhel7)
+	IMAGE_NAME_ARCH_EXT = -amd64
+	DOCKER_FILE_EXT = .rhel7
+	GOARCH = rhel7
+	ARCH = rhel
+else ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
 else
