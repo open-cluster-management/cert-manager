@@ -6,8 +6,8 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
-RUN microdnf --enablerepo=rehl-7-server-rpms install shadow-utils ca-certificates ;\
-    adduser -r -u 100 acmesolver ;\
+RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificates && \
+    adduser -r -u 100 acmesolver && \
     microdnf clean all
 
 # check how this image name is generated
