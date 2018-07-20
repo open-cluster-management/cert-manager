@@ -12,6 +12,9 @@ DOCKER_FLAG =
 IMAGE_NAME_ARCH_EXT = 
 MANIFEST_TOOL_NAME =
 GOARCH = 
+
+NEW_IMAGE_REPO ?= registry.ng.bluemix.net/icp-integration
+
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
