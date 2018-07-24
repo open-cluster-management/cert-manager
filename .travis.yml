@@ -19,6 +19,11 @@ branches:
     - /^v[0-9]+\..*$/
     - /^release-[0-9]+\..*$/
 
+env:
+  matrix:
+    - OS=rhel7 TARGET=9.42.40.115
+    - OS=scratch
+
 before_install:
   - source travis-env.sh
 
