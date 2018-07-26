@@ -20,8 +20,6 @@ DOCKER_BUILD_TARGETS := $(addprefix docker_build_, $(CMDS))
 DOCKER_PUSH_TARGETS := $(addprefix docker_push_, $(CMDS))
 # docker_push_controller, docker_push_apiserver etc
 DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
-# docker_pull_controller, etc
-DOCKER_PULL_TARGETS := $(addprefix docker_pull_, $(CMDS))
 
 # Go build flags
 GOOS := linux
@@ -31,8 +29,7 @@ GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $
 
 .PHONY: verify build docker_build push generate generate_verify deploy_verify \
 	$(CMDS) go_test go_fmt e2e_test go_verify hack_verify hack_verify_pr \
-	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) \
-	clean_images test_pull test_pull_individual test_pull_multiarch
+	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) 
 
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
@@ -53,7 +50,6 @@ push_makefile: build docker_push # renamed b/c conflicts with the push in makefi
 multi-arch-all: docker_push
 release-all: docker_release
 docker_release: $(DOCKER_RELEASE_TARGETS)
-test_pull: clean_images $(DOCKER_PULL_TARGETS) clean_images test_pull_individual
 
 
 # Code generation
@@ -206,40 +202,6 @@ $(DOCKER_RELEASE_TARGETS):
 	docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
 	@echo "Pushed image to new bluemix repo (icp-integration)."
 
-clean_images:
-	docker 2>/dev/null 1>&2 rmi -f `docker images -q` || true
-	docker images
-	@echo "All images cleaned out."
-
-$(DOCKER_PULL_TARGETS):
-	$(eval DOCKER_PULL_CMD := $(subst docker_pull_,,$@))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PULL_CMD))
-
-	@echo "Pulling multi-arch image from old repository (mdelder)."
-	docker pull $(IMAGE_REPO)/$(IMAGE_NAME):$(RELEASE_TAG)
-	@echo "DONE"
-
-	@echo "Pulling multi-arch image from new repository (icp-integration)."
-	docker pull $(NEW_IMAGE_REPO)/$(IMAGE_NAME):$(RELEASE_TAG)
-	@echo "DONE"
-
-	@echo "!!!!IMAGES!!!!"
-	docker images
-
-test_pull_individual:
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
-
-	@echo "Pulling individual images from old repository (mdelder)."
-	docker pull $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	@echo "DONE"
-
-	@echo "Pulling individual images from new repository (icp-integration)."
-	docker pull $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	@echo "DONE"
-
-	@echo "!!!!IMAGES!!!!"
-	docker images
 
 include Makefile.docker
+include Makefile.test
