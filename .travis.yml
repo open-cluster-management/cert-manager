@@ -30,7 +30,9 @@ before_script:
   - make docker-login
 
 script:
-  - make push_makefile
+  - make image
+  - make release-all
+  - make multi-arch-all
 
 after_success:
   - echo "Travis event type  $TRAVIS_EVENT_TYPE"

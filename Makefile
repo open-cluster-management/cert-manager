@@ -192,15 +192,15 @@ $(DOCKER_RELEASE_TARGETS):
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 
 	# Push to original image repo.
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	docker tag $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	#docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	#docker tag $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	#docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
 	@echo "Pushed image to original bluemix repo (mdelder)."
 
 	# Push to new image repo.
-	docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	docker tag $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	#docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	#docker tag $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	#docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
 	@echo "Pushed image to new bluemix repo (icp-integration)."
 	
 include Makefile.docker
