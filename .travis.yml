@@ -28,12 +28,9 @@ install:
 
 before_script:
   - make docker-login
-  - make manifest-tool
 
 script:
   - make image
-  - make release-all
-  - make multi-arch-all
   
 after_success:
   - test "$TRAVIS_EVENT_TYPE" != "pull_request" && make release-all || echo "success"
