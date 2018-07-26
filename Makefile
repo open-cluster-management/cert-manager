@@ -159,9 +159,9 @@ $(DOCKER_PUSH_TARGETS):
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 
 	#manifest-tool inspect $(IMAGE_NAME_S390X) \
-		|| (docker pull $(DEFAULT_S390X_IMAGE) \
-		&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
-		&& docker push $(IMAGE_NAME_S390X))
+	#	|| (docker pull $(DEFAULT_S390X_IMAGE) \
+	#	&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
+	#	&& docker push $(IMAGE_NAME_S390X))
 
 	@echo "The release tag is $(RELEASE_TAG)"
 	# change the release tag to the actual release tag when releasing
