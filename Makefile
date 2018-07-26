@@ -153,7 +153,6 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "Built with the new repo tag."
 
 $(DOCKER_PUSH_TARGETS):
-	@echo "!!!!!!!!! In the normal makefile "
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
 	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
@@ -212,7 +211,7 @@ clean_images:
 	@echo "All images cleaned out."
 
 test_pull_multiarch:
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
 
 	@echo "Pulling multi-arch image from old repository (mdelder)."
 	docker pull $(IMAGE_REPO)/$(IMAGE_NAME):$(RELEASE_TAG)
@@ -227,6 +226,7 @@ test_pull_multiarch:
 
 test_pull_individual:
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 
 	@echo "Pulling individual images from old repository (mdelder)."
