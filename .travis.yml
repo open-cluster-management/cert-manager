@@ -28,6 +28,7 @@ install:
 
 before_script:
   - make docker-login
+  - make manifest-tool
 
 script:
   - make image
