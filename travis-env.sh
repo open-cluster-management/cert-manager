@@ -9,7 +9,7 @@ else
     fi
 
     # Image version
-    if [ "$TRAVIS_IMAGE_VERSION" != ""] then
+    if [ "$TRAVIS_IMAGE_VERSION" != ""]; then
         IMAGE_VERSION="${TRAVIS_IMAGE_VERSION}"
     fi
 fi
