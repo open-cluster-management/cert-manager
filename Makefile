@@ -126,11 +126,7 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 
-	@echo "App: $(IMAGE_NAME_ARCH) $(IMAGE_VERSION)"	
-	@echo "DOCKER_FILE: $(DOCKER_FILE)"
-
 	# Build with a tag to the original repo.
-	# Change image version to be a test image version name
 	docker build -t $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
@@ -163,14 +159,11 @@ $(DOCKER_PUSH_TARGETS):
 	#	&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
 	#	&& docker push $(IMAGE_NAME_S390X))
 
-	@echo "The release tag is $(RELEASE_TAG)"
-	# change the release tag to the actual release tag when releasing
 	# Push the manifest to the original mdelder repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	cat /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 	# Push the manifest to the new image repo.
@@ -178,7 +171,6 @@ $(DOCKER_PUSH_TARGETS):
 	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_REPO__|$(NEW_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	cat /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 $(DOCKER_RELEASE_TARGETS):

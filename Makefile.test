@@ -14,10 +14,11 @@ DOCKER_PULL_TARGETS := $(addprefix docker_pull_, $(CMDS))
 # docker_pull_individual_controller, etc
 DOCKER_PULL_INDIVIDUAL_TARGETS := $(addprefix docker_pull_individual_, $(CMDS))
 
-.PHONY: clean_images test_pull $(DOCKER_PULL_TARGETS) $(DOCKER_PULL_INDIVIDUAL_TARGETS)
-test_pull: clean_images $(DOCKER_PULL_TARGETS) clean_images $(DOCKER_PULL_INDIVIDUAL_TARGETS)
+.PHONY: clean_images1 clean_images2 test_pull $(DOCKER_PULL_TARGETS) $(DOCKER_PULL_INDIVIDUAL_TARGETS)
 
-clean_images:
+test_pull: clean_images1 $(DOCKER_PULL_TARGETS) clean_images2 $(DOCKER_PULL_INDIVIDUAL_TARGETS)
+
+clean_images1 clean_images2:
 	docker 2>/dev/null 1>&2 rmi -f `docker images -q` || true
 	docker images
 	@echo "All images cleaned out."
@@ -34,7 +35,6 @@ $(DOCKER_PULL_TARGETS):
 	docker pull $(NEW_IMAGE_REPO)/$(IMAGE_NAME):$(RELEASE_TAG)
 	@echo "DONE"
 
-	@echo "!!!!IMAGES!!!!"
 	docker images
 
 $(DOCKER_PULL_INDIVIDUAL_TARGETS):
@@ -51,5 +51,4 @@ $(DOCKER_PULL_INDIVIDUAL_TARGETS):
 	docker pull $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
 	@echo "DONE"
 
-	@echo "!!!!IMAGES!!!!"
 	docker images
