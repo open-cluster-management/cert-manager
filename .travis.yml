@@ -34,10 +34,7 @@ script:
   - make image
   - make release-all
   - make multi-arch-all
-  - echo "Finish multi-arch release SUCCESS"
-  - make test_pull
   
-
 after_success:
   - echo "Travis event type  $TRAVIS_EVENT_TYPE"
   - echo "Travis branch $TRAVIS_BRANCH"
