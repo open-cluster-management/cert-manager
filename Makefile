@@ -20,6 +20,8 @@ DOCKER_BUILD_TARGETS := $(addprefix docker_build_, $(CMDS))
 DOCKER_PUSH_TARGETS := $(addprefix docker_push_, $(CMDS))
 # docker_push_controller, docker_push_apiserver etc
 DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
+# docker_pull_controller, etc
+DOCKER_PULL_TARGETS := $(addprefix docker_pull_, $(CMDS))
 
 # Go build flags
 GOOS := linux
@@ -51,7 +53,7 @@ push_makefile: build docker_push # renamed b/c conflicts with the push in makefi
 multi-arch-all: docker_push
 release-all: docker_release
 docker_release: $(DOCKER_RELEASE_TARGETS)
-test_pull: clean_images test_pull_multiarch clean_images test_pull_individual
+test_pull: clean_images $(DOCKER_PULL_TARGETS) clean_images test_pull_individual
 
 
 # Code generation
@@ -210,8 +212,9 @@ clean_images:
 	docker images
 	@echo "All images cleaned out."
 
-test_pull_multiarch:
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
+$(DOCKER_PULL_TARGETS):
+	$(eval DOCKER_PULL_CMD := $(subst docker_pull_,,$@))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PULL_CMD))
 
 	@echo "Pulling multi-arch image from old repository (mdelder)."
 	docker pull $(IMAGE_REPO)/$(IMAGE_NAME):$(RELEASE_TAG)
