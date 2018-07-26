@@ -138,6 +138,7 @@ $(DOCKER_BUILD_TARGETS):
 		   --build-arg "GOARCH=$(GOARCH)" \
 		   -f $(DOCKER_FILE) $(DOCKERFILES)
 	@echo "Built with the original repo tag."
+
 	# Build with a tag to the new repo.
 	docker build -t $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
@@ -161,16 +162,20 @@ $(DOCKER_PUSH_TARGETS):
 		&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
 		&& docker push $(IMAGE_NAME_S390X))
 
+	# change the release tag to the actual release tag when releasing
 	# Push the manifest to the original mdelder repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__RELEASE_TAG__|testtag|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 	# Push the manifest to the new image repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" -e "s|__IMAGE_REPO__|$(NEW_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__RELEASE_TAG__|testtag|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__IMAGE_REPO__|$(NEW_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-
 
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
