@@ -207,8 +207,7 @@ $(DOCKER_RELEASE_TARGETS):
 	@echo "Pushed image to new bluemix repo (icp-integration)."
 
 clean_images:
-	$(eval ALL_IMAGES := $(shell docker images -q))
-	docker rmi -f $(ALL_IMAGES)
+	docker 2>/dev/null 1>&2 rmi `docker images -aq` || true
 	docker images
 	@echo "All images cleaned out."
 
