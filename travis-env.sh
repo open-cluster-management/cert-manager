@@ -10,7 +10,7 @@ else
 
     # Image version
     if [ "$TRAVIS_IMAGE_VERSION" != ""] then
-        IMAGE_VERSION = "${TRAVIS_IMAGE_VERSION}"
+        IMAGE_VERSION="${TRAVIS_IMAGE_VERSION}"
     fi
 fi
 export RELEASE_TAG="$RELEASE_TAG"
