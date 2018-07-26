@@ -32,6 +32,9 @@ before_script:
 script:
   - make image
   - make release-all
+  - make multi-arch-all
+  - echo "Finish multi-arch release SUCCESS"
+  - make test_pull
   
 
 after_success:
@@ -39,6 +42,4 @@ after_success:
   - echo "Travis branch $TRAVIS_BRANCH"
   - echo "Build leader  $BUILD_LEADER"
   - echo "Build aggregate status $BUILD_AGGREGATE_STATUS"
-  - make multi-arch-all
-  - echo "Finish multi-arch release SUCCESS"
-  - make test_pull
+
