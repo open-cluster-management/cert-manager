@@ -130,6 +130,7 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 
 	# Build with a tag to the original repo.
+	# Change image version to be a test image version name
 	docker build -t $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
