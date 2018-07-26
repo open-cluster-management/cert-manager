@@ -29,7 +29,8 @@ GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $
 
 .PHONY: verify build docker_build push generate generate_verify deploy_verify \
 	$(CMDS) go_test go_fmt e2e_test go_verify hack_verify hack_verify_pr \
-	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS)
+	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) \
+	clean_images test_pull test_pull_individual test_pull_multiarch
 
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
@@ -50,6 +51,7 @@ push_makefile: build docker_push # renamed b/c conflicts with the push in makefi
 multi-arch-all: docker_push
 release-all: docker_release
 docker_release: $(DOCKER_RELEASE_TARGETS)
+test_pull: clean_images test_pull_multiarch clean_images test_pull_individual
 
 
 # Code generation
@@ -172,7 +174,7 @@ $(DOCKER_PUSH_TARGETS):
 	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	cat /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	#manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 	# Push the manifest to the new image repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
@@ -180,7 +182,7 @@ $(DOCKER_PUSH_TARGETS):
 	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_REPO__|$(NEW_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	cat /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	#manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
@@ -192,15 +194,49 @@ $(DOCKER_RELEASE_TARGETS):
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 
 	# Push to original image repo.
-	#docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	#docker tag $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	#docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	docker tag $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
 	@echo "Pushed image to original bluemix repo (mdelder)."
 
 	# Push to new image repo.
-	#docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	#docker tag $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	#docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	docker tag $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
 	@echo "Pushed image to new bluemix repo (icp-integration)."
-	
+
+clean_images:
+	docker rmi -f $(docker images -q)
+	docker images
+	@echo "All images cleaned out."
+
+test_pull_multiarch:
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
+
+	@echo "Pulling multi-arch image from old repository (mdelder)."
+	docker pull $(IMAGE_REPO)/$(IMAGE_NAME):$(RELEASE_TAG)
+	@echo "DONE"
+
+	@echo "Pulling multi-arch image from new repository (icp-integration)."
+	docker pull $(NEW_IMAGE_REPO)/$(IMAGE_NAME):$(RELEASE_TAG)
+	@echo "DONE"
+
+	@echo "!!!!IMAGES!!!!"
+	docker images
+
+test_pull_individual:
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
+
+	@echo "Pulling individual images from old repository (mdelder)."
+	docker pull $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	@echo "DONE"
+
+	@echo "Pulling individual images from new repository (icp-integration)."
+	docker pull $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	@echo "DONE"
+
+	@echo "!!!!IMAGES!!!!"
+	docker images
+
 include Makefile.docker
