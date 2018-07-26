@@ -46,7 +46,7 @@ verify: generate_verify deploy_verify hack_verify go_verify
 verify_pr: hack_verify_pr
 docker_build: $(DOCKER_BUILD_TARGETS)
 docker_push: $(DOCKER_PUSH_TARGETS)
-push: build docker_push
+push_makefile: build docker_push # renamed b/c conflicts with the push in makefile.docker
 multi-arch-all: docker_push
 release-all: docker_release
 docker_release: $(DOCKER_RELEASE_TARGETS)
@@ -150,6 +150,7 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "Built with the new repo tag."
 
 $(DOCKER_PUSH_TARGETS):
+	@echo "!!!!!!!!! In the normal makefile "
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
 	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
@@ -157,25 +158,28 @@ $(DOCKER_PUSH_TARGETS):
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 
-	manifest-tool inspect $(IMAGE_NAME_S390X) \
+	#manifest-tool inspect $(IMAGE_NAME_S390X) \
 		|| (docker pull $(DEFAULT_S390X_IMAGE) \
 		&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
 		&& docker push $(IMAGE_NAME_S390X))
 
+	@echo "The release tag is $(RELEASE_TAG)"
 	# change the release tag to the actual release tag when releasing
 	# Push the manifest to the original mdelder repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__RELEASE_TAG__|testtag|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	cat /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	#manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 	# Push the manifest to the new image repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__RELEASE_TAG__|testtag|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_REPO__|$(NEW_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	cat /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	#manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
