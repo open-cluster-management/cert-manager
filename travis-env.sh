@@ -11,10 +11,10 @@ else
     # Image version
     if [ "$TRAVIS_IMAGE_VERSION" != ""]; then
         IMAGE_VERSION="${TRAVIS_IMAGE_VERSION}"
+        export IMAGE_VERSION="$TRAVIS_IMAGE_VERSION"
     fi
 fi
 export RELEASE_TAG="$RELEASE_TAG"
-export IMAGE_VERSION="$TRAVIS_IMAGE_VERSION"
 
 # Release Tag
 echo TRAVIS_EVENT_TYPE=$TRAVIS_EVENT_TYPE
