@@ -19,11 +19,11 @@ ifeq ($(ARCH), x86_64)
 	GOARCH = amd64
 	ifeq ($(VENDOR), rhel)
 		DOCKER_FILE_EXT = .rhel7
-		IMAGE_NAME_ARCH_EXT = -amd64-rhel
+		IMAGE_NAME_ARCH_EXT = -rhel-amd64
 	endif
 else
 	IMAGE_NAME_ARCH_EXT = -$(ARCH)
-    DOCKER_FILE_EXT = .$(ARCH)
+	DOCKER_FILE_EXT = .$(ARCH)
 	GOARCH = $(ARCH)
 endif
 
