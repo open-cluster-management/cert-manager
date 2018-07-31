@@ -126,6 +126,8 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 
+	@echo "App: $(IMAGE_NAME_ARCH) $(IMAGE_VERSION)"
+	
 	# Build with a tag to the original repo.
 	docker build -t $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
