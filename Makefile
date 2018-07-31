@@ -29,7 +29,7 @@ GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $
 
 .PHONY: verify build docker_build push generate generate_verify deploy_verify \
 	$(CMDS) go_test go_fmt e2e_test go_verify hack_verify hack_verify_pr \
-	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) 
+	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS)
 
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
