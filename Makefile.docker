@@ -54,7 +54,6 @@ endif
 
 .PHONY: push
 push: check-env app-version
-	@echo "In the docker makefile"
 	# docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
 
 .PHONY: release
