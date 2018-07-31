@@ -127,7 +127,7 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 
 	# Build with a tag to the original repo.
-	docker build -t $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+	docker build -t $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
@@ -137,7 +137,7 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "Built with the original repo tag."
 
 	# Build with a tag to the new repo.
-	docker build -t $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+	docker build -t $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
@@ -149,7 +149,7 @@ $(DOCKER_BUILD_TARGETS):
 $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
-	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
@@ -163,35 +163,35 @@ $(DOCKER_PUSH_TARGETS):
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__IMAGE_REPO__|$(MDELDER_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 	# Push the manifest to the new image repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__IMAGE_REPO__|$(NEW_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__IMAGE_REPO__|$(ICP_INTEGRATION_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
-	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 
 	# Push to original image repo.
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	docker tag $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	docker tag $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
 	@echo "Pushed image to original bluemix repo (mdelder)."
 
 	# Push to new image repo.
-	docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	docker tag $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	docker push $(NEW_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	docker tag $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
 	@echo "Pushed image to new bluemix repo (icp-integration)."
 
 

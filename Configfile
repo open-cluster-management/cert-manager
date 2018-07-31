@@ -4,7 +4,7 @@ DOCKER_USERNAME ?= token
 DOCKER_PASSWORD ?=
 IMAGE_DESCRIPTION =
 IMAGE_NAME = icp-cert-manager
-IMAGE_REPO ?= registry.ng.bluemix.net/mdelder
+MDELDER_IMAGE_REPO ?= registry.ng.bluemix.net/mdelder
 RELEASE_TAG ?= latest
 ARCH = $(shell uname -m)
 DOCKER_FILE_EXT =
@@ -13,7 +13,7 @@ IMAGE_NAME_ARCH_EXT =
 MANIFEST_TOOL_NAME =
 GOARCH = 
 
-NEW_IMAGE_REPO ?= registry.ng.bluemix.net/icp-integration
+ICP_INTEGRATION_IMAGE_REPO ?= registry.ng.bluemix.net/icp-integration
 
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
