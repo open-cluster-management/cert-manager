@@ -28,6 +28,7 @@ install:
 
 before_script:
   - make docker-login
+  - make lint
 
 script:
   - make image
