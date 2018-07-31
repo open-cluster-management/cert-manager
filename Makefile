@@ -127,6 +127,7 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 
 	@echo "App: $(IMAGE_NAME_ARCH) $(IMAGE_VERSION)"
+	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 	
 	# Build with a tag to the original repo.
 	docker build -t $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
