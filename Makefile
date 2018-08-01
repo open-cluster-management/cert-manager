@@ -169,13 +169,6 @@ $(DOCKER_PUSH_TARGETS):
 	sed -i -e "s|__IMAGE_REPO__|$(MDELDER_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 
-	# Push the manifest to the new image repo.
-	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__IMAGE_REPO__|$(ICP_INTEGRATION_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
