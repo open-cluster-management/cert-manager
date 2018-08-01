@@ -158,10 +158,10 @@ $(DOCKER_PUSH_TARGETS):
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 
-	#manifest-tool inspect $(IMAGE_NAME_S390X) \
-	#	|| (docker pull $(DEFAULT_S390X_IMAGE) \
-	#	&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
-	#	&& docker push $(IMAGE_NAME_S390X))
+	manifest-tool inspect $(IMAGE_NAME_S390X) \
+		|| (docker pull $(DEFAULT_S390X_IMAGE) \
+		&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
+		&& docker push $(IMAGE_NAME_S390X))
 
 	# Push the manifest to the original mdelder repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
