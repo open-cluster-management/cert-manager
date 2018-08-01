@@ -27,8 +27,8 @@ GOOS := linux
 GIT_COMMIT := $(shell git rev-parse HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: verify build docker_build push generate generate_verify deploy_verify artifactory_login \
-	$(CMDS) go_test go_fmt e2e_test go_verify hack_verify hack_verify_pr \
+.PHONY: verify build docker-build push generate generate-verify deploy-verify artifactory-login \
+	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS)
 
 # Docker build flags
@@ -41,16 +41,16 @@ lint:
 # Alias targets
 ###############
 image:: build
-build: $(CMDS) docker_build
-verify: generate_verify deploy_verify hack_verify go_verify
-verify_pr: hack_verify_pr
-docker_build: $(DOCKER_BUILD_TARGETS)
-docker_push: $(DOCKER_PUSH_TARGETS)
-push_makefile: build docker_push # renamed b/c conflicts with the push in makefile.docker
-multi-arch-all: docker_push
+build: $(CMDS) docker-build
+verify: generate-verify deploy-verify hack-verify go-verify
+verify_pr: hack-verify-pr
+docker-build: $(DOCKER_BUILD_TARGETS)
+docker-push: $(DOCKER_PUSH_TARGETS)
+push_makefile: build docker-push # renamed b/c conflicts with the push in makefile.docker
+multi-arch-all: docker-push
 release-all: docker_release
 docker_release: $(DOCKER_RELEASE_TARGETS)
-artifactory_login:
+artifactory-login:
 	docker login $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
 # Code generation
@@ -59,28 +59,28 @@ artifactory_login:
 generate: $(TYPES_FILES)
 	$(HACK_DIR)/update-codegen.sh
 
-generate_verify:
+generate-verify:
 	$(HACK_DIR)/verify-codegen.sh
 
 # Hack targets
 ##############
-hack_verify:
+hack-verify:
 	@echo Running href checker
 	$(HACK_DIR)/verify-links.sh
 	@echo Running errexit checker
 	$(HACK_DIR)/verify-errexit.sh
 
-hack_verify_pr:
+hack-verify-pr:
 	@echo Running helm chart version checker
 	$(HACK_DIR)/verify-chart-version.sh
 
-deploy_verify:
+deploy-verify:
 	@echo Running deploy-gen
 	$(HACK_DIR)/verify-deploy-gen.sh
 
 # Go targets
 #################
-go_verify: go_fmt go_test
+go-verify: go-fmt go-test
 
 $(CMDS):
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
@@ -89,7 +89,7 @@ $(CMDS):
 		$(GOLDFLAGS) \
 		./cmd/$@
 
-go_test:
+go-test:
 	go test -v \
 	    -race \
 		$$(go list ./... | \
@@ -99,7 +99,7 @@ go_test:
 			grep -v '/third_party' \
 		)
 
-go_fmt:
+go-fmt:
 	@set -e; \
 	GO_FMT=$$(git ls-files *.go | grep -v 'vendor/' | xargs gofmt -d); \
 	if [ -n "$${GO_FMT}" ] ; then \
