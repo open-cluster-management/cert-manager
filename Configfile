@@ -5,9 +5,12 @@ DOCKER_PASSWORD ?=
 IMAGE_DESCRIPTION =
 IMAGE_NAME = icp-cert-manager
 IMAGE_REPO ?= registry.ng.bluemix.net/mdelder
-RELEASE_TAG ?= latest
 ARCH = $(shell uname -m)
-VENDOR = $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
+OS ?= $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
+RELEASE_TAG ?= latest
+ifeq ($(OS), rhel)
+	RELEASE_TAG += -rhel
+endif
 DOCKER_FILE_EXT =
 DOCKER_FLAG = 
 IMAGE_NAME_ARCH_EXT = 
@@ -17,9 +20,8 @@ GOARCH =
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
-	ifeq ($(VENDOR), rhel)
+	ifeq ($(OS), rhel)
 		DOCKER_FILE_EXT = .rhel7
-		IMAGE_NAME_ARCH_EXT = -rhel-amd64
 	endif
 else
 	IMAGE_NAME_ARCH_EXT = -$(ARCH)
