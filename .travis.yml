@@ -18,7 +18,6 @@ branches:
     - /^[0-9]+\..*$/
     - /^v[0-9]+\..*$/
     - /^release-[0-9]+\..*$/
-    - docker-repo-change
 
 before_install:
   - source travis-env.sh
