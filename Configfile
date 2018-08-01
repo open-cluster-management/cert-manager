@@ -36,3 +36,4 @@ ARTIFACTORY_USERNAME ?=
 ARTIFACTORY_KEY ?= AKCp5bB3UUc22ePxngrRemGSB5mFgPnekvnSNWU49J8YgK8gKmc8UjJsPNGv3w8T9gPNpEXY9
 ARTIFACTORY_IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
 ARTIFACTORY_URL ?= artifactory.swg-devops.com
+ARTIFACTORY_NAMESPACE ?= ibmcom
