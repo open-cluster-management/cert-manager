@@ -13,8 +13,6 @@ IMAGE_NAME_ARCH_EXT =
 MANIFEST_TOOL_NAME =
 GOARCH = 
 
-ICP_INTEGRATION_IMAGE_REPO ?= registry.ng.bluemix.net/icp-integration
-
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
@@ -33,3 +31,7 @@ IMAGE_TAGS = canary
 GOPATH ?= $HOME/go
 HACK_DIR ?= hack
 BUILD_TAG = build
+
+ARTIFACTORY_KEY ?= AKCp5bB3UUc22ePxngrRemGSB5mFgPnekvnSNWU49J8YgK8gKmc8UjJsPNGv3w8T9gPNpEXY9
+ARTIFACTORY_IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
+ARTIFACTORY_URL ?= artifactory.swg-devops.com
