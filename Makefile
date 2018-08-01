@@ -140,7 +140,7 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "Built with the original repo tag."
 
 	# Build with a tag to the new repo.
-	docker build -t $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+	docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
@@ -185,11 +185,11 @@ $(DOCKER_RELEASE_TARGETS):
 	@echo "Pushed image to original bluemix repo (mdelder)."
 
 	# Push to new image repo.
-	docker push $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	docker tag $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	docker push $(ICP_INTEGRATION_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	@echo "Pushed image to new bluemix repo (icp-integration)."
+	docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	docker tag $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	@echo "Pushed image to artifactory repository."
 
 
 include Makefile.docker
-include Makefile.test
+#include Makefile.test
