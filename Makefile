@@ -51,7 +51,7 @@ multi-arch-all: docker_push
 release-all: docker_release
 docker_release: $(DOCKER_RELEASE_TARGETS)
 artifactory_login:
-	docker login $(ARTIFACTORY_REPOSITORY).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
+	docker login $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
 # Code generation
 #################
