@@ -27,7 +27,7 @@ GOOS := linux
 GIT_COMMIT := $(shell git rev-parse HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: verify build docker_build push generate generate_verify deploy_verify \
+.PHONY: verify build docker_build push generate generate_verify deploy_verify artifactory_login \
 	$(CMDS) go_test go_fmt e2e_test go_verify hack_verify hack_verify_pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS)
 
@@ -50,7 +50,8 @@ push_makefile: build docker_push # renamed b/c conflicts with the push in makefi
 multi-arch-all: docker_push
 release-all: docker_release
 docker_release: $(DOCKER_RELEASE_TARGETS)
-
+artifactory_login:
+	docker login $(ARTIFACTORY_REPOSITORY).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
 # Code generation
 #################
