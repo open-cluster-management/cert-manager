@@ -8,8 +8,8 @@ IMAGE_REPO ?= registry.ng.bluemix.net/mdelder
 ARCH = $(shell uname -m)
 OS ?= $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
 RELEASE_TAG ?= latest
-ifeq (rhel, $(findstring rhel,$OS))
-	RELEASE_TAG += -rhel
+ifeq (rhel, $(findstring rhel,$(OS)))
+	RELEASE_TAG := $(shell echo "${RELEASE_TAG}-rhel")
 endif
 DOCKER_FILE_EXT =
 DOCKER_FLAG = 
