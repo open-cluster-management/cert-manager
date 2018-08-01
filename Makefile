@@ -27,7 +27,8 @@ GOOS := linux
 GIT_COMMIT := $(shell git rev-parse HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: verify build docker-build push generate generate-verify deploy-verify artifactory-login \
+.PHONY: verify build docker-build docker-push-manifest docker-build-image-push-manifest \
+	generate generate-verify deploy-verify artifactory-login docker-push-images release-all \
 	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS)
 
@@ -45,11 +46,11 @@ build: $(CMDS) docker-build
 verify: generate-verify deploy-verify hack-verify go-verify
 verify_pr: hack-verify-pr
 docker-build: $(DOCKER_BUILD_TARGETS)
-docker-push: $(DOCKER_PUSH_TARGETS)
-push_makefile: build docker-push # renamed b/c conflicts with the push in makefile.docker
-multi-arch-all: docker-push
-release-all: docker_release
-docker_release: $(DOCKER_RELEASE_TARGETS)
+docker-push-manifest: $(DOCKER_PUSH_TARGETS)
+docker-build-image-push-manifest: build docker-push-manifest # renamed b/c conflicts with the push in makefile.docker
+multi-arch-all: docker-push-manifest
+release-all: docker-push-images
+docker-push-images: $(DOCKER_RELEASE_TARGETS)
 artifactory-login:
 	docker login $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
