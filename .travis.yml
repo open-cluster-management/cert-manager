@@ -28,6 +28,7 @@ install:
 
 before_script:
   - make docker-login
+  - make artifactory-login
   - make lint
 
 script:
