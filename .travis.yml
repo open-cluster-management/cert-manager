@@ -21,7 +21,7 @@ branches:
 
 env:
   matrix:
-    - OS=rhel TARGET=9.42.40.115
+    - OS=rhel7 TARGET=9.42.40.115
     - OS=linux
 
 before_install:
