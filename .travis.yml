@@ -33,6 +33,7 @@ before_script:
 
 script:
   - make image
+  - make docker_release
 
 after_success:
   - test "$TRAVIS_EVENT_TYPE" != "pull_request" && make release-all || echo "success"
