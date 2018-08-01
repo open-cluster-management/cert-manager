@@ -3,8 +3,10 @@ if [ "$TRAVIS_BRANCH" = "master" ]; then
     RELEASE_TAG=latest
     ARTIFACTORY_IMAGE_REPO=hyc-cloud-private-integration-docker-local
     ARTIFACTORY_NAMESPACE=ibmcom
+    ARTIFACTORY_RELEASE_TAG=0.3.0
     export ARTIFACTORY_IMAGE_REPO="$ARTIFACTORY_IMAGE_REPO"
     export ARTIFACTORY_NAMESPACE="$ARTIFACTORY_NAMESPACE"
+    export ARTIFACTORY_RELEASE_TAG="$ARTIFACTORY_RELEASE_TAG"
 else
     if [ "$TRAVIS_TAG" != "" ]; then
         RELEASE_TAG="${TRAVIS_TAG#v}"
