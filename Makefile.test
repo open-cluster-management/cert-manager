@@ -1,3 +1,9 @@
+# This file is used to test if images pushed to the bluemix mdelder
+# repository were correctly pushed by pulling the images back.
+# It can be used in a travis build by using "make test_pull" as a script
+# in the .travis.yml. If you do use it, be sure it's included in the Makefile
+# as: include Makefile.test
+
 # AppVersion is set as the AppVersion to be compiled into the controller binary.
 # It's used as the default version of the 'acmesolver' image to use for ACME
 # challenge requests, and any other future provider that requires additional
