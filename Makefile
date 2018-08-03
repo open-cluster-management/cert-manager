@@ -5,7 +5,7 @@ include Configfile
 # challenge requests, and any other future provider that requires additional
 # image dependencies will use this same tag.
 ifeq ($(APP_VERSION),)
-APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.0.1)
+APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.3.0)
 endif
 
 # Get a list of all binaries to be built
@@ -27,8 +27,9 @@ GOOS := linux
 GIT_COMMIT := $(shell git rev-parse HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: verify build docker_build push generate generate_verify deploy_verify \
-	$(CMDS) go_test go_fmt e2e_test go_verify hack_verify hack_verify_pr \
+.PHONY: verify build docker-build docker-push-manifest build-push-manifest \
+	generate generate-verify deploy-verify artifactory-login docker-push-images release-all \
+	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS)
 
 # Docker build flags
@@ -41,16 +42,17 @@ lint:
 # Alias targets
 ###############
 image:: build
-build: $(CMDS) docker_build
-verify: generate_verify deploy_verify hack_verify go_verify
-verify_pr: hack_verify_pr
-docker_build: $(DOCKER_BUILD_TARGETS)
-docker_push: $(DOCKER_PUSH_TARGETS)
-push: build docker_push
-multi-arch-all: docker_push
-release-all: docker_release
-docker_release: $(DOCKER_RELEASE_TARGETS)
-
+build: $(CMDS) docker-build
+verify: generate-verify deploy-verify hack-verify go-verify
+verify_pr: hack-verify-pr
+docker-build: $(DOCKER_BUILD_TARGETS)
+docker-push-manifest: $(DOCKER_PUSH_TARGETS)
+build-push-manifest: build docker-push-manifest # renamed b/c conflicts with the push in makefile.docker
+multi-arch-all: docker-push-manifest
+release-all: docker-push-images
+docker-push-images: $(DOCKER_RELEASE_TARGETS)
+artifactory-login:
+	docker login $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
 # Code generation
 #################
@@ -58,28 +60,28 @@ docker_release: $(DOCKER_RELEASE_TARGETS)
 generate: $(TYPES_FILES)
 	$(HACK_DIR)/update-codegen.sh
 
-generate_verify:
+generate-verify:
 	$(HACK_DIR)/verify-codegen.sh
 
 # Hack targets
 ##############
-hack_verify:
+hack-verify:
 	@echo Running href checker
 	$(HACK_DIR)/verify-links.sh
 	@echo Running errexit checker
 	$(HACK_DIR)/verify-errexit.sh
 
-hack_verify_pr:
+hack-verify-pr:
 	@echo Running helm chart version checker
 	$(HACK_DIR)/verify-chart-version.sh
 
-deploy_verify:
+deploy-verify:
 	@echo Running deploy-gen
 	$(HACK_DIR)/verify-deploy-gen.sh
 
 # Go targets
 #################
-go_verify: go_fmt go_test
+go-verify: go-fmt go-test
 
 $(CMDS):
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
@@ -88,7 +90,7 @@ $(CMDS):
 		$(GOLDFLAGS) \
 		./cmd/$@
 
-go_test:
+go-test:
 	go test -v \
 	    -race \
 		$$(go list ./... | \
@@ -98,7 +100,7 @@ go_test:
 			grep -v '/third_party' \
 		)
 
-go_fmt:
+go-fmt:
 	@set -e; \
 	GO_FMT=$$(git ls-files *.go | grep -v 'vendor/' | xargs gofmt -d); \
 	if [ -n "$${GO_FMT}" ] ; then \
@@ -126,22 +128,33 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 
-	@echo "App: $(IMAGE_NAME_ARCH) $(IMAGE_VERSION)"	
+	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
-
-	docker build -t $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+	
+	# Build with a tag to the original repo.
+	docker build -t $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
 		   --build-arg "GOARCH=$(GOARCH)" \
 		   -f $(DOCKER_FILE) $(DOCKERFILES)
-		   
+	@echo "Built with the original repo tag."
+
+	# Build with a tag to the new repo.
+	docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+           --build-arg "VCS_REF=$(VCS_REF)" \
+           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
+           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
+           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+		   --build-arg "GOARCH=$(GOARCH)" \
+		   -f $(DOCKER_FILE) $(DOCKERFILES)
+	@echo "Built with the new repo tag."
 
 $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
-	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
@@ -151,22 +164,35 @@ $(DOCKER_PUSH_TARGETS):
 		&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
 		&& docker push $(IMAGE_NAME_S390X))
 
+	# Push the manifest to the original mdelder repo.
 	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g" -e "s|__IMAGE_REPO__|$(IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	sed -i -e "s|__IMAGE_REPO__|$(MDELDER_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
 	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-
 
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
-	$(eval IMAGE_NAME_S390X := ${IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
+	$(eval ARTIFACTORY_RELEASE_TAG ?= $(IMAGE_VERSION))
 
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	docker tag $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	
+	# Push to original image repo.
+	docker push $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	docker tag $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	docker push $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	@echo "Pushed image to image repo: $(MDELDER_IMAGE_REPO)"
+
+	# Push to new image repo.
+	docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	docker tag $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
+	docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
+	@echo "Pushed image to image repo: $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)"
+
+
 include Makefile.docker
+#include Makefile.test

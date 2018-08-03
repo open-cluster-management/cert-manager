@@ -26,11 +26,13 @@ install:
   - docker info
 
 before_script:
-  - make lint
   - make docker-login
+  - make artifactory-login
+  - make lint
 
 script:
   - make image
+  - make docker-push-images
 
 after_success:
   - test "$TRAVIS_EVENT_TYPE" != "pull_request" && make release-all || echo "success"
@@ -41,11 +43,14 @@ after_success:
         export $(cat .to_export_back)
         if [[ "$BUILD_LEADER" == "YES" ]]; then
           if [[ "$BUILD_AGGREGATE_STATUS" == "others_succeeded" ]]; then
-            echo "All jobs succeeded! Creating multi arch image..."
-            make manifest-tool
-            make multi-arch-all
+            if [[ "$TRAVIS_BRANCH" == "master" ]]; then
+              echo "All jobs succeeded! Creating multi arch image..."
+              make manifest-tool
+              make multi-arch-all
+            fi
           else
             echo "Some jobs failed" && exit 1
           fi
         fi
       fi
+

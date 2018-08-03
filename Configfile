@@ -4,7 +4,7 @@ DOCKER_USERNAME ?= token
 DOCKER_PASSWORD ?=
 IMAGE_DESCRIPTION =
 IMAGE_NAME = icp-cert-manager
-IMAGE_REPO ?= registry.ng.bluemix.net/mdelder
+MDELDER_IMAGE_REPO ?= registry.ng.bluemix.net/mdelder
 RELEASE_TAG ?= latest
 ARCH = $(shell uname -m)
 DOCKER_FILE_EXT =
@@ -12,6 +12,7 @@ DOCKER_FLAG =
 IMAGE_NAME_ARCH_EXT = 
 MANIFEST_TOOL_NAME =
 GOARCH = 
+
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
@@ -30,3 +31,10 @@ IMAGE_TAGS = canary
 GOPATH ?= $HOME/go
 HACK_DIR ?= hack
 BUILD_TAG = build
+
+ARTIFACTORY_USERNAME ?= 
+ARTIFACTORY_PASSWORD ?= 
+
+ARTIFACTORY_IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
+ARTIFACTORY_URL ?= artifactory.swg-devops.com
+ARTIFACTORY_NAMESPACE ?= ibmcom
