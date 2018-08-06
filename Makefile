@@ -133,6 +133,10 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 	
 ifeq ($(OS),rhel7)
+	$(shell cp ~/rhel-buildmachines/id_rsa ~/.ssh/rhel_id_rsa)
+	$(shell cp ~/rhel-buildmachines/config ~/.ssh/config)
+	$(shell chmod 0600 ~/.ssh/rhel_id_rsa)
+
 	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
 	$(eval BASE_CMD := cd $(BASE_DIR);)
 	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_BUILD_CMD)
