@@ -124,7 +124,7 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
 
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockefile)
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_BUILD_CMD))
