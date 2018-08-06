@@ -13,7 +13,7 @@ ifeq (rhel, $(findstring rhel,$(OS)))
 	RELEASE_TAG := $(shell echo "${RELEASE_TAG}-rhel")
 endif
 ifeq (rhel7, $(OS))
-	SSH_CMD=ssh cloudusr@${TARGET}
+	SSH_CMD=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cloudusr@${TARGET}
 endif
 DOCKER_FILE_EXT =
 DOCKER_FLAG = 
