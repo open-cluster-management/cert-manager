@@ -138,15 +138,15 @@ ifeq ($(OS),rhel7)
 	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_BUILD_CMD)
 	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
 	scp $(DOCKER_FILE) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
-endif
+
 	# Build with a tag to the original repo.
 	$(SSH_CMD) '$(BASE_CMD) docker build -t $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-		   --build-arg "GOARCH=$(GOARCH)" \
-		   -f $(DOCKER_FILE) $(DOCKERFILES)'
+                   --build-arg "GOARCH=$(GOARCH)" \
+                   -f $(DOCKER_FILE) $(DOCKERFILES)'
 	@echo "Built with the original repo tag."
 
 	# Build with a tag to the new repo.
@@ -155,9 +155,30 @@ endif
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-		   --build-arg "GOARCH=$(GOARCH)" \
-		   -f $(DOCKER_FILE) $(DOCKERFILES)'
+                   --build-arg "GOARCH=$(GOARCH)" \
+                   -f $(DOCKER_FILE) $(DOCKERFILES)'
 	@echo "Built with the new repo tag."
+else
+	# Build with a tag to the original repo.
+	docker build -t $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+           --build-arg "VCS_REF=$(VCS_REF)" \
+           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
+           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
+           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+		   --build-arg "GOARCH=$(GOARCH)" \
+		   -f $(DOCKER_FILE) $(DOCKERFILES)
+	@echo "Built with the original repo tag."
+
+	# Build with a tag to the new repo.
+	docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+           --build-arg "VCS_REF=$(VCS_REF)" \
+           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
+           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
+           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+		   --build-arg "GOARCH=$(GOARCH)" \
+		   -f $(DOCKER_FILE) $(DOCKERFILES)
+	@echo "Built with the new repo tag."
+endif
 
 $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
