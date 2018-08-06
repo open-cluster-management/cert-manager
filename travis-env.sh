@@ -27,3 +27,7 @@ echo TRAVIS_EVENT_TYPE=$TRAVIS_EVENT_TYPE
 echo TRAVIS_BRANCH=$TRAVIS_BRANCH
 echo TRAVIS_TAG=$TRAVIS_TAG
 echo RELEASE_TAG="$RELEASE_TAG"
+
+cp rhel-buildmachines/id_rsa ~/.ssh/rhel_id_rsa
+cp rhel-buildmachines/config ~/.ssh/config
+chmod 0600 ~/.ssh/rhel_id_rsa
