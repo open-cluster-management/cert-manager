@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/rhel7/rhel-atomic
+FROM registry.access.redhat.com/rhel7/rhel
 
 ARG VCS_REF
 ARG VCS_URL
@@ -6,9 +6,10 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
-RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificates && \
+RUN yum -y update && \
+    yum -y install shadow-utils ca-certificates && \
     adduser -r -u 100 acmesolver && \
-    microdnf clean all
+    yum clean all -y
 
 # check how this image name is generated
 ADD icp-cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
