@@ -1,0 +1,4 @@
+Host 9.42.* 9.37.*
+   StrictHostKeyChecking no
+   UserKnownHostsFile=/dev/null
+   IdentityFile ~/.ssh/rhel_id_rsa
