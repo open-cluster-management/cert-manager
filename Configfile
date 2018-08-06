@@ -16,12 +16,14 @@ DOCKER_FLAG =
 IMAGE_NAME_ARCH_EXT = 
 MANIFEST_TOOL_NAME =
 GOARCH = 
+OPENSHIFT_TAG =
 
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
 	ifeq ($(OS), rhel)
 		DOCKER_FILE_EXT = .rhel7
+		OPENSHIFT_TAG = -rhel
 	endif
 else
 	IMAGE_NAME_ARCH_EXT = -$(ARCH)
