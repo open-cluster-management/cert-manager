@@ -21,7 +21,7 @@ OPENSHIFT_TAG =
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
-	ifeq ($(OS), rhel)
+	ifeq (rhel, $(findstring rhel,$(OS)))
 		DOCKER_FILE_EXT = .rhel7
 		OPENSHIFT_TAG = -rhel
 	endif
