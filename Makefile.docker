@@ -25,7 +25,7 @@ docker-login:
 ifndef $(and DOCKER_USERNAME, DOCKER_PASSWORD)
 	$(error DOCKER_USERNAME and DOCKER_PASSWORD must be defined, required for goal (docker-login))
 endif
-	@docker login -u $(DOCKER_USERNAME) -p $(DOCKER_PASSWORD) $(DOCKER_SERVER)
+	@$(SSH_CMD) docker login -u $(DOCKER_USERNAME) -p $(DOCKER_PASSWORD) $(DOCKER_SERVER)
 
 .PHONY: app-version
 app-version:
