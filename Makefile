@@ -52,7 +52,12 @@ multi-arch-all: docker-push-manifest
 release-all: docker-push-images
 docker-push-images: $(DOCKER_RELEASE_TARGETS)
 artifactory-login:
-	docker login $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
+	$(SSH_CMD) docker login $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
+
+tunnel:
+	$(shell cp rhel-buildmachines/id_rsa ~/.ssh/rhel_id_rsa)
+	$(shell cp rhel-buildmachines/config ~/.ssh/config)
+	$(shell chmod 0600 ~/.ssh/rhel_id_rsa)
 
 # Code generation
 #################
@@ -119,18 +124,46 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
 
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockefile)
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_BUILD_CMD))
 
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	@echo "OS = $(OS)"
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 	
+ifeq ($(OS),rhel7)
+	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
+	$(eval BASE_CMD := cd $(BASE_DIR);)
+	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_BUILD_CMD)
+	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
+	scp $(DOCKER_FILE) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
+
+	# Build with a tag to the original repo.
+	$(SSH_CMD) '$(BASE_CMD) docker build -t $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+           --build-arg "VCS_REF=$(VCS_REF)" \
+           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
+           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
+           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+                   --build-arg "GOARCH=$(GOARCH)" \
+                   -f $(DOCKER_FILE) $(DOCKERFILES)'
+	@echo "Built with the original repo tag."
+
+	# Build with a tag to the new repo.
+	$(SSH_CMD) '$(BASE_CMD) docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+           --build-arg "VCS_REF=$(VCS_REF)" \
+           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
+           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
+           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+                   --build-arg "GOARCH=$(GOARCH)" \
+                   -f $(DOCKER_FILE) $(DOCKERFILES)'
+	@echo "Built with the new repo tag."
+else
 	# Build with a tag to the original repo.
 	docker build -t $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
@@ -150,6 +183,7 @@ $(DOCKER_BUILD_TARGETS):
 		   --build-arg "GOARCH=$(GOARCH)" \
 		   -f $(DOCKER_FILE) $(DOCKERFILES)
 	@echo "Built with the new repo tag."
+endif
 
 $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
@@ -177,20 +211,20 @@ $(DOCKER_RELEASE_TARGETS):
 	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval ARTIFACTORY_RELEASE_TAG ?= $(IMAGE_VERSION))
 
 	# Push to original image repo.
-	docker push $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	docker tag $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
-	docker push $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	$(SSH_CMD) docker push $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	$(SSH_CMD) docker tag $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
+	$(SSH_CMD) docker push $(MDELDER_IMAGE_REPO)/$(IMAGE_NAME_ARCH):$(RELEASE_TAG)
 	@echo "Pushed image to image repo: $(MDELDER_IMAGE_REPO)"
 
 	# Push to new image repo.
-	docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
-	docker tag $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
-	docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
+	$(SSH_CMD) docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
+	$(SSH_CMD) docker tag $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
+	$(SSH_CMD) docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
 	@echo "Pushed image to image repo: $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)"
 
 

@@ -3,22 +3,35 @@ DOCKER_SERVER ?= registry.ng.bluemix.net
 DOCKER_USERNAME ?= token
 DOCKER_PASSWORD ?=
 IMAGE_DESCRIPTION =
+SSH_CMD =
 IMAGE_NAME = icp-cert-manager
 MDELDER_IMAGE_REPO ?= registry.ng.bluemix.net/mdelder
-RELEASE_TAG ?= latest
 ARCH = $(shell uname -m)
+OS ?= $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
+RELEASE_TAG ?= latest
+ifeq (rhel, $(findstring rhel,$(OS)))
+	RELEASE_TAG := $(shell echo "${RELEASE_TAG}-rhel")
+endif
+ifeq (rhel7, $(OS))
+	SSH_CMD=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cloudusr@${TARGET}
+endif
 DOCKER_FILE_EXT =
 DOCKER_FLAG = 
 IMAGE_NAME_ARCH_EXT = 
 MANIFEST_TOOL_NAME =
 GOARCH = 
+OPENSHIFT_TAG =
 
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
+	ifeq (rhel, $(findstring rhel,$(OS)))
+		DOCKER_FILE_EXT = .rhel7
+		OPENSHIFT_TAG = -rhel
+	endif
 else
 	IMAGE_NAME_ARCH_EXT = -$(ARCH)
-    DOCKER_FILE_EXT = .$(ARCH)
+	DOCKER_FILE_EXT = .$(ARCH)
 	GOARCH = $(ARCH)
 endif
 

@@ -19,6 +19,17 @@ branches:
     - /^v[0-9]+\..*$/
     - /^release-[0-9]+\..*$/
 
+env:
+  matrix:
+    - OS=rhel7 TARGET=9.42.40.115
+    - OS=linux
+
+matrix:
+  fast_finish: true
+  exclude:
+  - os: linux-ppc64le
+    env: OS=rhel7 TARGET=9.42.40.115
+
 before_install:
   - source travis-env.sh
 
@@ -26,6 +37,8 @@ install:
   - docker info
 
 before_script:
+  - ls -al
+  - make tunnel
   - make docker-login
   - make artifactory-login
   - make lint
