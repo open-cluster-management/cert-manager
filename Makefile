@@ -55,6 +55,7 @@ artifactory-login:
 	$(SSH_CMD) docker login $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
 tunnel:
+	git clone https://${GITHUB_TOKEN}@github.ibm.com/ICP-DevOps/rhel-buildmachines.git
 	$(shell cp rhel-buildmachines/id_rsa ~/.ssh/rhel_id_rsa)
 	$(shell cp rhel-buildmachines/config ~/.ssh/config)
 	$(shell chmod 0600 ~/.ssh/rhel_id_rsa)
