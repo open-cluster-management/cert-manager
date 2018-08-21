@@ -1,6 +1,6 @@
 # Release Tag
 if [ "$TRAVIS_BRANCH" = "master" ]; then
-    if ! [ "$TRAVIS_BRANCH" = "pull_request" ]; then
+    if ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" ]; then
         RELEASE_TAG=latest
         ARTIFACTORY_IMAGE_REPO=hyc-cloud-private-integration-docker-local
         ARTIFACTORY_NAMESPACE=ibmcom
