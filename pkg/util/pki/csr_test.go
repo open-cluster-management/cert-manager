@@ -138,12 +138,12 @@ func TestExpirationForCertificate(t *testing.T) {
 	}
 	tests := []testT{
 		{
-			name:       "certificate with CommonName set",
+			name:       "certificate with 2400 hour expiration",
 			crtCN:      "test",
 			expiration: 2400,
 		},
 		{
-			name:       "certificate with one DNS name set",
+			name:       "certificate with 4800 hour expiration",
 			crtCN:      "test",
 			expiration: 4800,
 		},
@@ -161,4 +161,3 @@ func TestExpirationForCertificate(t *testing.T) {
 		t.Run(test.name, testFn(test))
 	}
 }
-

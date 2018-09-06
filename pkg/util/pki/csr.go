@@ -39,10 +39,10 @@ func DNSNamesForCertificate(crt *v1alpha1.Certificate) []string {
 }
 
 func ValidityPeriodForCertificate(crt *v1alpha1.Certificate) int {
-       if crt.Spec.ValidityPeriod > 0 {
-               return crt.Spec.ValidityPeriod
-       }
-       return 0
+	if crt.Spec.ValidityPeriod > 0 {
+		return crt.Spec.ValidityPeriod
+	}
+	return 0
 }
 
 var serialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
@@ -92,11 +92,11 @@ func GenerateTemplate(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate, 
 		return nil, fmt.Errorf("failed to generate serial number: %s", err.Error())
 	}
 
-        if validityPeriod != 0 {
-                validityPeriod = time.Hour * validityPeriod
-        } else {
-                validityPeriod = defaultNotAfter
-        }
+	if validityPeriod != 0 {
+		validityPeriod = time.Hour * validityPeriod
+	} else {
+		validityPeriod = defaultNotAfter
+	}
 
 	expireTime := time.Now().Add(validityPeriod)
 	crt.Status.NotAfter = metav1.NewTime(expireTime)

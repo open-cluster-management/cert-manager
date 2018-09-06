@@ -303,8 +303,8 @@ type CertificateSpec struct {
 	IssuerRef ObjectReference `json:"issuerRef"`
 
 	ACME *ACMECertificateConfig `json:"acme,omitempty"`
-        // ValidityPeriod determines how long the certificate is valid after creation
-        ValidityPeriod int `json:"validityPeriod,omitempty"`
+	// ValidityPeriod determines how long the certificate is valid after creation
+	ValidityPeriod int `json:"validityPeriod,omitempty"`
 }
 
 // ACMEConfig contains the configuration for the ACME certificate provider
