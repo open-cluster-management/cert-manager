@@ -15,6 +15,15 @@ func buildCertificate(cn string, dnsNames ...string) *v1alpha1.Certificate {
 	}
 }
 
+func buildExpiringCertificate(cn string, hours int) *v1alpha1.Certificate {
+	return &v1alpha1.Certificate{
+		Spec: v1alpha1.CertificateSpec{
+			CommonName:     cn,
+			ValidityPeriod: hours,
+		},
+	}
+}
+
 func TestCommonNameForCertificate(t *testing.T) {
 	type testT struct {
 		name        string
@@ -120,3 +129,36 @@ func TestDNSNamesForCertificate(t *testing.T) {
 		t.Run(test.name, testFn(test))
 	}
 }
+
+func TestExpirationForCertificate(t *testing.T) {
+	type testT struct {
+		name       string
+		crtCN      string
+		expiration int
+	}
+	tests := []testT{
+		{
+			name:       "certificate with CommonName set",
+			crtCN:      "test",
+			expiration: 2400,
+		},
+		{
+			name:       "certificate with one DNS name set",
+			crtCN:      "test",
+			expiration: 4800,
+		},
+	}
+	testFn := func(test testT) func(*testing.T) {
+		return func(t *testing.T) {
+			validityPeriod := ValidityPeriodForCertificate(buildExpiringCertificate(test.crtCN, test.expiration))
+			if validityPeriod != test.expiration {
+				t.Errorf("expected %d but got %d", test.expiration, validityPeriod)
+				return
+			}
+		}
+	}
+	for _, test := range tests {
+		t.Run(test.name, testFn(test))
+	}
+}
+

@@ -12,6 +12,7 @@ import (
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func CommonNameForCertificate(crt *v1alpha1.Certificate) string {
@@ -35,6 +36,13 @@ func DNSNamesForCertificate(crt *v1alpha1.Certificate) []string {
 		return util.RemoveDuplicates(append([]string{crt.Spec.CommonName}, crt.Spec.DNSNames...))
 	}
 	return crt.Spec.DNSNames
+}
+
+func ValidityPeriodForCertificate(crt *v1alpha1.Certificate) int {
+       if crt.Spec.ValidityPeriod > 0 {
+               return crt.Spec.ValidityPeriod
+       }
+       return 0
 }
 
 var serialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
@@ -74,6 +82,7 @@ func GenerateCSR(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate) (*x50
 func GenerateTemplate(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate, serialNo *big.Int) (*x509.Certificate, error) {
 	commonName := CommonNameForCertificate(crt)
 	dnsNames := DNSNamesForCertificate(crt)
+	validityPeriod := time.Duration(ValidityPeriodForCertificate(crt))
 	if len(commonName) == 0 && len(dnsNames) == 0 {
 		return nil, fmt.Errorf("no domains specified on certificate")
 	}
@@ -82,6 +91,15 @@ func GenerateTemplate(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate serial number: %s", err.Error())
 	}
+
+        if validityPeriod != 0 {
+                validityPeriod = time.Hour * validityPeriod
+        } else {
+                validityPeriod = defaultNotAfter
+        }
+
+	expireTime := time.Now().Add(validityPeriod)
+	crt.Status.NotAfter = metav1.NewTime(expireTime)
 
 	return &x509.Certificate{
 		Version:               3,
@@ -93,7 +111,7 @@ func GenerateTemplate(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate, 
 			CommonName:   commonName,
 		},
 		NotBefore: time.Now(),
-		NotAfter:  time.Now().Add(defaultNotAfter),
+		NotAfter:  expireTime,
 		// see http://golang.org/pkg/crypto/x509/#KeyUsage
 		KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		DNSNames: dnsNames,

@@ -303,6 +303,8 @@ type CertificateSpec struct {
 	IssuerRef ObjectReference `json:"issuerRef"`
 
 	ACME *ACMECertificateConfig `json:"acme,omitempty"`
+        // ValidityPeriod determines how long the certificate is valid after creation
+        ValidityPeriod int `json:"validityPeriod,omitempty"`
 }
 
 // ACMEConfig contains the configuration for the ACME certificate provider
@@ -333,6 +335,7 @@ type ACMECertificateDNS01Config struct {
 type CertificateStatus struct {
 	Conditions []CertificateCondition `json:"conditions,omitempty"`
 	ACME       *CertificateACMEStatus `json:"acme,omitempty"`
+	NotAfter   metav1.Time            `json:"notAfter"`
 }
 
 // CertificateCondition contains condition information for an Certificate.
