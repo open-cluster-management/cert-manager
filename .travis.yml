@@ -6,8 +6,6 @@ go:
   - 1.9
 
 os:
-        #  - linux
-        #- linux-ppc64le
   - linux-s390
 
 services:
