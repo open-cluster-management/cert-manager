@@ -27,12 +27,14 @@ env:
   matrix:
     - OS=rhel7 TARGET=9.42.40.115
     - OS=linux
-    - OS=linux-s390x
 
 matrix:
   fast_finish: true
   exclude:
-  - os: linux-ppc64le
+          #- os: linux-ppc64le
+  - os: 
+      - linux-ppc64le
+      - linux-s390
     env: OS=rhel7 TARGET=9.42.40.115
 
 
