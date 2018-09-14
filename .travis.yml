@@ -27,7 +27,7 @@ env:
   matrix:
     - OS=rhel7 TARGET=9.42.40.115
     - OS=linux
-    - OS=linux-s390
+      #- OS=linux-s390
 
 matrix:
   fast_finish: true
