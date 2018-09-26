@@ -1,3 +1,19 @@
+/*
+Copyright 2018 The Jetstack cert-manager contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package http
 
 import (
@@ -70,16 +86,19 @@ func (s *Solver) getServicesForChallenge(crt *v1alpha1.Certificate, ch v1alpha1.
 // createService will create the service required to solve this challenge
 // in the target API server.
 func (s *Solver) createService(crt *v1alpha1.Certificate, ch v1alpha1.ACMEOrderChallenge) (*corev1.Service, error) {
-	return s.client.CoreV1().Services(crt.Namespace).Create(buildService(crt, ch))
+	return s.Client.CoreV1().Services(crt.Namespace).Create(buildService(crt, ch))
 }
 
 func buildService(crt *v1alpha1.Certificate, ch v1alpha1.ACMEOrderChallenge) *corev1.Service {
 	podLabels := podLabels(ch)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName:    "cm-acme-http-solver-",
-			Namespace:       crt.Namespace,
-			Labels:          podLabels,
+			GenerateName: "cm-acme-http-solver-",
+			Namespace:    crt.Namespace,
+			Labels:       podLabels,
+			Annotations: map[string]string{
+				"auth.istio.io/8089": "NONE",
+			},
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(crt, certificateGvk)},
 		},
 		Spec: corev1.ServiceSpec{
@@ -105,7 +124,7 @@ func (s *Solver) cleanupServices(crt *v1alpha1.Certificate, ch v1alpha1.ACMEOrde
 	for _, service := range services {
 		// TODO: should we call DeleteCollection here? We'd need to somehow
 		// also ensure ownership as part of that request using a FieldSelector.
-		err := s.client.CoreV1().Services(service.Namespace).Delete(service.Name, nil)
+		err := s.Client.CoreV1().Services(service.Namespace).Delete(service.Name, nil)
 		if err != nil {
 			errs = append(errs, err)
 		}

@@ -1,3 +1,19 @@
+/*
+Copyright 2018 The Jetstack cert-manager contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package acme
 
 import (
@@ -9,9 +25,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
+	"github.com/jetstack/cert-manager/pkg/acme/client"
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	"github.com/jetstack/cert-manager/pkg/issuer/acme/client"
-	"github.com/jetstack/cert-manager/third_party/crypto/acme"
+	acmeapi "github.com/jetstack/cert-manager/third_party/crypto/acme"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
@@ -46,7 +62,7 @@ func (a *Acme) Prepare(ctx context.Context, crt *v1alpha1.Certificate) error {
 
 	glog.V(4).Infof("Getting ACME client")
 	// obtain an ACME client
-	cl, err := a.acmeClient()
+	cl, err := a.helper.ClientForIssuer(a.issuer)
 	if err != nil {
 		crt.UpdateStatusCondition(v1alpha1.CertificateConditionReady, v1alpha1.ConditionFalse, errorValidateError, fmt.Sprintf("Failed to get ACME client: %v", err), false)
 		return err
@@ -87,14 +103,14 @@ func (a *Acme) Prepare(ctx context.Context, crt *v1alpha1.Certificate) error {
 			crt.UpdateStatusCondition(v1alpha1.CertificateConditionReady, v1alpha1.ConditionFalse, errorValidateError, fmt.Sprintf("Failed to create new order: %v", err), false)
 			return err
 		}
-		a.recorder.Eventf(crt, corev1.EventTypeNormal, reasonCreateOrder, "Created new ACME order, attempting validation...")
+		a.Recorder.Eventf(crt, corev1.EventTypeNormal, reasonCreateOrder, "Created new ACME order, attempting validation...")
 	}
 
 	// attempt to present/validate the order
 	return a.presentOrder(ctx, cl, crt, order)
 }
 
-func (a *Acme) presentOrder(ctx context.Context, cl client.Interface, crt *v1alpha1.Certificate, order *acme.Order) error {
+func (a *Acme) presentOrder(ctx context.Context, cl client.Interface, crt *v1alpha1.Certificate, order *acmeapi.Order) error {
 	allAuthorizations, err := getRemainingAuthorizations(ctx, cl, order.Authorizations...)
 	if err != nil {
 		crt.UpdateStatusCondition(v1alpha1.CertificateConditionReady, v1alpha1.ConditionFalse, errorValidateError, fmt.Sprintf("Failed to determine authorizations to obtain: %v", err), false)
@@ -202,15 +218,15 @@ func (a *Acme) presentChallenge(ctx context.Context, cl client.Interface, crt *v
 	}
 
 	switch acmeCh.Status {
-	case acme.StatusValid:
+	case acmeapi.StatusValid:
 		return nil
-	case acme.StatusInvalid, acme.StatusDeactivated, acme.StatusRevoked:
+	case acmeapi.StatusInvalid, acmeapi.StatusDeactivated, acmeapi.StatusRevoked:
 		acmeErrReason := "unknown reason"
 		if acmeCh.Error != nil {
 			acmeErrReason = acmeCh.Error.Error()
 		}
 		return fmt.Errorf("challenge for domain %q failed: %s", ch.Domain, acmeErrReason)
-	case acme.StatusPending, acme.StatusProcessing:
+	case acmeapi.StatusPending, acmeapi.StatusProcessing:
 	default:
 		return fmt.Errorf("unknown acme challenge status %q for domain %q", acmeCh.Status, ch.Domain)
 	}
@@ -233,7 +249,7 @@ func (a *Acme) presentChallenge(ctx context.Context, cl client.Interface, crt *v
 	//       is already present and all we do is waiting for propagation,
 	//       otherwise it is spamming with errors which are not really erros
 	//       as we are just waiting for propagation
-	err = solver.Present(ctx, crt, ch)
+	err = solver.Present(ctx, a.issuer, crt, ch)
 	if err != nil {
 		return err
 	}
@@ -289,24 +305,24 @@ func (a *Acme) cleanupChallenge(ctx context.Context, crt *v1alpha1.Certificate, 
 	if err != nil {
 		return err
 	}
-	err = solver.CleanUp(ctx, crt, c)
+	err = solver.CleanUp(ctx, a.issuer, crt, c)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *Acme) selectChallengesForAuthorizations(ctx context.Context, cl client.Interface, crt *v1alpha1.Certificate, allAuthorizations ...*acme.Authorization) ([]v1alpha1.ACMEOrderChallenge, error) {
+func (a *Acme) selectChallengesForAuthorizations(ctx context.Context, cl client.Interface, crt *v1alpha1.Certificate, allAuthorizations ...*acmeapi.Authorization) ([]v1alpha1.ACMEOrderChallenge, error) {
 	chals := make([]v1alpha1.ACMEOrderChallenge, len(allAuthorizations))
 	var errs []error
 	for i, authz := range allAuthorizations {
-		cfg, err := acmeSolverConfigurationForAuthorization(crt.Spec.ACME, authz)
+		cfg, err := solverConfigurationForAuthorization(crt.Spec.ACME, authz)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
 
-		var challenge *acme.Challenge
+		var challenge *acmeapi.Challenge
 		for _, ch := range authz.Challenges {
 			switch {
 			case ch.Type == "http-01" && cfg.HTTP01 != nil && a.issuer.GetSpec().ACME.HTTP01 != nil:
@@ -333,7 +349,7 @@ func (a *Acme) selectChallengesForAuthorizations(ctx context.Context, cl client.
 	return chals, utilerrors.NewAggregate(errs)
 }
 
-func buildInternalChallengeType(cl client.Interface, ch *acme.Challenge, cfg v1alpha1.ACMESolverConfig, domain, authzURL string, wildcard bool) (v1alpha1.ACMEOrderChallenge, error) {
+func buildInternalChallengeType(cl client.Interface, ch *acmeapi.Challenge, cfg v1alpha1.SolverConfig, domain, authzURL string, wildcard bool) (v1alpha1.ACMEOrderChallenge, error) {
 	var key string
 	var err error
 	switch ch.Type {
@@ -349,18 +365,18 @@ func buildInternalChallengeType(cl client.Interface, ch *acme.Challenge, cfg v1a
 	}
 
 	return v1alpha1.ACMEOrderChallenge{
-		URL:              ch.URL,
-		AuthzURL:         authzURL,
-		Type:             ch.Type,
-		Domain:           domain,
-		Token:            ch.Token,
-		Key:              key,
-		ACMESolverConfig: cfg,
-		Wildcard:         wildcard,
+		URL:          ch.URL,
+		AuthzURL:     authzURL,
+		Type:         ch.Type,
+		Domain:       domain,
+		Token:        ch.Token,
+		Key:          key,
+		SolverConfig: cfg,
+		Wildcard:     wildcard,
 	}, nil
 }
 
-func keyForChallenge(cl *acme.Client, challenge *acme.Challenge) (string, error) {
+func keyForChallenge(cl *acmeapi.Client, challenge *acmeapi.Challenge) (string, error) {
 	var err error
 	switch challenge.Type {
 	case "http-01":
@@ -400,7 +416,7 @@ func keyForChallenge(cl *acme.Client, challenge *acme.Challenge) (string, error)
 // TODO:
 // - If the existing order has failed, but the previously attempted
 //   configuration is different to the new configuration, it should return 0
-func (a *Acme) shouldAttemptValidation(ctx context.Context, cl client.Interface, crt *v1alpha1.Certificate) (time.Duration, *acme.Order, error) {
+func (a *Acme) shouldAttemptValidation(ctx context.Context, cl client.Interface, crt *v1alpha1.Certificate) (time.Duration, *acmeapi.Order, error) {
 	orderURL := crt.Status.ACMEStatus().Order.URL
 	if orderURL == "" {
 		return 0, nil, nil
@@ -414,7 +430,7 @@ func (a *Acme) shouldAttemptValidation(ctx context.Context, cl client.Interface,
 		// check if the error is a 'not found' or unauthorized type error. If
 		// it is, we should attempt to authorize as either the issuer identity
 		// has changed, or the order URL is very old
-		if acmeErr, ok := err.(*acme.Error); ok {
+		if acmeErr, ok := err.(*acmeapi.Error); ok {
 			if acmeErr.StatusCode >= 400 && acmeErr.StatusCode <= 499 {
 				return 0, nil, nil
 			}
@@ -431,13 +447,13 @@ func (a *Acme) shouldAttemptValidation(ctx context.Context, cl client.Interface,
 	}
 
 	switch order.Status {
-	case acme.StatusPending, acme.StatusProcessing, acme.StatusValid:
+	case acmeapi.StatusPending, acmeapi.StatusProcessing, acmeapi.StatusValid, acmeapi.StatusReady:
 		// if the order has not failed, attempt authorization
 		return 0, order, nil
-	case acme.StatusRevoked, acme.StatusUnknown:
+	case acmeapi.StatusRevoked, acmeapi.StatusUnknown:
 		// if the order is revoked (i.e. expired), we should create a new one
 		return 0, nil, nil
-	case acme.StatusInvalid:
+	case acmeapi.StatusInvalid:
 		// if the certificate is not marked as failed, we should set the
 		// condition on the resource
 		if !crt.HasCondition(v1alpha1.CertificateCondition{
@@ -462,7 +478,7 @@ func (a *Acme) shouldAttemptValidation(ctx context.Context, cl client.Interface,
 			}
 		}
 
-		return prepareAttemptWaitPeriod - (time.Now().Sub(condition.LastTransitionTime.Time)), order, nil
+		return prepareAttemptWaitPeriod - (time.Now().Sub(condition.LastTransitionTime.Time)), nil, nil
 	}
 
 	return 0, nil, fmt.Errorf("unrecognised existing acme order status: %q", order.Status)
@@ -472,7 +488,7 @@ func (a *Acme) acceptChallenge(ctx context.Context, cl client.Interface, crt *v1
 	glog.Infof("Accepting challenge for domain %q", ch.Domain)
 	// We manually construct an ACME challenge here from our own internal type
 	// to save additional round trips to the ACME server.
-	acmeChal := &acme.Challenge{
+	acmeChal := &acmeapi.Challenge{
 		URL:   ch.URL,
 		Token: ch.Token,
 	}
@@ -487,12 +503,12 @@ func (a *Acme) acceptChallenge(ctx context.Context, cl client.Interface, crt *v1
 		return err
 	}
 
-	if authorization.Status != acme.StatusValid {
+	if authorization.Status != acmeapi.StatusValid {
 		return fmt.Errorf("expected acme domain authorization status for %q to be valid, but it is %q", authorization.Identifier.Value, authorization.Status)
 	}
 
 	glog.Infof("Successfully authorized domain %q", authorization.Identifier.Value)
-	a.recorder.Eventf(crt, corev1.EventTypeNormal, reasonDomainVerified, "Domain %q verified with %q validation", ch.Domain, ch.Type)
+	a.Recorder.Eventf(crt, corev1.EventTypeNormal, reasonDomainVerified, "Domain %q verified with %q validation", ch.Domain, ch.Type)
 
 	return nil
 }
@@ -502,24 +518,24 @@ func (a *Acme) acceptChallenge(ctx context.Context, cl client.Interface, crt *v1
 // client.
 // It will filter out any authorizations that are in a 'Valid' state.
 // It will return an error if obtaining any of the given authorizations fails.
-func getRemainingAuthorizations(ctx context.Context, cl client.Interface, urls ...string) ([]*acme.Authorization, error) {
-	var authzs []*acme.Authorization
+func getRemainingAuthorizations(ctx context.Context, cl client.Interface, urls ...string) ([]*acmeapi.Authorization, error) {
+	var authzs []*acmeapi.Authorization
 	for _, url := range urls {
 		a, err := cl.GetAuthorization(ctx, url)
 		if err != nil {
 			return nil, err
 		}
-		if a.Status == acme.StatusInvalid || a.Status == acme.StatusDeactivated || a.Status == acme.StatusRevoked {
+		if a.Status == acmeapi.StatusInvalid || a.Status == acmeapi.StatusDeactivated || a.Status == acmeapi.StatusRevoked {
 			return nil, fmt.Errorf("authorization for domain %q is in a failed state", a.Identifier.Value)
 		}
-		if a.Status == acme.StatusPending {
+		if a.Status == acmeapi.StatusPending {
 			authzs = append(authzs, a)
 		}
 	}
 	return authzs, nil
 }
 
-func acmeSolverConfigurationForAuthorization(cfg *v1alpha1.ACMECertificateConfig, authz *acme.Authorization) (*v1alpha1.ACMESolverConfig, error) {
+func solverConfigurationForAuthorization(cfg *v1alpha1.ACMECertificateConfig, authz *acmeapi.Authorization) (*v1alpha1.SolverConfig, error) {
 	domain := authz.Identifier.Value
 	if authz.Wildcard {
 		domain = "*." + domain
@@ -529,7 +545,7 @@ func acmeSolverConfigurationForAuthorization(cfg *v1alpha1.ACMECertificateConfig
 			if dom != domain {
 				continue
 			}
-			return &d.ACMESolverConfig, nil
+			return &d.SolverConfig, nil
 		}
 	}
 	return nil, fmt.Errorf("solver configuration for domain %q not found. Ensure you have configured a challenge mechanism using the certificate.spec.acme.config field", domain)

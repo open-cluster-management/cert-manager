@@ -1,3 +1,19 @@
+/*
+Copyright 2018 The Jetstack cert-manager contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package pki
 
 import (
@@ -37,12 +53,17 @@ func DNSNamesForCertificate(crt *v1alpha1.Certificate) []string {
 	return crt.Spec.DNSNames
 }
 
-var serialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
-
-// TODO: allow this to be configurable
 const defaultOrganization = "cert-manager"
 
-const defaultSignatureAlgorithm = x509.SHA256WithRSA
+func OrganizationForCertificate(crt *v1alpha1.Certificate) []string {
+	if len(crt.Spec.Organization) == 0 {
+		return []string{defaultOrganization}
+	}
+
+	return crt.Spec.Organization
+}
+
+var serialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
 
 // default certification duration is 1 year
 const defaultNotAfter = time.Hour * 24 * 365
@@ -50,15 +71,22 @@ const defaultNotAfter = time.Hour * 24 * 365
 func GenerateCSR(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate) (*x509.CertificateRequest, error) {
 	commonName := CommonNameForCertificate(crt)
 	dnsNames := DNSNamesForCertificate(crt)
+	organization := OrganizationForCertificate(crt)
+
 	if len(commonName) == 0 && len(dnsNames) == 0 {
 		return nil, fmt.Errorf("no domains specified on certificate")
 	}
 
+	sigAlgo, err := SignatureAlgorithm(crt)
+	if err != nil {
+		return nil, err
+	}
+
 	return &x509.CertificateRequest{
 		Version:            3,
-		SignatureAlgorithm: defaultSignatureAlgorithm,
+		SignatureAlgorithm: sigAlgo,
 		Subject: pkix.Name{
-			Organization: []string{defaultOrganization},
+			Organization: organization,
 			CommonName:   commonName,
 		},
 		DNSNames: dnsNames,
@@ -74,6 +102,8 @@ func GenerateCSR(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate) (*x50
 func GenerateTemplate(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate, serialNo *big.Int) (*x509.Certificate, error) {
 	commonName := CommonNameForCertificate(crt)
 	dnsNames := DNSNamesForCertificate(crt)
+	organization := OrganizationForCertificate(crt)
+
 	if len(commonName) == 0 && len(dnsNames) == 0 {
 		return nil, fmt.Errorf("no domains specified on certificate")
 	}
@@ -83,19 +113,29 @@ func GenerateTemplate(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate, 
 		return nil, fmt.Errorf("failed to generate serial number: %s", err.Error())
 	}
 
+	sigAlgo, err := SignatureAlgorithm(crt)
+	if err != nil {
+		return nil, err
+	}
+
+	keyUsages := x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment
+	if crt.Spec.IsCA {
+		keyUsages |= x509.KeyUsageCertSign
+	}
 	return &x509.Certificate{
 		Version:               3,
 		BasicConstraintsValid: true,
 		SerialNumber:          serialNumber,
-		SignatureAlgorithm:    defaultSignatureAlgorithm,
+		SignatureAlgorithm:    sigAlgo,
+		IsCA:                  crt.Spec.IsCA,
 		Subject: pkix.Name{
-			Organization: []string{defaultOrganization},
+			Organization: organization,
 			CommonName:   commonName,
 		},
 		NotBefore: time.Now(),
 		NotAfter:  time.Now().Add(defaultNotAfter),
 		// see http://golang.org/pkg/crypto/x509/#KeyUsage
-		KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		KeyUsage: keyUsages,
 		DNSNames: dnsNames,
 	}, nil
 }
@@ -123,10 +163,14 @@ func SignCertificate(template *x509.Certificate, issuerCert *x509.Certificate, p
 		return nil, nil, fmt.Errorf("error encoding certificate PEM: %s", err.Error())
 	}
 
-	// bundle the CA
-	err = pem.Encode(pemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: issuerCert.Raw})
-	if err != nil {
-		return nil, nil, fmt.Errorf("error encoding issuer cetificate PEM: %s", err.Error())
+	// don't bundle the CA for selfsigned certificates
+	// TODO: better comparison method here? for now we can just compare pointers.
+	if issuerCert != template {
+		// bundle the CA
+		err = pem.Encode(pemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: issuerCert.Raw})
+		if err != nil {
+			return nil, nil, fmt.Errorf("error encoding issuer cetificate PEM: %s", err.Error())
+		}
 	}
 
 	return pemBytes.Bytes(), cert, err
@@ -139,4 +183,38 @@ func EncodeCSR(template *x509.CertificateRequest, key interface{}) ([]byte, erro
 	}
 
 	return derBytes, nil
+}
+
+// Return the appropriate signature algorithm for the certificate
+// Adapted from https://github.com/cloudflare/cfssl/blob/master/csr/csr.go#L102
+func SignatureAlgorithm(crt *v1alpha1.Certificate) (x509.SignatureAlgorithm, error) {
+	switch crt.Spec.KeyAlgorithm {
+	case v1alpha1.KeyAlgorithm(""):
+		// If keyAlgorithm is not specified, we default to rsa with keysize 2048
+		return x509.SHA256WithRSA, nil
+	case v1alpha1.RSAKeyAlgorithm:
+		switch {
+		case crt.Spec.KeySize >= 4096:
+			return x509.SHA512WithRSA, nil
+		case crt.Spec.KeySize >= 3072:
+			return x509.SHA384WithRSA, nil
+		case crt.Spec.KeySize >= 2048:
+			return x509.SHA256WithRSA, nil
+		default:
+			return x509.UnknownSignatureAlgorithm, fmt.Errorf("unsupported rsa keysize specified: %d. min keysize %d", crt.Spec.KeySize, MinRSAKeySize)
+		}
+	case v1alpha1.ECDSAKeyAlgorithm:
+		switch crt.Spec.KeySize {
+		case 521:
+			return x509.ECDSAWithSHA512, nil
+		case 384:
+			return x509.ECDSAWithSHA384, nil
+		case 256:
+			return x509.ECDSAWithSHA256, nil
+		default:
+			return x509.UnknownSignatureAlgorithm, fmt.Errorf("unsupported ecdsa keysize specified: %d", crt.Spec.KeySize)
+		}
+	default:
+		return x509.UnknownSignatureAlgorithm, fmt.Errorf("unsupported algorithm specified: %s. should be either 'ecdsa' or 'rsa", crt.Spec.KeyAlgorithm)
+	}
 }

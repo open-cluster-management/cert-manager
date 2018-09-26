@@ -1,3 +1,19 @@
+/*
+Copyright 2018 The Jetstack cert-manager contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package vault
 
 import (
@@ -42,9 +58,10 @@ type VaultInitializer struct {
 	rootMount         string
 	intermediateMount string
 	role              string
+	authPath          string
 }
 
-func NewVaultInitializer(container, rootMount, intermediateMount, role string) (*VaultInitializer, error) {
+func NewVaultInitializer(container, rootMount, intermediateMount, role, authPath string) (*VaultInitializer, error) {
 	args := []string{"port-forward", "-n", "vault", container, "8200:8200"}
 	cmd := exec.Command("kubectl", args...)
 	err := cmd.Start()
@@ -63,12 +80,17 @@ func NewVaultInitializer(container, rootMount, intermediateMount, role string) (
 
 	client.SetToken(vaultToken)
 
+	if authPath == "" {
+		authPath = "approle"
+	}
+
 	return &VaultInitializer{
 		proxyCmd:          cmd,
 		client:            client,
 		rootMount:         rootMount,
 		intermediateMount: intermediateMount,
 		role:              role,
+		authPath:          authPath,
 	}, nil
 }
 
@@ -144,21 +166,22 @@ func (v *VaultInitializer) CreateAppRole() (string, string, error) {
 		"period":   "24h",
 		"policies": v.role,
 	}
-	url := path.Join("/v1/auth/approle/role", v.role)
-	_, err = v.callVault("POST", url, "", params)
+
+	baseUrl := path.Join("/v1", "auth", v.authPath, "role", v.role)
+	_, err = v.callVault("POST", baseUrl, "", params)
 	if err != nil {
 		return "", "", fmt.Errorf("Error creating approle: %s", err.Error())
 	}
 
 	// # read the role-id
-	url = path.Join("/v1/auth/approle/role", v.role, "role-id")
+	url := path.Join(baseUrl, "role-id")
 	roleId, err := v.callVault("GET", url, "role_id", map[string]string{})
 	if err != nil {
 		return "", "", fmt.Errorf("Error reading role_id: %s", err.Error())
 	}
 
 	// # read the secret-id
-	url = path.Join("/v1/auth/approle/role", v.role, "secret-id")
+	url = path.Join(baseUrl, "secret-id")
 	secretId, err := v.callVault("POST", url, "secret_id", map[string]string{})
 	if err != nil {
 		return "", "", fmt.Errorf("Error reading secret_id: %s", err.Error())
@@ -168,7 +191,7 @@ func (v *VaultInitializer) CreateAppRole() (string, string, error) {
 }
 
 func (v *VaultInitializer) CleanAppRole() error {
-	url := path.Join("/v1/auth/approle/role", v.role)
+	url := path.Join("/v1", "auth", v.authPath, "role", v.role)
 	_, err := v.callVault("DELETE", url, "", map[string]string{})
 	if err != nil {
 		return fmt.Errorf("Error deleting AppRole: %s", err.Error())
@@ -198,8 +221,8 @@ func (v *VaultInitializer) mountPKI(mount, ttl string) error {
 
 func (v *VaultInitializer) generateRootCert() (string, error) {
 	params := map[string]string{
-		"common_name": "Root CA",
-		"ttl":         "87600h",
+		"common_name":          "Root CA",
+		"ttl":                  "87600h",
 		"exclude_cn_from_sans": "true",
 	}
 	url := path.Join("/v1", v.rootMount, "root", "generate", "internal")
@@ -214,8 +237,8 @@ func (v *VaultInitializer) generateRootCert() (string, error) {
 
 func (v *VaultInitializer) generateIntermediateSigningReq() (string, error) {
 	params := map[string]string{
-		"common_name": "Intermediate CA",
-		"ttl":         "43800h",
+		"common_name":          "Intermediate CA",
+		"ttl":                  "43800h",
 		"exclude_cn_from_sans": "true",
 	}
 	url := path.Join("/v1", v.intermediateMount, "intermediate", "generate", "internal")
@@ -230,10 +253,10 @@ func (v *VaultInitializer) generateIntermediateSigningReq() (string, error) {
 
 func (v *VaultInitializer) signCertificate(csr string) (string, error) {
 	params := map[string]string{
-		"use_csr_values": "true",
-		"ttl":            "43800h",
+		"use_csr_values":       "true",
+		"ttl":                  "43800h",
 		"exclude_cn_from_sans": "true",
-		"csr": csr,
+		"csr":                  csr,
 	}
 	url := path.Join("/v1", v.rootMount, "root", "sign-intermediate")
 
@@ -280,14 +303,14 @@ func (v *VaultInitializer) setupRole() error {
 	if err != nil {
 		return fmt.Errorf("Error fetching auth mounts: %s", err.Error())
 	}
-	if _, ok := auths["approle/"]; !ok {
+
+	if _, ok := auths[v.authPath+"/"]; !ok {
 		options := &vault.EnableAuthOptions{Type: "approle"}
-		if err := v.client.Sys().EnableAuthWithOptions("approle", options); err != nil {
+		if err := v.client.Sys().EnableAuthWithOptions(v.authPath, options); err != nil {
 			return fmt.Errorf("Error enabling approle: %s", err.Error())
 		}
 	}
 
-	// vault write intermediate-ca/roles/kubernetes-vault allow_any_name=true max_ttl="2160h"
 	params := map[string]string{
 		"allow_any_name": "true",
 		"max_ttl":        "2160h",

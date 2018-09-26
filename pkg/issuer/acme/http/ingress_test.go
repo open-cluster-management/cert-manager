@@ -1,3 +1,19 @@
+/*
+Copyright 2018 The Jetstack cert-manager contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package http
 
 import (
@@ -9,9 +25,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/diff"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	coretesting "k8s.io/client-go/testing"
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	"github.com/jetstack/cert-manager/pkg/controller/test"
 	"github.com/jetstack/cert-manager/test/util/generate"
 )
 
@@ -23,32 +42,32 @@ func TestGetIngressesForChallenge(t *testing.T) {
 				Name:      "test",
 				Namespace: defaultTestNamespace,
 				DNSNames:  []string{"example.com"},
-				ACMESolverConfig: v1alpha1.ACMESolverConfig{
-					HTTP01: &v1alpha1.ACMECertificateHTTP01Config{},
+				SolverConfig: v1alpha1.SolverConfig{
+					HTTP01: &v1alpha1.HTTP01SolverConfig{},
 				},
 			}),
 			Challenge: v1alpha1.ACMEOrderChallenge{
 				Domain: "example.com",
 			},
-			PreFn: func(s *solverFixture) {
+			PreFn: func(t *testing.T, s *solverFixture) {
 				ing, err := s.Solver.createIngress(s.Certificate, "fakeservice", s.Challenge)
 				if err != nil {
-					s.f.T.Errorf("error preparing test: %v", err)
+					t.Errorf("error preparing test: %v", err)
 				}
 
 				s.testResources[createdIngressKey] = ing
-				s.f.Sync()
+				s.Builder.Sync()
 			},
-			CheckFn: func(s *solverFixture, args ...interface{}) {
+			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
 				createdIngress := s.testResources[createdIngressKey].(*v1beta1.Ingress)
 				resp := args[0].([]*v1beta1.Ingress)
 				if len(resp) != 1 {
-					s.f.T.Errorf("expected one ingress to be returned, but got %d", len(resp))
-					s.f.T.Fail()
+					t.Errorf("expected one ingress to be returned, but got %d", len(resp))
+					t.Fail()
 					return
 				}
 				if !reflect.DeepEqual(resp[0], createdIngress) {
-					s.f.T.Errorf("Expected %v to equal %v", resp[0], createdIngress)
+					t.Errorf("Expected %v to equal %v", resp[0], createdIngress)
 				}
 			},
 		},
@@ -57,28 +76,28 @@ func TestGetIngressesForChallenge(t *testing.T) {
 				Name:      "test",
 				Namespace: defaultTestNamespace,
 				DNSNames:  []string{"example.com"},
-				ACMESolverConfig: v1alpha1.ACMESolverConfig{
-					HTTP01: &v1alpha1.ACMECertificateHTTP01Config{},
+				SolverConfig: v1alpha1.SolverConfig{
+					HTTP01: &v1alpha1.HTTP01SolverConfig{},
 				},
 			}),
 			Challenge: v1alpha1.ACMEOrderChallenge{
 				Domain: "example.com",
 			},
-			PreFn: func(s *solverFixture) {
+			PreFn: func(t *testing.T, s *solverFixture) {
 				_, err := s.Solver.createIngress(s.Certificate, "fakeservice", v1alpha1.ACMEOrderChallenge{
 					Domain: "notexample.com",
 				})
 				if err != nil {
-					s.f.T.Errorf("error preparing test: %v", err)
+					t.Errorf("error preparing test: %v", err)
 				}
 
-				s.f.Sync()
+				s.Builder.Sync()
 			},
-			CheckFn: func(s *solverFixture, args ...interface{}) {
+			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
 				resp := args[0].([]*v1beta1.Ingress)
 				if len(resp) != 0 {
-					s.f.T.Errorf("expected zero ingresses to be returned, but got %d", len(resp))
-					s.f.T.Fail()
+					t.Errorf("expected zero ingresses to be returned, but got %d", len(resp))
+					t.Fail()
 					return
 				}
 			},
@@ -108,8 +127,8 @@ func TestCleanupIngresses(t *testing.T) {
 				Namespace:    defaultTestNamespace,
 				DNSNames:     []string{"example.com"},
 				ACMEOrderURL: "testurl",
-				ACMESolverConfig: v1alpha1.ACMESolverConfig{
-					HTTP01: &v1alpha1.ACMECertificateHTTP01Config{
+				SolverConfig: v1alpha1.SolverConfig{
+					HTTP01: &v1alpha1.HTTP01SolverConfig{
 						IngressClass: strPtr("nginx"),
 					},
 				},
@@ -118,22 +137,22 @@ func TestCleanupIngresses(t *testing.T) {
 				Domain: "example.com",
 				Token:  "abcd",
 			},
-			PreFn: func(s *solverFixture) {
+			PreFn: func(t *testing.T, s *solverFixture) {
 				ing, err := s.Solver.createIngress(s.Certificate, "fakeservice", s.Challenge)
 				if err != nil {
-					s.f.T.Errorf("error preparing test: %v", err)
+					t.Errorf("error preparing test: %v", err)
 				}
 				s.testResources[createdIngressKey] = ing
-				s.f.Sync()
+				s.Builder.Sync()
 			},
-			CheckFn: func(s *solverFixture, args ...interface{}) {
+			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
 				createdIngress := s.testResources[createdIngressKey].(*v1beta1.Ingress)
-				ing, err := s.f.KubeClient().ExtensionsV1beta1().Ingresses(s.Certificate.Namespace).Get(createdIngress.Name, metav1.GetOptions{})
+				ing, err := s.Builder.FakeKubeClient().ExtensionsV1beta1().Ingresses(s.Certificate.Namespace).Get(createdIngress.Name, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
-					s.f.T.Errorf("error when getting test ingress, expected 'not found' but got: %v", err)
+					t.Errorf("error when getting test ingress, expected 'not found' but got: %v", err)
 				}
 				if !apierrors.IsNotFound(err) {
-					s.f.T.Errorf("expected ingress %q to not exist, but the resource was found: %+v", createdIngress.Name, ing)
+					t.Errorf("expected ingress %q to not exist, but the resource was found: %+v", createdIngress.Name, ing)
 				}
 			},
 		},
@@ -143,8 +162,8 @@ func TestCleanupIngresses(t *testing.T) {
 				Namespace:    defaultTestNamespace,
 				DNSNames:     []string{"example.com"},
 				ACMEOrderURL: "testurl",
-				ACMESolverConfig: v1alpha1.ACMESolverConfig{
-					HTTP01: &v1alpha1.ACMECertificateHTTP01Config{
+				SolverConfig: v1alpha1.SolverConfig{
+					HTTP01: &v1alpha1.HTTP01SolverConfig{
 						IngressClass: strPtr("nginx"),
 					},
 				},
@@ -153,24 +172,98 @@ func TestCleanupIngresses(t *testing.T) {
 				Domain: "example.com",
 				Token:  "abcd",
 			},
-			PreFn: func(s *solverFixture) {
+			PreFn: func(t *testing.T, s *solverFixture) {
 				ing, err := s.Solver.createIngress(s.Certificate, "fakeservice", v1alpha1.ACMEOrderChallenge{
 					Domain: "notexample.com",
 					Token:  "abcd",
 				})
 				if err != nil {
-					s.f.T.Errorf("error preparing test: %v", err)
+					t.Errorf("error preparing test: %v", err)
 				}
 				s.testResources[createdIngressKey] = ing
 			},
-			CheckFn: func(s *solverFixture, args ...interface{}) {
+			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
 				createdIngress := s.testResources[createdIngressKey].(*v1beta1.Ingress)
-				_, err := s.f.KubeClient().ExtensionsV1beta1().Ingresses(s.Certificate.Namespace).Get(createdIngress.Name, metav1.GetOptions{})
+				_, err := s.Builder.FakeKubeClient().ExtensionsV1beta1().Ingresses(s.Certificate.Namespace).Get(createdIngress.Name, metav1.GetOptions{})
 				if apierrors.IsNotFound(err) {
-					s.f.T.Errorf("expected ingress resource %q to not be deleted, but it was deleted", createdIngress.Name)
+					t.Errorf("expected ingress resource %q to not be deleted, but it was deleted", createdIngress.Name)
 				}
 				if err != nil {
-					s.f.T.Errorf("error getting ingress resource: %v", err)
+					t.Errorf("error getting ingress resource: %v", err)
+				}
+			},
+		},
+		"should clean up an ingress with a single challenge path inserted": {
+			Builder: &test.Builder{
+				KubeObjects: []runtime.Object{
+					&v1beta1.Ingress{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "testingress",
+							Namespace: defaultTestNamespace,
+						},
+						Spec: v1beta1.IngressSpec{
+							Backend: &v1beta1.IngressBackend{
+								ServiceName: "testsvc",
+								ServicePort: intstr.FromInt(8080),
+							},
+							Rules: []v1beta1.IngressRule{
+								{
+									Host: "example.com",
+									IngressRuleValue: v1beta1.IngressRuleValue{
+										HTTP: &v1beta1.HTTPIngressRuleValue{
+											Paths: []v1beta1.HTTPIngressPath{
+												{
+													Path: "/.well-known/acme-challenge/abcd",
+													Backend: v1beta1.IngressBackend{
+														ServiceName: "solversvc",
+														ServicePort: intstr.FromInt(8081),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Certificate: generate.Certificate(generate.CertificateConfig{
+				Name:         "test",
+				Namespace:    defaultTestNamespace,
+				DNSNames:     []string{"example.com"},
+				ACMEOrderURL: "testurl",
+				SolverConfig: v1alpha1.SolverConfig{
+					HTTP01: &v1alpha1.HTTP01SolverConfig{
+						Ingress: "testingress",
+					},
+				},
+			}),
+			Challenge: v1alpha1.ACMEOrderChallenge{
+				Domain: "example.com",
+				Token:  "abcd",
+				SolverConfig: v1alpha1.SolverConfig{
+					HTTP01: &v1alpha1.HTTP01SolverConfig{
+						Ingress: "testingress",
+					},
+				},
+			},
+			PreFn: func(t *testing.T, s *solverFixture) {
+			},
+			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				expectedIng := s.KubeObjects[0].(*v1beta1.Ingress).DeepCopy()
+				expectedIng.Spec.Rules = nil
+
+				actualIng, err := s.Builder.FakeKubeClient().ExtensionsV1beta1().Ingresses(s.Certificate.Namespace).Get(expectedIng.Name, metav1.GetOptions{})
+				if apierrors.IsNotFound(err) {
+					t.Errorf("expected ingress resource %q to not be deleted, but it was deleted", expectedIng.Name)
+				}
+				if err != nil {
+					t.Errorf("error getting ingress resource: %v", err)
+				}
+
+				if !reflect.DeepEqual(expectedIng, actualIng) {
+					t.Errorf("expected did not match actual: %v", diff.ObjectDiff(expectedIng, actualIng))
 				}
 			},
 		},
@@ -180,8 +273,8 @@ func TestCleanupIngresses(t *testing.T) {
 				Namespace:    defaultTestNamespace,
 				DNSNames:     []string{"example.com"},
 				ACMEOrderURL: "testurl",
-				ACMESolverConfig: v1alpha1.ACMESolverConfig{
-					HTTP01: &v1alpha1.ACMECertificateHTTP01Config{
+				SolverConfig: v1alpha1.SolverConfig{
+					HTTP01: &v1alpha1.HTTP01SolverConfig{
 						IngressClass: strPtr("nginx"),
 					},
 				},
@@ -191,13 +284,13 @@ func TestCleanupIngresses(t *testing.T) {
 				Token:  "abcd",
 			},
 			Err: true,
-			PreFn: func(s *solverFixture) {
-				s.f.KubeClient().PrependReactor("delete", "ingresses", func(action coretesting.Action) (handled bool, ret runtime.Object, err error) {
+			PreFn: func(t *testing.T, s *solverFixture) {
+				s.Builder.FakeKubeClient().PrependReactor("delete", "ingresses", func(action coretesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, fmt.Errorf("simulated error")
 				})
 				ing, err := s.Solver.createIngress(s.Certificate, "fakeservice", s.Challenge)
 				if err != nil {
-					s.f.T.Errorf("error preparing test: %v", err)
+					t.Errorf("error preparing test: %v", err)
 				}
 				s.testResources[createdIngressKey] = ing
 			},
