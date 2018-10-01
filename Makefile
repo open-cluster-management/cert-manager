@@ -29,7 +29,7 @@ PEBBLE_IMAGE_REPO=quay.io/munnerz/pebble
 # challenge requests, and any other future provider that requires additional
 # image dependencies will use this same tag.
 ifeq ($(APP_VERSION),)
-APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.3.0)
+APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.5.0)
 endif
 
 # Get a list of all binaries to be built
