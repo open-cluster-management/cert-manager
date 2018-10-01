@@ -28,7 +28,6 @@ import (
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/util"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func CommonNameForCertificate(crt *v1alpha1.Certificate) string {
@@ -134,7 +133,7 @@ func GenerateTemplate(issuer v1alpha1.GenericIssuer, crt *v1alpha1.Certificate, 
 			CommonName:   commonName,
 		},
 		NotBefore: time.Now(),
-		NotAfter:  expireTime,
+		NotAfter:  time.Now().Add(defaultNotAfter),
 		// see http://golang.org/pkg/crypto/x509/#KeyUsage
 		KeyUsage: keyUsages,
 		DNSNames: dnsNames,
