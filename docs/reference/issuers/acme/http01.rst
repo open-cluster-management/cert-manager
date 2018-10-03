@@ -13,7 +13,7 @@ using Ingress resources
    :linenos:
    :emphasize-lines: 7, 11
 
-   apiVersion: certmanager.k8s.io
+   apiVersion: certmanager.k8s.io/v1alpha1
    kind: Issuer
    metadata:
      name: example-issuer
@@ -24,6 +24,11 @@ using Ingress resources
        privateKeySecretRef:
          name: example-issuer-account-key
        http01: {}
+
+
+.. note::
+   Let's Encrypt does not support issuing wildcard certificates with HTTP-01 challenges.
+   To issue wildcard certificates, you must use the DNS-01 challenge.
 
 .. todo::
    Write a full description of how HTTP01 challenge validation works

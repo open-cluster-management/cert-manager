@@ -1,9 +1,12 @@
 /*
-Copyright 2017 Jetstack Ltd.
+Copyright 2018 The Jetstack cert-manager contributors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -140,6 +143,10 @@ var _ = framework.CertManagerDescribe("ACME Certificate (DNS01)", func() {
 
 	It("should obtain a signed certificate for a regular domain", func() {
 		By("Creating a Certificate")
+
+		certClient := f.CertManagerClientSet.CertmanagerV1alpha1().Certificates(f.Namespace.Name)
+		secretClient := f.KubeClientSet.CoreV1().Secrets(f.Namespace.Name)
+
 		dnsName := cmutil.RandStringRunes(5) + "." + util.ACMECloudflareDomain
 		cert := generate.Certificate(generate.CertificateConfig{
 			Name:       certificateName,
@@ -147,19 +154,24 @@ var _ = framework.CertManagerDescribe("ACME Certificate (DNS01)", func() {
 			SecretName: certificateSecretName,
 			IssuerName: issuerName,
 			DNSNames:   []string{dnsName},
-			ACMESolverConfig: v1alpha1.ACMESolverConfig{
-				DNS01: &v1alpha1.ACMECertificateDNS01Config{
+			SolverConfig: v1alpha1.SolverConfig{
+				DNS01: &v1alpha1.DNS01SolverConfig{
 					Provider: "cloudflare",
 				},
 			},
 		})
-		cert, err := f.CertManagerClientSet.CertmanagerV1alpha1().Certificates(f.Namespace.Name).Create(cert)
+		cert, err := certClient.Create(cert)
 		Expect(err).NotTo(HaveOccurred())
-		f.WaitCertificateIssuedValid(cert)
+		err = util.WaitCertificateIssuedValid(certClient, secretClient, certificateName, time.Minute*5)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should obtain a signed certificate for a wildcard domain", func() {
 		By("Creating a Certificate")
+
+		certClient := f.CertManagerClientSet.CertmanagerV1alpha1().Certificates(f.Namespace.Name)
+		secretClient := f.KubeClientSet.CoreV1().Secrets(f.Namespace.Name)
+
 		dnsName := cmutil.RandStringRunes(5) + "." + util.ACMECloudflareDomain
 		cert := generate.Certificate(generate.CertificateConfig{
 			Name:       certificateName,
@@ -167,19 +179,24 @@ var _ = framework.CertManagerDescribe("ACME Certificate (DNS01)", func() {
 			SecretName: certificateSecretName,
 			IssuerName: issuerName,
 			DNSNames:   []string{"*." + dnsName},
-			ACMESolverConfig: v1alpha1.ACMESolverConfig{
-				DNS01: &v1alpha1.ACMECertificateDNS01Config{
+			SolverConfig: v1alpha1.SolverConfig{
+				DNS01: &v1alpha1.DNS01SolverConfig{
 					Provider: "cloudflare",
 				},
 			},
 		})
 		cert, err := f.CertManagerClientSet.CertmanagerV1alpha1().Certificates(f.Namespace.Name).Create(cert)
 		Expect(err).NotTo(HaveOccurred())
-		f.WaitCertificateIssuedValid(cert)
+		err = util.WaitCertificateIssuedValid(certClient, secretClient, certificateName, time.Minute*5)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should obtain a signed certificate for a wildcard and apex domain", func() {
 		By("Creating a Certificate")
+
+		certClient := f.CertManagerClientSet.CertmanagerV1alpha1().Certificates(f.Namespace.Name)
+		secretClient := f.KubeClientSet.CoreV1().Secrets(f.Namespace.Name)
+
 		dnsName := cmutil.RandStringRunes(5) + "." + util.ACMECloudflareDomain
 		cert := generate.Certificate(generate.CertificateConfig{
 			Name:       certificateName,
@@ -187,8 +204,8 @@ var _ = framework.CertManagerDescribe("ACME Certificate (DNS01)", func() {
 			SecretName: certificateSecretName,
 			IssuerName: issuerName,
 			DNSNames:   []string{"*." + dnsName, dnsName},
-			ACMESolverConfig: v1alpha1.ACMESolverConfig{
-				DNS01: &v1alpha1.ACMECertificateDNS01Config{
+			SolverConfig: v1alpha1.SolverConfig{
+				DNS01: &v1alpha1.DNS01SolverConfig{
 					Provider: "cloudflare",
 				},
 			},
@@ -196,6 +213,7 @@ var _ = framework.CertManagerDescribe("ACME Certificate (DNS01)", func() {
 		cert, err := f.CertManagerClientSet.CertmanagerV1alpha1().Certificates(f.Namespace.Name).Create(cert)
 		Expect(err).NotTo(HaveOccurred())
 		// use a longer timeout for this, as it requires performing 2 dns validations in serial
-		f.WaitCertificateIssuedValidTimeout(cert, time.Minute*10)
+		err = util.WaitCertificateIssuedValid(certClient, secretClient, certificateName, time.Minute*10)
+		Expect(err).NotTo(HaveOccurred())
 	})
 })

@@ -1,11 +1,35 @@
 include Configfile
+# Copyright 2018 The Jetstack cert-manager contributors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+REGISTRY := quay.io/jetstack
+IMAGE_TAGS := canary
+
+# Domain name to use in e2e tests. This is important for ACME HTTP01 e2e tests,
+# which require a domain that resolves to the ingress controller to be used for
+# e2e tests.
+E2E_NGINX_CERTIFICATE_DOMAIN=
+KUBECONFIG ?= $$HOME/.kube/config
+PEBBLE_IMAGE_REPO=quay.io/munnerz/pebble
 
 # AppVersion is set as the AppVersion to be compiled into the controller binary.
 # It's used as the default version of the 'acmesolver' image to use for ACME
 # challenge requests, and any other future provider that requires additional
 # image dependencies will use this same tag.
 ifeq ($(APP_VERSION),)
-APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.3.0)
+APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.5.0)
 endif
 
 # Get a list of all binaries to be built
@@ -30,7 +54,9 @@ GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $
 .PHONY: verify build docker-build docker-push-manifest build-push-manifest \
 	generate generate-verify deploy-verify artifactory-login docker-push-images release-all \
 	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
-	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS)
+	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) \
+	verify-lint verify-codegen verify-deps verify-unit \
+	dep-verify verify-docs verify-chart 
 
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
@@ -43,8 +69,22 @@ lint:
 ###############
 image:: build
 build: $(CMDS) docker-build
-verify: generate-verify deploy-verify hack-verify go-verify
-verify_pr: hack-verify-pr
+
+verify: verify-lint verify-codegen verify-deps verify-unit
+
+verify-lint: hack-verify go-fmt
+verify-unit: go-test
+verify-deps: dep-verify
+verify-codegen: generate-verify deploy-verify 
+verify-pr: hack-verify-pr
+
+# requires docker
+verify-docs:
+	$(HACK_DIR)/verify-reference-docs.sh
+# requires docker
+verify-chart:
+	$(HACK_DIR)/verify-chart-version.sh
+
 docker-build: $(DOCKER_BUILD_TARGETS)
 docker-push-manifest: $(DOCKER_PUSH_TARGETS)
 build-push-manifest: build docker-push-manifest # renamed b/c conflicts with the push in makefile.docker
@@ -59,6 +99,8 @@ tunnel:
 	$(shell cp rhel-buildmachines/config ~/.ssh/config)
 	$(shell chmod 0600 ~/.ssh/rhel_id_rsa)
 
+
+
 # Code generation
 #################
 # This target runs all required generators against our API types.
@@ -71,6 +113,8 @@ generate-verify:
 # Hack targets
 ##############
 hack-verify:
+	@echo Running boilerplate header checker
+	$(HACK_DIR)/verify_boilerplate.py
 	@echo Running href checker
 	$(HACK_DIR)/verify-links.sh
 	@echo Running errexit checker
@@ -79,6 +123,8 @@ hack-verify:
 hack-verify-pr:
 	@echo Running helm chart version checker
 	$(HACK_DIR)/verify-chart-version.sh
+	@echo Running reference docs checker
+	IMAGE=eu.gcr.io/jetstack-build-infra/gen-apidocs-img $(HACK_DIR)/verify-reference-docs.sh
 
 deploy-verify:
 	@echo Running deploy-gen
@@ -87,6 +133,10 @@ deploy-verify:
 # Go targets
 #################
 go-verify: go-fmt go-test
+
+dep-verify:
+	@echo Running dep
+	$(HACK_DIR)/verify-deps.sh
 
 $(CMDS):
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
@@ -102,7 +152,8 @@ go-test:
 			grep -v '/vendor/' | \
 			grep -v '/test/e2e' | \
 			grep -v '/pkg/client' | \
-			grep -v '/third_party' \
+			grep -v '/third_party' | \
+			grep -v '/docs/generated' \
 		)
 
 go-fmt:
@@ -114,6 +165,20 @@ go-fmt:
 		exit 1; \
 	fi
 
+e2e_test:
+	# Build the e2e tests
+	go test -o e2e-tests -c ./test/e2e
+	mkdir -p "$$(pwd)/_artifacts"
+	# TODO: make these paths configurable
+	# Run e2e tests
+	KUBECONFIG=$(KUBECONFIG) CERTMANAGERCONFIG=$(KUBECONFIG) \
+		./e2e-tests \
+			-acme-nginx-certificate-domain=$(E2E_NGINX_CERTIFICATE_DOMAIN) \
+			-cloudflare-email=$${CLOUDFLARE_E2E_EMAIL} \
+			-cloudflare-api-key=$${CLOUDFLARE_E2E_API_TOKEN} \
+			-acme-cloudflare-domain=$${CLOUDFLARE_E2E_DOMAIN} \
+			-pebble-image-repo=$(PEBBLE_IMAGE_REPO) \
+			-report-dir="$${ARTIFACTS:-./_artifacts}"
 
 # Docker targets
 ################

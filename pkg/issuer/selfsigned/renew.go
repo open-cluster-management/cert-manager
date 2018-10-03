@@ -1,3 +1,19 @@
+/*
+Copyright 2018 The Jetstack cert-manager contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package selfsigned
 
 import (
@@ -37,5 +53,12 @@ func (c *SelfSigned) Renew(ctx context.Context, crt *v1alpha1.Certificate) ([]by
 
 	crt.UpdateStatusCondition(v1alpha1.CertificateConditionReady, v1alpha1.ConditionTrue, successCertRenewed, messageCertRenewed, true)
 
-	return pki.EncodePKCS1PrivateKey(signeeKey), certPem, nil
+	keyPem, err := pki.EncodePrivateKey(signeeKey)
+	if err != nil {
+		s := messageErrorEncodePrivateKey + err.Error()
+		crt.UpdateStatusCondition(v1alpha1.CertificateConditionReady, v1alpha1.ConditionFalse, errorEncodePrivateKey, s, false)
+		return nil, nil, err
+	}
+
+	return keyPem, certPem, nil
 }

@@ -1,9 +1,12 @@
 /*
-Copyright 2015 The Kubernetes Authors.
+Copyright 2018 The Jetstack cert-manager contributors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,7 +34,6 @@ import (
 	_ "github.com/jetstack/cert-manager/test/e2e/certificate"
 	_ "github.com/jetstack/cert-manager/test/e2e/clusterissuer"
 	"github.com/jetstack/cert-manager/test/e2e/framework"
-	_ "github.com/jetstack/cert-manager/test/e2e/ingress"
 	_ "github.com/jetstack/cert-manager/test/e2e/issuer"
 )
 
@@ -50,11 +52,15 @@ func RunE2ETests(t *testing.T) {
 	}
 
 	glog.Infof("Installing cert-manager helm chart")
-	InstallHelmChart(t, releaseName, "./contrib/charts/cert-manager", certManagerDeploymentNamespace, "./test/fixtures/cert-manager-values.yaml")
+	var extraArgs []string
+	if os.Getenv("DISABLE_WEBHOOK") == "true" {
+		extraArgs = append(extraArgs, "--set", "webhook.enabled=false")
+	}
+	InstallHelmChart(t, releaseName, "./contrib/charts/cert-manager", certManagerDeploymentNamespace, "./test/fixtures/cert-manager-values.yaml", extraArgs...)
 
 	glog.Infof("Installing pebble chart")
 	// 10 minute timeout for pebble install due to large images
-	extraArgs := []string{"--timeout", "600"}
+	extraArgs = []string{"--timeout", "600"}
 	if framework.TestContext.PebbleImageRepo != "" {
 		extraArgs = append(extraArgs, "--set", "image.repository="+framework.TestContext.PebbleImageRepo)
 	}
@@ -79,12 +85,19 @@ func RunE2ETests(t *testing.T) {
 const releaseName = "cm"
 
 func InstallHelmChart(t *testing.T, releaseName, chartName, namespace, values string, extraArgs ...string) {
+	err := exec.Command("helm", "dep", "update", chartName).Run()
+	if err != nil {
+		t.Errorf("Error updating dependencies for %q: %s", releaseName, err)
+		t.FailNow()
+		return
+	}
+
 	args := []string{"install", chartName, "--namespace", namespace, "--name", releaseName, "--values", values, "--wait"}
 	args = append(args, extraArgs...)
 	cmd := exec.Command("helm", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		t.Errorf("Error installing %q: %s", releaseName, err)
 		t.FailNow()
