@@ -32,15 +32,6 @@ func buildCertificate(cn string, dnsNames ...string) *v1alpha1.Certificate {
 	}
 }
 
-func buildExpiringCertificate(cn string, hours int) *v1alpha1.Certificate {
-	return &v1alpha1.Certificate{
-		Spec: v1alpha1.CertificateSpec{
-			CommonName:     cn,
-			ValidityPeriod: hours,
-		},
-	}
-}
-
 func TestCommonNameForCertificate(t *testing.T) {
 	type testT struct {
 		name        string
