@@ -47,7 +47,7 @@ script:
   - make image
   - make docker-push-images
   - |
-      if [[ "$(uname -m)" != "ppc64le" ]]; then
+      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "linux-s390" ]]; then
         make go-verify
       fi
 
