@@ -1,4 +1,4 @@
-# Release Tag
+# Pushes images to integration if master and not a pull request.
 if [ "$TRAVIS_BRANCH" = "master" ] && ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" ]; then
     RETAG=true
     RELEASE_TAG=latest
@@ -18,7 +18,5 @@ if [ "$TRAVIS_BRANCH" = "master" ] && ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" 
     export RETAG="$RETAG"
 fi
 
-# Release Tag
 echo TRAVIS_EVENT_TYPE=$TRAVIS_EVENT_TYPE
 echo TRAVIS_BRANCH=$TRAVIS_BRANCH
-echo TRAVIS_TAG=$TRAVIS_TAG
