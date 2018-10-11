@@ -48,6 +48,6 @@ BUILD_TAG = build
 ARTIFACTORY_USERNAME ?= 
 ARTIFACTORY_PASSWORD ?= 
 
-ARTIFACTORY_IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
-ARTIFACTORY_URL ?= artifactory.swg-devops.com
-ARTIFACTORY_NAMESPACE ?= ibmcom
+IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
+URL ?= artifactory.swg-devops.com
+NAMESPACE ?= ibmcom

@@ -4,16 +4,16 @@ if [ "$TRAVIS_BRANCH" = "master" ] && ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" 
     RELEASE_TAG=0.5.0
     IMAGE_VERSION=0.5.0
     
-    ARTIFACTORY_IMAGE_REPO=hyc-cloud-private-integration-docker-local
-    ARTIFACTORY_NAMESPACE=ibmcom
+    IMAGE_REPO=hyc-cloud-private-integration-docker-local
+    NAMESPACE=ibmcom
     ARTIFACTORY_RELEASE_TAG=latest
 
     if [ "$OS" = "rhel7" ]; then
         ARTIFACTORY_RELEASE_TAG="${ARTIFACTORY_RELEASE_TAG}-rhel"
     fi
 
-    export ARTIFACTORY_IMAGE_REPO="$ARTIFACTORY_IMAGE_REPO"
-    export ARTIFACTORY_NAMESPACE="$ARTIFACTORY_NAMESPACE"
+    export IMAGE_REPO="$IMAGE_REPO"
+    export NAMESPACE="$NAMESPACE"
     export ARTIFACTORY_RELEASE_TAG="$ARTIFACTORY_RELEASE_TAG"
     export IMAGE_VERSION="$IMAGE_VERSION"
     export RETAG="$RETAG"
