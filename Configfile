@@ -30,7 +30,6 @@ endif
 DEFAULT_S390X_IMAGE ?= ibmcom/pause-s390x:3.0
 
 PACKAGE_NAME = github.ibm.com/IBMPrivateCloud/ibm-cert-manager
-IMAGE_NAME = icp-cert-manager
 APP_NAME = icp-cert-manager
 IMAGE_TAGS = canary
 GOPATH ?= $HOME/go
