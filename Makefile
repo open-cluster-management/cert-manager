@@ -92,7 +92,7 @@ multi-arch-all: docker-push-manifest
 release-all: docker-push-images
 docker-push-images: $(DOCKER_RELEASE_TARGETS)
 artifactory-login:
-	$(SSH_CMD) docker login $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
+	$(SSH_CMD) docker login $(IMAGE_REPO).$(URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
 tunnel:
 	$(shell cp rhel-buildmachines/id_rsa ~/.ssh/rhel_id_rsa)
@@ -213,11 +213,11 @@ ifeq ($(OS),rhel7)
 
 	# Building docker image.
 	$(SSH_CMD) '$(BASE_CMD) $(DOCKER_BUILD_CMD)'
-	@echo "Built docker images."
+	@echo "Built docker image."
 else
 	# Building docker image.
 	$(DOCKER_BUILD_CMD)
-	@echo "Built docker images."
+	@echo "Built docker image."
 endif
 
 $(DOCKER_PUSH_TARGETS):
@@ -247,12 +247,12 @@ $(DOCKER_RELEASE_TARGETS):
 
 	# Pushing docker image.
 	$(SSH_CMD) docker push $(REPO_URL):$(IMAGE_VERSION)
-	@echo "Pushed image to image repo: $(IMAGE_REPO).$(URL)/$(NAMESPACE)"
+	@echo "Pushed $(REPO_URL):$(IMAGE_VERSION) to $(REPO_URL)"
 
 ifneq ($(RETAG),)
 	$(SSH_CMD) docker tag $(REPO_URL):$(IMAGE_VERSION) $(REPO_URL):$(ARTIFACTORY_RELEASE_TAG)
 	$(SSH_CMD) docker push $(REPO_URL):$(ARTIFACTORY_RELEASE_TAG)
-	@echo "Retagged image and pushed to: $(REPO_URL)"
+	@echo "Retagged image as $(REPO_URL):$(ARTIFACTORY_RELEASE_TAG) and pushed to $(REPO_URL)"
 endif
 
 include Makefile.docker
