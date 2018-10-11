@@ -220,24 +220,6 @@ else
 	@echo "Built docker image."
 endif
 
-$(DOCKER_PUSH_TARGETS):
-	$(eval DOCKER_FILE_CMD := $(subst docker_push_,,$@))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_FILE_CMD))
-	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
-
-	manifest-tool inspect $(IMAGE_NAME_S390X) \
-		|| (docker pull $(DEFAULT_S390X_IMAGE) \
-		&& docker tag $(DEFAULT_S390X_IMAGE) $(IMAGE_NAME_S390X) \
-		&& docker push $(IMAGE_NAME_S390X))
-
-	# Push the manifest to the original mdelder repo.
-	cp manifest.yaml /tmp/manifest-$(DOCKER_FILE_CMD).yaml
-	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_FILE_CMD).yaml
-	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$(DOCKER_FILE_CMD).yaml
-	sed -i -e "s|__IMAGE_REPO__|$(MDELDER_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_FILE_CMD).yaml
-	manifest-tool push from-spec /tmp/manifest-$(DOCKER_FILE_CMD).yaml
-
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
@@ -250,9 +232,9 @@ $(DOCKER_RELEASE_TARGETS):
 	@echo "Pushed $(REPO_URL):$(IMAGE_VERSION) to $(REPO_URL)"
 
 ifneq ($(RETAG),)
-	$(SSH_CMD) docker tag $(REPO_URL):$(IMAGE_VERSION) $(REPO_URL):$(ARTIFACTORY_RELEASE_TAG)
-	$(SSH_CMD) docker push $(REPO_URL):$(ARTIFACTORY_RELEASE_TAG)
-	@echo "Retagged image as $(REPO_URL):$(ARTIFACTORY_RELEASE_TAG) and pushed to $(REPO_URL)"
+	$(SSH_CMD) docker tag $(REPO_URL):$(IMAGE_VERSION) $(REPO_URL):$(RELEASE_TAG)
+	$(SSH_CMD) docker push $(REPO_URL):$(RELEASE_TAG)
+	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG) and pushed to $(REPO_URL)"
 endif
 
 include Makefile.docker
