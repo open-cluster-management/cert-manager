@@ -32,7 +32,7 @@ else
     fi
     export ARTIFACTORY_RELEASE_TAG="$ARTIFACTORY_RELEASE_TAG"
     export IMAGE_VERSION="$IMAGE_VERSION"
-    export RETAG=$RETAG
+    export RETAG=$"RETAG"
     #### REMOVE ####
 fi
 export RELEASE_TAG="$RELEASE_TAG"
