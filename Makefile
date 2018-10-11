@@ -99,8 +99,6 @@ tunnel:
 	$(shell cp rhel-buildmachines/config ~/.ssh/config)
 	$(shell chmod 0600 ~/.ssh/rhel_id_rsa)
 
-
-
 # Code generation
 #################
 # This target runs all required generators against our API types.
@@ -183,17 +181,14 @@ e2e_test:
 # Docker targets
 ################
 $(DOCKER_BUILD_TARGETS):
-    
 	$(eval DOCKER_BUILD_CMD := $(subst docker_build_,,$@))
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
+	
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
-
-	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockefile)
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_BUILD_CMD))
-
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
 	@echo "OS = $(OS)"
