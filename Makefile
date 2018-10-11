@@ -39,16 +39,16 @@ DOCKERFILES := $(HACK_DIR)/build/dockerfiles
 # A list of all types.go files in pkg/apis
 TYPES_FILES := $(shell find pkg/apis -name types.go)
 # docker_build_controller, docker_build_apiserver etc
-DOCKER_BUILD_TARGETS := $(addprefix docker_build_, $(CMDS))
+DOCKER_BUILD_TARGETS := ${CMDS} #$(addprefix docker_build_, $(CMDS))
 # docker_push_controller, docker_push_apiserver etc
-DOCKER_PUSH_TARGETS := $(addprefix docker_push_, $(CMDS))
+DOCKER_PUSH_TARGETS := ${CMDS} #$(addprefix docker_push_, $(CMDS))
 # docker_push_controller, docker_push_apiserver etc
-DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
+DOCKER_RELEASE_TARGETS := ${CMDS} #$(addprefix docker_release_, $(CMDS))
 
 # Go build flags
 GOOS := linux
 
-GIT_COMMIT := $(shell git rev-parse HEAD)
+GIT_COMMIT = $(shell git rev-parse HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
 .PHONY: verify build docker-build docker-push-manifest build-push-manifest \
@@ -181,17 +181,17 @@ e2e_test:
 # Docker targets
 ################
 $(DOCKER_BUILD_TARGETS):
-	$(eval DOCKER_FILE_CMD := $(subst docker_build_,,$@))
+	#$(eval DOCKER_FILE_CMD := $(subst docker_build_,,$@))
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
-	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
+	#$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-${GIT_COMMIT}$(OPENSHIFT_TAG))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_FILE_CMD))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
+	$(eval IMAGE_NAME := $(APP_NAME)-$@)
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 
 	@echo "OS = $(OS)"
-	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
+	$(eval DOCKER_FILE := $(DOCKERFILES)/$@/Dockerfile$(DOCKER_FILE_EXT))
 
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
@@ -221,10 +221,10 @@ else
 endif
 
 $(DOCKER_PUSH_TARGETS):
-	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
+	#$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
+	$(eval IMAGE_NAME := $(APP_NAME)-$@)
 	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-${GIT_COMMIT})
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 
 	manifest-tool inspect $(IMAGE_NAME_S390X) \
 		|| (docker pull $(DEFAULT_S390X_IMAGE) \
@@ -232,16 +232,16 @@ $(DOCKER_PUSH_TARGETS):
 		&& docker push $(IMAGE_NAME_S390X))
 
 	# Push the manifest to the original mdelder repo.
-	cp manifest.yaml /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	sed -i -e "s|__IMAGE_REPO__|$(MDELDER_IMAGE_REPO)|g" /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
-	manifest-tool push from-spec /tmp/manifest-$(DOCKER_PUSH_CMD).yaml
+	cp manifest.yaml /tmp/manifest-$@.yaml
+	sed -i -e "s|__RELEASE_TAG__|$(RELEASE_TAG)|g" /tmp/manifest-$@.yaml
+	sed -i -e "s|__IMAGE_NAME__|$(IMAGE_NAME)|g"  /tmp/manifest-$@.yaml
+	sed -i -e "s|__IMAGE_REPO__|$(MDELDER_IMAGE_REPO)|g" /tmp/manifest-$@.yaml
+	manifest-tool push from-spec /tmp/manifest-$@.yaml
 
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-${GIT_COMMIT}$(OPENSHIFT_TAG))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 
 	# Pushing docker image.
