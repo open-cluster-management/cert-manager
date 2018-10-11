@@ -39,7 +39,6 @@ install:
 
 before_script:
   - make tunnel
-  - make docker-login
   - make artifactory-login
   - make lint
 
