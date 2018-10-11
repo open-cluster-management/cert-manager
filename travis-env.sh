@@ -24,6 +24,7 @@ else
         export IMAGE_VERSION="$TRAVIS_IMAGE_VERSION"
     fi
     #### REMOVE AFTER TESTING ####
+    RETAG=true
     IMAGE_VERSION=0.5.0
     ARTIFACTORY_RELEASE_TAG=latest
     if [ "$OS" = "rhel7" ]; then
@@ -31,6 +32,7 @@ else
     fi
     export ARTIFACTORY_RELEASE_TAG="$ARTIFACTORY_RELEASE_TAG"
     export IMAGE_VERSION="$IMAGE_VERSION"
+    export RETAG=$RETAG
     #### REMOVE ####
 fi
 export RELEASE_TAG="$RELEASE_TAG"
