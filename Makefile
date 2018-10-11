@@ -187,7 +187,7 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(OPENSHIFT_TAG))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_FILE_CMD))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 
@@ -225,8 +225,7 @@ $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_PUSH_CMD))
 	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
-	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION))
 
 	manifest-tool inspect $(IMAGE_NAME_S390X) \
 		|| (docker pull $(DEFAULT_S390X_IMAGE) \
@@ -243,8 +242,8 @@ $(DOCKER_PUSH_TARGETS):
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
-	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
+	
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(OPENSHIFT_TAG))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	# Remove this
 	$(eval ARTIFACTORY_RELEASE_TAG ?= $(IMAGE_VERSION))
