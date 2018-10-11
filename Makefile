@@ -191,20 +191,20 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_FILE_CMD))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
-	
+
 	@echo "OS = $(OS)"
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 	
-	DOCKER_BUILD_CMD := docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+	$(eval DOCKER_BUILD_CMD := docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
 		   --build-arg "GOARCH=$(GOARCH)" \
-		   -f $(DOCKER_FILE) $(DOCKERFILES)
+		   -f $(DOCKER_FILE) $(DOCKERFILES))
 
 ifeq ($(OS),rhel7)
 	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
