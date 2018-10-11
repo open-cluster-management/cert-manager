@@ -51,7 +51,7 @@ GOOS := linux
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: verify build docker-build artifactory-login docker-push-images \
+.PHONY: verify build build-images artifactory-login push-images \
 	generate generate-verify deploy-verify \
 	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) \
@@ -68,7 +68,7 @@ lint:
 # Alias targets
 ###############
 image:: build
-build: $(CMDS) docker-build
+build: $(CMDS) build-images
 
 verify: verify-lint verify-codegen verify-deps verify-unit
 
@@ -85,8 +85,8 @@ verify-docs:
 verify-chart:
 	$(HACK_DIR)/verify-chart-version.sh
 
-docker-build: $(DOCKER_BUILD_TARGETS)
-docker-push-images: $(DOCKER_RELEASE_TARGETS)
+build-images: $(DOCKER_BUILD_TARGETS)
+push-images: $(DOCKER_RELEASE_TARGETS)
 artifactory-login:
 	$(SSH_CMD) docker login $(IMAGE_REPO).$(URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 

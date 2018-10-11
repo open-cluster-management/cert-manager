@@ -45,5 +45,5 @@ before_script:
 
 script:
   - make image
-  - make docker-push-images
+  - make push-images
 
