@@ -181,47 +181,44 @@ e2e_test:
 # Docker targets
 ################
 $(DOCKER_BUILD_TARGETS):
-	$(eval DOCKER_BUILD_CMD := $(subst docker_build_,,$@))
+	$(eval DOCKER_FILE_CMD := $(subst docker_build_,,$@))
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
-	
+
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_BUILD_CMD))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_FILE_CMD))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval IMAGE_NAME_S390X := ${MDELDER_IMAGE_REPO}/${IMAGE_NAME}-s390x:${RELEASE_TAG})
+	
 	@echo "OS = $(OS)"
-	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_BUILD_CMD)/Dockerfile$(DOCKER_FILE_EXT))
+	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 	
-ifeq ($(OS),rhel7)
-	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
-	$(eval BASE_CMD := cd $(BASE_DIR);)
-	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_BUILD_CMD)
-	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
-	scp $(DOCKER_FILE) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
-
-	# Build with a tag to the new repo.
-	$(SSH_CMD) '$(BASE_CMD) docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
-           --build-arg "VCS_REF=$(VCS_REF)" \
-           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
-           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
-           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-                   --build-arg "GOARCH=$(GOARCH)" \
-                   -f $(DOCKER_FILE) $(DOCKERFILES)'
-	@echo "Built with the new repo tag."
-else
-	# Build with a tag to the new repo.
-	docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
+	DOCKER_BUILD_CMD := docker build -t $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
 		   --build-arg "GOARCH=$(GOARCH)" \
 		   -f $(DOCKER_FILE) $(DOCKERFILES)
+
+ifeq ($(OS),rhel7)
+	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
+	$(eval BASE_CMD := cd $(BASE_DIR);)
+	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_FILE_CMD)
+	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
+	scp $(DOCKER_FILE) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
+
+	# Build with a tag to the new repo.
+	$(SSH_CMD) '$(BASE_CMD) $(DOCKER_BUILD_CMD)'
+	@echo "Built with the new repo tag."
+else
+	# Build with a tag to the new repo.
+	$(DOCKER_BUILD_CMD)
 	@echo "Built with the new repo tag."
 endif
 
