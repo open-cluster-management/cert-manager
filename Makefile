@@ -48,7 +48,7 @@ DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
 # Go build flags
 GOOS := linux
 
-GIT_COMMIT = $(shell git rev-parse HEAD)
+GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
 .PHONY: verify build docker-build docker-push-manifest build-push-manifest \
@@ -184,7 +184,6 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval DOCKER_FILE_CMD := $(subst docker_build_,,$@))
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
-	#$(eval GIT_COMMIT := $(shell git rev-parse --short HEAD))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_FILE_CMD))
