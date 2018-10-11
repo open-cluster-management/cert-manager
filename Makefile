@@ -205,21 +205,21 @@ $(DOCKER_BUILD_TARGETS):
 		   --build-arg "GOARCH=$(GOARCH)" \
 		   -f $(DOCKER_FILE) $(DOCKERFILES))
 
-	ifeq ($(OS),rhel7)
-		$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
-		$(eval BASE_CMD := cd $(BASE_DIR);)
-		$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_FILE_CMD)
-		scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
-		scp $(DOCKER_FILE) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
+ifeq ($(OS),rhel7)
+	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
+	$(eval BASE_CMD := cd $(BASE_DIR);)
+	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_FILE_CMD)
+	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
+	scp $(DOCKER_FILE) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
 
-		# Building docker image.
-		$(SSH_CMD) '$(BASE_CMD) $(DOCKER_BUILD_CMD)'
-		@echo "Built docker images."
-	else
-		# Building docker image.
-		$(DOCKER_BUILD_CMD)
-		@echo "Built docker images."
-	endif
+	# Building docker image.
+	$(SSH_CMD) '$(BASE_CMD) $(DOCKER_BUILD_CMD)'
+	@echo "Built docker images."
+else
+	# Building docker image.
+	$(DOCKER_BUILD_CMD)
+	@echo "Built docker images."
+endif
 
 $(DOCKER_PUSH_TARGETS):
 	$(eval DOCKER_PUSH_CMD := $(subst docker_push_,,$@))
@@ -251,11 +251,11 @@ $(DOCKER_RELEASE_TARGETS):
 	# Pushing docker image.
 	$(SSH_CMD) docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION)
 	@echo "Pushed image to image repo: $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)"
-	ifneq ($(RETAG),)
-		$(SSH_CMD) docker tag $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
-		$(SSH_CMD) docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
-		@echo "Retagged image and pushed to: $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)"
-	endif
+ifneq ($(RETAG),)
+	$(SSH_CMD) docker tag $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(IMAGE_VERSION) $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
+	$(SSH_CMD) docker push $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)/$(IMAGE_NAME_ARCH):$(ARTIFACTORY_RELEASE_TAG)
+	@echo "Retagged image and pushed to: $(ARTIFACTORY_IMAGE_REPO).$(ARTIFACTORY_URL)/$(ARTIFACTORY_NAMESPACE)"
+endif
 
 include Makefile.docker
 #include Makefile.test
