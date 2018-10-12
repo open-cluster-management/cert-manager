@@ -1,22 +1,10 @@
-GIT_REMOTE_URL = $(shell git config --get remote.origin.url)
-DOCKER_SERVER ?= registry.ng.bluemix.net
-DOCKER_USERNAME ?= token
-DOCKER_PASSWORD ?=
-IMAGE_DESCRIPTION =
-SSH_CMD =
-IMAGE_NAME = icp-cert-manager
-MDELDER_IMAGE_REPO ?= registry.ng.bluemix.net/mdelder
 ARCH = $(shell uname -m)
 OS ?= $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
-RELEASE_TAG ?= latest
-ifeq (rhel, $(findstring rhel,$(OS)))
-	RELEASE_TAG := $(shell echo "${RELEASE_TAG}-rhel")
-endif
-ifeq (rhel7, $(OS))
-	SSH_CMD=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cloudusr@${TARGET}
-endif
+GIT_REMOTE_URL = $(shell git config --get remote.origin.url)
+
+IMAGE_DESCRIPTION =
+SSH_CMD =
 DOCKER_FILE_EXT =
-DOCKER_FLAG = 
 IMAGE_NAME_ARCH_EXT = 
 MANIFEST_TOOL_NAME =
 GOARCH = 
@@ -35,7 +23,10 @@ else
 	GOARCH = $(ARCH)
 endif
 
-MANIFEST_VERSION ?= v0.7.0
+ifeq (rhel7, $(OS))
+	SSH_CMD=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cloudusr@${TARGET}
+endif
+
 DEFAULT_S390X_IMAGE ?= ibmcom/pause-s390x:3.0
 
 PACKAGE_NAME = github.ibm.com/IBMPrivateCloud/ibm-cert-manager
@@ -43,11 +34,10 @@ APP_NAME = icp-cert-manager
 IMAGE_TAGS = canary
 GOPATH ?= $HOME/go
 HACK_DIR ?= hack
-BUILD_TAG = build
 
 ARTIFACTORY_USERNAME ?= 
 ARTIFACTORY_PASSWORD ?= 
 
-ARTIFACTORY_IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
-ARTIFACTORY_URL ?= artifactory.swg-devops.com
-ARTIFACTORY_NAMESPACE ?= ibmcom
+IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
+URL ?= artifactory.swg-devops.com
+NAMESPACE ?= ibmcom
