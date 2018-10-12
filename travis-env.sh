@@ -8,7 +8,8 @@ if [ "$TRAVIS_BRANCH" = "master" ] && ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" 
     NAMESPACE=ibmcom
 
     if [ "$OS" = "rhel7" ]; then
-        ARTIFACTORY_RELEASE_TAG="${ARTIFACTORY_RELEASE_TAG}-rhel"
+        IMAGE_VERSION="${IMAGE_VERSION}-rhel"
+        RELEASE_TAG="${RELEASE_TAG}-rhel"
     fi
 
     export IMAGE_REPO="$IMAGE_REPO"
