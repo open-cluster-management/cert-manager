@@ -1,3 +1,19 @@
+/*
+Copyright 2018 The Jetstack cert-manager contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package util
 
 import (
@@ -12,14 +28,17 @@ import (
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	corecs "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	clientset "github.com/jetstack/cert-manager/pkg/client/clientset/versioned/typed/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/util"
+	"github.com/jetstack/cert-manager/pkg/util/pki"
 )
 
 var ACMECertificateDomain string
@@ -189,6 +208,70 @@ func wrapErrorWithCertificateStatusCondition(client clientset.CertificateInterfa
 	return pollErr
 }
 
+// WaitCertificateIssuedValid waits for the given Certificate to be
+// 'Ready' and ensures the stored certificate is valid for the specified
+// domains.
+func WaitCertificateIssuedValid(certClient clientset.CertificateInterface, secretClient corecs.SecretInterface, name string, timeout time.Duration) error {
+	return wait.PollImmediate(time.Second, timeout,
+		func() (bool, error) {
+			glog.V(5).Infof("Waiting for Certificate %v to be ready", name)
+			certificate, err := certClient.Get(name, metav1.GetOptions{})
+			if err != nil {
+				return false, fmt.Errorf("error getting Certificate %v: %v", name, err)
+			}
+			isReady := certificate.HasCondition(v1alpha1.CertificateCondition{
+				Type:   v1alpha1.CertificateConditionReady,
+				Status: v1alpha1.ConditionTrue,
+			})
+			if !isReady {
+				return false, nil
+			}
+			glog.Infof("Getting the TLS certificate Secret resource")
+			secret, err := secretClient.Get(certificate.Spec.SecretName, metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					return false, nil
+				}
+
+				return false, err
+			}
+			if len(secret.Data) != 2 {
+				glog.Infof("Expected 2 keys in certificate secret, but there was %d", len(secret.Data))
+				return false, nil
+			}
+			certBytes, ok := secret.Data[v1.TLSCertKey]
+			if !ok {
+				glog.Infof("No certificate data found for Certificate %q (secret %q)", name, certificate.Spec.SecretName)
+				return false, nil
+			}
+			// check the provided certificate is valid
+			expectedCN := pki.CommonNameForCertificate(certificate)
+			expectedOrganization := pki.OrganizationForCertificate(certificate)
+			expectedDNSNames := pki.DNSNamesForCertificate(certificate)
+
+			cert, err := pki.DecodeX509CertificateBytes(certBytes)
+			if err != nil {
+				return false, err
+			}
+			if expectedCN != cert.Subject.CommonName || !util.EqualUnsorted(cert.DNSNames, expectedDNSNames) || !(len(cert.Subject.Organization) == 0 || util.EqualUnsorted(cert.Subject.Organization, expectedOrganization)) {
+				glog.Infof("Expected certificate valid for CN %q, O %v, dnsNames %v but got a certificate valid for CN %q, O %v, dnsNames %v", expectedCN, expectedOrganization, expectedDNSNames, cert.Subject.CommonName, cert.Subject.Organization, cert.DNSNames)
+				return false, nil
+			}
+
+			label, ok := secret.Labels[v1alpha1.CertificateNameKey]
+			if !ok {
+				return false, fmt.Errorf("Expected secret to have certificate-name label, but had none")
+			}
+
+			if label != certificate.Name {
+				return false, fmt.Errorf("Expected secret to have certificate-name label with a value of %q, but got %q", certificate.Name, label)
+			}
+
+			return true, nil
+		},
+	)
+}
+
 // WaitForCertificateToExist waits for the named certificate to exist
 func WaitForCertificateToExist(client clientset.CertificateInterface, name string, timeout time.Duration) error {
 	return wait.PollImmediate(500*time.Millisecond, timeout,
@@ -248,8 +331,9 @@ func NewCertManagerBasicCertificate(name, secretName, issuerName string, issuerK
 			Name: name,
 		},
 		Spec: v1alpha1.CertificateSpec{
-			CommonName: "test.domain.com",
-			SecretName: secretName,
+			CommonName:   "test.domain.com",
+			Organization: []string{"test-org"},
+			SecretName:   secretName,
 			IssuerRef: v1alpha1.ObjectReference{
 				Name: issuerName,
 				Kind: issuerKind,
@@ -272,11 +356,11 @@ func NewCertManagerACMECertificate(name, secretName, issuerName string, issuerKi
 				Kind: issuerKind,
 			},
 			ACME: &v1alpha1.ACMECertificateConfig{
-				Config: []v1alpha1.ACMECertificateDomainConfig{
+				Config: []v1alpha1.DomainSolverConfig{
 					{
 						Domains: append(dnsNames, cn),
-						ACMESolverConfig: v1alpha1.ACMESolverConfig{
-							HTTP01: &v1alpha1.ACMECertificateHTTP01Config{
+						SolverConfig: v1alpha1.SolverConfig{
+							HTTP01: &v1alpha1.HTTP01SolverConfig{
 								IngressClass: &ingressClass,
 							},
 						},
@@ -413,7 +497,7 @@ func NewCertManagerVaultIssuerToken(name, vaultURL, vaultPath, vaultSecretToken 
 	}
 }
 
-func NewCertManagerVaultIssuerAppRole(name, vaultURL, vaultPath, roleId, vaultSecretAppRole string) *v1alpha1.Issuer {
+func NewCertManagerVaultIssuerAppRole(name, vaultURL, vaultPath, roleId, vaultSecretAppRole, authPath string) *v1alpha1.Issuer {
 	return &v1alpha1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -425,6 +509,7 @@ func NewCertManagerVaultIssuerAppRole(name, vaultURL, vaultPath, roleId, vaultSe
 					Path:   vaultPath,
 					Auth: v1alpha1.VaultAuth{
 						AppRole: v1alpha1.VaultAppRole{
+							Path:   authPath,
 							RoleId: roleId,
 							SecretRef: v1alpha1.SecretKeySelector{
 								Key: "secretkey",

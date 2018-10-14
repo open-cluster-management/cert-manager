@@ -43,15 +43,17 @@ install:
   - docker info
 
 before_script:
-  - ls -al
   - make tunnel
-  - make docker-login
   - make artifactory-login
   - make lint
 
 script:
   - make image
-  - make docker-push-images
+  - |
+      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "linux-s390" ]]; then
+        make go-verify
+      fi
+  - make push-images
 
 after_success:
   - test "$TRAVIS_EVENT_TYPE" != "pull_request" && make release-all || echo "success"
@@ -61,13 +63,7 @@ after_success:
         python travis_after_all.py https://travis.ibm.com/api
         export $(cat .to_export_back)
         if [[ "$BUILD_LEADER" == "YES" ]]; then
-          if [[ "$BUILD_AGGREGATE_STATUS" == "others_succeeded" ]]; then
-            if [[ "$TRAVIS_BRANCH" == "master" ]]; then
-              echo "All jobs succeeded! Creating multi arch image..."
-              make manifest-tool
-              make multi-arch-all
-            fi
-          else
+          if [[ "$BUILD_AGGREGATE_STATUS" != "others_succeeded" ]]; then
             echo "Some jobs failed" && exit 1
           fi
         fi
