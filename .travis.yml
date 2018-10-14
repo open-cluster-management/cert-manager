@@ -20,7 +20,6 @@ branches:
     - /^[0-9]+\..*$/
     - /^v[0-9]+\..*$/
     - /^release-[0-9]+\..*$/
-    - s390x_changes
 
 env:
   matrix:
@@ -37,7 +36,6 @@ matrix:
 
 before_install:
   - source travis-env.sh
-  - which go 
 
 install:
   - docker info
