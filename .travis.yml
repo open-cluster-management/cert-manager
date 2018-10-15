@@ -48,7 +48,7 @@ before_script:
 script:
   - make image
   - |
-      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "linux-s390" ]]; then
+      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
         make go-verify
       fi
   - make push-images
