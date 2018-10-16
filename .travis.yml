@@ -1,13 +1,15 @@
+language: bash
+sudo: true
+
 language: go
-
 go_import_path: github.com/jetstack/cert-manager
-
 go:
   - 1.9
 
 os:
   - linux
   - linux-ppc64le
+  - linux-s390
 
 services:
   - docker
@@ -29,6 +31,8 @@ matrix:
   exclude:
   - os: linux-ppc64le
     env: OS=rhel7 TARGET=9.42.40.115
+  - os: linux-s390
+    env: OS=rhel7 TARGET=9.42.40.115
 
 before_install:
   - source travis-env.sh
@@ -44,7 +48,7 @@ before_script:
 script:
   - make image
   - |
-      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "linux-s390" ]]; then
+      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
         make go-verify
       fi
   - make push-images
