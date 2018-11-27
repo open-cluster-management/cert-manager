@@ -30,8 +30,7 @@ install:
 before_script:
   - make tunnel
   - make artifactory-login
+  
 script:
   - make image
-
-after_success:
-
+  - make push-images
