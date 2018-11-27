@@ -14,7 +14,7 @@ RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificate
 
 ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
 
-RUN chmod +x /usr/bin/cert-manager
+RUN chmod a+x /usr/bin/cert-manager
 
 USER certmanager
 
