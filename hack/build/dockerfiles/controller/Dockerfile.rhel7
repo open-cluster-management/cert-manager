@@ -12,12 +12,13 @@ RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificate
     adduser -r -g certmanager -u 100 certmanager && \
     microdnf clean all
 
-# Check how this name was generated
 ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
-ENTRYPOINT ["/usr/bin/cert-manager"]
+
+RUN chmod +x /usr/bin/cert-manager
+
 USER certmanager
 
-
+ENTRYPOINT ["/usr/bin/cert-manager"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \
