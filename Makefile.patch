@@ -1,0 +1,8 @@
+include Configfile.patch
+
+DATE := $(date +%Y%m%d)
+
+.PHONY: patch
+
+patch: 
+    $(eval PATCH_NAME := ${RELEASE-NAME}-${ICP-VERSION}-${ISSUE-ID}-${DATE}.tar.gz)

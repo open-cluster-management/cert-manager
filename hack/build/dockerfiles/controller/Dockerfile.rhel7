@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/rhel7/rhel-atomic
+FROM registry.access.redhat.com/rhel7-atomic
 
 ARG VCS_REF
 ARG VCS_URL
