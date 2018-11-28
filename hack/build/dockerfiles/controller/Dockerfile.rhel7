@@ -6,7 +6,6 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
-# This might be incorrect - want to add a system group and that a new system uesr to that group
 RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificates && \
     groupadd -r certmanager && \
     adduser -r -g certmanager -u 100 certmanager && \
