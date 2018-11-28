@@ -1,4 +1,0 @@
-CHART-URL ?= hyc-cloud-private-
-RELEASE-NAME := cert-manager
-ICP-VERSION ?= 3.1.1
-ISSUE-ID ?= 18178
