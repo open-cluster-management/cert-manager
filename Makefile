@@ -146,7 +146,8 @@ go-test:
 			grep -v '/test/e2e' | \
 			grep -v '/pkg/client' | \
 			grep -v '/third_party' | \
-			grep -v '/docs/generated' \
+			grep -v '/docs/generated' | \
+			grep -v '/test/util'\
 		)
 
 go-fmt:
