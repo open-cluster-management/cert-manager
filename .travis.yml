@@ -57,7 +57,6 @@ script:
   - make push-images
 
 after_success:
-  - test "$TRAVIS_EVENT_TYPE" != "pull_request" && make release-all || echo "success"
   - |
       if [[ "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then
         curl -Lo travis_after_all.py https://raw.github.com/dmakhno/travis_after_all/master/travis_after_all.py
@@ -69,4 +68,3 @@ after_success:
           fi
         fi
       fi
-
