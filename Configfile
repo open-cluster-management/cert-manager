@@ -24,7 +24,7 @@ else
 endif
 
 ifeq (rhel7, $(OS))
-	SSH_CMD=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no cloudusr@${TARGET}
+	SSH_CMD=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${TARGET}
 endif
 
 DEFAULT_S390X_IMAGE ?= ibmcom/pause-s390x:3.0

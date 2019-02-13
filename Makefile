@@ -208,8 +208,8 @@ ifeq ($(OS),rhel7)
 	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
 	$(eval BASE_CMD := cd $(BASE_DIR);)
 	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_FILE_CMD)
-	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
-	scp $(DOCKER_FILE) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
+	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) root@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
+	scp $(DOCKER_FILE) root@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
 
 	# Building docker image.
 	$(SSH_CMD) '$(BASE_CMD) $(DOCKER_BUILD_CMD)'
