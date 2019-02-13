@@ -223,17 +223,10 @@ func (v *Vault) requestVaultCert(commonName string, certDuration time.Duration, 
 	glog.V(4).Infof("Vault certificate request for commonName %s altNames: %q", commonName, altNames)
 
 	parameters := map[string]string{
-<<<<<<< HEAD
-		"common_name": commonName,
-		"alt_names":   strings.Join(altNames, ","),
-		"ttl":         defaultCertificateDuration.String(),
-		"csr":         string(csr),
-=======
 		"common_name":          commonName,
 		"alt_names":            strings.Join(altNames, ","),
 		"ttl":                  certDuration.String(),
 		"csr":                  string(csr),
->>>>>>> 129f34a3f8f09d6ee0dd436f0747960e90a72afa
 		"exclude_cn_from_sans": "true",
 	}
 
