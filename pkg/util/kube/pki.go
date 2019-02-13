@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,9 +18,7 @@ package kube
 
 import (
 	"crypto"
-	"crypto/rsa"
 	"crypto/x509"
-	"fmt"
 
 	api "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -29,53 +27,10 @@ import (
 	"github.com/jetstack/cert-manager/pkg/util/pki"
 )
 
-func GetKeyPair(secretLister corelisters.SecretLister, namespace, name string) (certBytes []byte, keyBytes []byte, err error) {
-	secret, err := secretLister.Secrets(namespace).Get(name)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var ok bool
-	certBytes, ok = secret.Data[api.TLSCertKey]
-	if !ok {
-		return nil, nil, fmt.Errorf("no data for %q in secret '%s/%s'", api.TLSCertKey, namespace, name)
-	}
-	keyBytes, ok = secret.Data[api.TLSPrivateKeyKey]
-	if !ok {
-		return nil, nil, fmt.Errorf("no data for %q in secret '%s/%s'", api.TLSCertKey, namespace, name)
-	}
-
-	return certBytes, keyBytes, err
-}
-
-// SecretRSAKeyRef will decode a PKCS1 private key stored in a secret with
-// 'name' in 'namespace'. It will read the private key data from the secret
-// entry with name 'keyName'.
-func SecretRSAKeyRef(secretLister corelisters.SecretLister, namespace, name, keyName string) (*rsa.PrivateKey, error) {
-	privateKey, err := SecretTLSKeyRef(secretLister, namespace, name, api.TLSPrivateKeyKey)
-	if err != nil {
-		return nil, err
-	}
-
-	rsaPrivateKey, ok := privateKey.(*rsa.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("data for %q in secret '%s/%s' is not PKCS1 encoded", keyName, namespace, name)
-	}
-
-	return rsaPrivateKey, nil
-}
-
-// SecretRSAKey will decode a PKCS1 private key stored in a secret with
-// 'name' in 'namespace'. It will read the private key data from the secret
-// entry with name 'keyName'.
-func SecretRSAKey(secretLister corelisters.SecretLister, namespace, name string) (*rsa.PrivateKey, error) {
-	return SecretRSAKeyRef(secretLister, namespace, name, api.TLSPrivateKeyKey)
-}
-
 // SecretTLSKeyRef will decode a PKCS1/SEC1 (in effect, a RSA or ECDSA) private key stored in a
 // secret with 'name' in 'namespace'. It will read the private key data from the secret
 // entry with name 'keyName'.
-func SecretTLSKeyRef(secretLister corelisters.SecretLister, namespace, name, keyName string) (crypto.PrivateKey, error) {
+func SecretTLSKeyRef(secretLister corelisters.SecretLister, namespace, name, keyName string) (crypto.Signer, error) {
 	secret, err := secretLister.Secrets(namespace).Get(name)
 	if err != nil {
 		return nil, err
@@ -83,7 +38,7 @@ func SecretTLSKeyRef(secretLister corelisters.SecretLister, namespace, name, key
 
 	keyBytes, ok := secret.Data[keyName]
 	if !ok {
-		return nil, fmt.Errorf("no data for %q in secret '%s/%s'", keyName, namespace, name)
+		return nil, errors.NewInvalidData("no data for %q in secret '%s/%s'", keyName, namespace, name)
 	}
 	key, err := pki.DecodePrivateKeyBytes(keyBytes)
 	if err != nil {
@@ -96,11 +51,11 @@ func SecretTLSKeyRef(secretLister corelisters.SecretLister, namespace, name, key
 // SecretTLSKey will decode a PKCS1/SEC1 (in effect, a RSA or ECDSA) private key stored in a
 // secret with 'name' in 'namespace'. It will read the private key data from the secret
 // entry with name 'keyName'.
-func SecretTLSKey(secretLister corelisters.SecretLister, namespace, name string) (crypto.PrivateKey, error) {
+func SecretTLSKey(secretLister corelisters.SecretLister, namespace, name string) (crypto.Signer, error) {
 	return SecretTLSKeyRef(secretLister, namespace, name, api.TLSPrivateKeyKey)
 }
 
-func SecretTLSCert(secretLister corelisters.SecretLister, namespace, name string) (*x509.Certificate, error) {
+func SecretTLSCertChain(secretLister corelisters.SecretLister, namespace, name string) ([]*x509.Certificate, error) {
 	secret, err := secretLister.Secrets(namespace).Get(name)
 	if err != nil {
 		return nil, err
@@ -108,12 +63,48 @@ func SecretTLSCert(secretLister corelisters.SecretLister, namespace, name string
 
 	certBytes, ok := secret.Data[api.TLSCertKey]
 	if !ok {
-		return nil, fmt.Errorf("no data for %q in secret '%s/%s'", api.TLSCertKey, namespace, name)
+		return nil, errors.NewInvalidData("no data for %q in secret '%s/%s'", api.TLSCertKey, namespace, name)
 	}
-	cert, err := pki.DecodeX509CertificateBytes(certBytes)
+	cert, err := pki.DecodeX509CertificateChainBytes(certBytes)
 	if err != nil {
 		return cert, errors.NewInvalidData(err.Error())
 	}
 
 	return cert, nil
+}
+
+func SecretTLSKeyPair(secretLister corelisters.SecretLister, namespace, name string) ([]*x509.Certificate, crypto.Signer, error) {
+	secret, err := secretLister.Secrets(namespace).Get(name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	keyBytes, ok := secret.Data[api.TLSPrivateKeyKey]
+	if !ok {
+		return nil, nil, errors.NewInvalidData("no private key data for %q in secret '%s/%s'", api.TLSCertKey, namespace, name)
+	}
+	key, err := pki.DecodePrivateKeyBytes(keyBytes)
+	if err != nil {
+		return nil, nil, errors.NewInvalidData(err.Error())
+	}
+
+	certBytes, ok := secret.Data[api.TLSCertKey]
+	if !ok {
+		return nil, key, errors.NewInvalidData("no certificate data for %q in secret '%s/%s'", api.TLSCertKey, namespace, name)
+	}
+	cert, err := pki.DecodeX509CertificateChainBytes(certBytes)
+	if err != nil {
+		return nil, key, errors.NewInvalidData(err.Error())
+	}
+
+	return cert, key, nil
+}
+
+func SecretTLSCert(secretLister corelisters.SecretLister, namespace, name string) (*x509.Certificate, error) {
+	certs, err := SecretTLSCertChain(secretLister, namespace, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return certs[0], nil
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation/webhooks"
+	"flag"
+
 	"github.com/openshift/generic-admission-server/pkg/cmd"
+
+	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation/webhooks"
 )
 
 var certHook cmd.ValidatingAdmissionHook = &webhooks.CertificateAdmissionHook{}
@@ -26,6 +29,9 @@ var issuerHook cmd.ValidatingAdmissionHook = &webhooks.IssuerAdmissionHook{}
 var clusterIssuerHook cmd.ValidatingAdmissionHook = &webhooks.ClusterIssuerAdmissionHook{}
 
 func main() {
+	// Avoid "logging before flag.Parse" errors from glog
+	flag.CommandLine.Parse([]string{})
+
 	cmd.RunAdmissionServer(
 		certHook,
 		issuerHook,

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,17 +57,6 @@ func ConfigForDomain(cfgs []DomainSolverConfig, domain string) *DomainSolverConf
 		}
 	}
 	return &DomainSolverConfig{}
-}
-
-func (c *CertificateStatus) ACMEStatus() *CertificateACMEStatus {
-	// this is an edge case, but this will prevent panics
-	if c == nil {
-		return &CertificateACMEStatus{}
-	}
-	if c.ACME == nil {
-		c.ACME = &CertificateACMEStatus{}
-	}
-	return c.ACME
 }
 
 func (iss *Issuer) HasCondition(condition IssuerCondition) bool {

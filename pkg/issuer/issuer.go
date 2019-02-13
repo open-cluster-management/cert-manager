@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,12 +27,27 @@ type Interface interface {
 	// a service, creating a CA and storing it somewhere, or verifying
 	// credentials and authorization with a remote server.
 	Setup(ctx context.Context) error
-	// Prepare
-	Prepare(context.Context, *v1alpha1.Certificate) error
+
 	// Issue attempts to issue a certificate as described by the certificate
 	// resource given
-	Issue(context.Context, *v1alpha1.Certificate) ([]byte, []byte, error)
-	// Renew attempts to renew the certificate describe by the certificate
-	// resource given. If no certificate exists, an error is returned.
-	Renew(context.Context, *v1alpha1.Certificate) ([]byte, []byte, error)
+	Issue(context.Context, *v1alpha1.Certificate) (*IssueResponse, error)
+}
+
+type IssueResponse struct {
+	// Certificate is the certificate resource that should be stored in the
+	// target secret.
+	// It will only be set if the corresponding private key is also set on the
+	// IssuerResponse structure.
+	Certificate []byte
+
+	// PrivateKey is the private key that should be stored in the target secret.
+	// If set, the certificate and CA field will also be overwritten with the
+	// contents of the field.
+	// If Certificate is not set, the existing Certificate will be overwritten.
+	PrivateKey []byte
+
+	// CA is the CA certificate that should be stored in the target secret.
+	// This field should only be set if the private key field is set, similar
+	// to the Certificate field.
+	CA []byte
 }

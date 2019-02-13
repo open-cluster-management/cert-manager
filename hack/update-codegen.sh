@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2018 The Jetstack cert-manager contributors.
+# Copyright 2019 The Jetstack cert-manager contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,17 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The only argument this script should ever be called with is '--verify-only'
-
 set -o errexit
 set -o nounset
 set -o pipefail
 
-SCRIPT_ROOT=$(dirname "${BASH_SOURCE}")/..
-CODEGEN_PKG=${CODEGEN_PKG:-$(CDPATH='' cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
+# This script should be run via `bazel run //hack:update-bazel`
+REPO_ROOT=${BUILD_WORKSPACE_DIRECTORY:-"$(cd "$(dirname "$0")" && pwd -P)"/..}
+runfiles="$(pwd)"
+export PATH="${runfiles}/third_party/k8s.io/code-generator:${runfiles}/hack:${runfiles}/hack/bin:${PATH}"
+cd "${REPO_ROOT}"
 
-"${CODEGEN_PKG}/generate-groups.sh" "deepcopy,client,informer,lister" \
+generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/jetstack/cert-manager/pkg/client github.com/jetstack/cert-manager/pkg/apis \
   certmanager:v1alpha1 \
   --output-base "${GOPATH}/src/" \
-  --go-header-file "${SCRIPT_ROOT}/hack/boilerplate/boilerplate.go.txt"
+  --go-header-file "${runfiles}/hack/boilerplate/boilerplate.go.txt"
+
+update-bazel.sh

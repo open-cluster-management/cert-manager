@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,11 +18,10 @@ package ca
 
 import (
 	"context"
-	"fmt"
-
-	"k8s.io/api/core/v1"
 
 	"github.com/golang/glog"
+	"k8s.io/api/core/v1"
+
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/util/kube"
 )
@@ -41,7 +40,6 @@ const (
 
 func (c *CA) Setup(ctx context.Context) error {
 	cert, err := kube.SecretTLSCert(c.secretsLister, c.resourceNamespace, c.issuer.GetSpec().CA.SecretName)
-
 	if err != nil {
 		s := messageErrorGetKeyPair + err.Error()
 		glog.Info(s)
@@ -51,7 +49,6 @@ func (c *CA) Setup(ctx context.Context) error {
 	}
 
 	_, err = kube.SecretTLSKey(c.secretsLister, c.resourceNamespace, c.issuer.GetSpec().CA.SecretName)
-
 	if err != nil {
 		s := messageErrorGetKeyPair + err.Error()
 		glog.Info(s)
@@ -65,7 +62,8 @@ func (c *CA) Setup(ctx context.Context) error {
 		glog.Info(s)
 		c.Recorder.Event(c.issuer, v1.EventTypeWarning, errorInvalidKeyPair, s)
 		c.issuer.UpdateStatusCondition(v1alpha1.IssuerConditionReady, v1alpha1.ConditionFalse, errorInvalidKeyPair, s)
-		return fmt.Errorf(s)
+		// Don't return an error here as there is nothing more we can do
+		return nil
 	}
 
 	glog.Info(messageKeyPairVerified)

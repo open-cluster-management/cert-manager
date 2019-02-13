@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@ limitations under the License.
 package acmedns
 
 import (
-	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/util"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/util"
+	"github.com/stretchr/testify/assert"
 )
 
 var (

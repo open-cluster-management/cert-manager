@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2018 The Jetstack cert-manager contributors.
+# Copyright 2019 The Jetstack cert-manager contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-SCRIPT_ROOT=$(dirname "${BASH_SOURCE}")
-REPO_ROOT="${SCRIPT_ROOT}/.."
-pushd "${REPO_ROOT}"
+# This script should be run via `bazel run //hack:update-deps`
+REPO_ROOT=${BUILD_WORKSPACE_DIRECTORY:-"$(cd "$(dirname "$0")" && pwd -P)"/..}
+runfiles="$(pwd)"
+export PATH="${runfiles}/hack/bin:${PATH}"
+cd "${REPO_ROOT}"
+
 echo "+++ Running dep ensure"
 dep ensure -v "$@"
 echo "+++ Cleaning up erroneous vendored testdata symlinks"
@@ -32,4 +35,10 @@ rm -Rf vendor/github.com/prometheus/procfs/fixtures \
        vendor/github.com/coreos/etcd/cmd/functional \
        vendor/github.com/coreos/etcd/cmd/tools \
        vendor/github.com/coreos/etcd/cmd/etcd
-popd
+
+echo "+++ Deleting bazel related data in vendor/"
+find vendor/ -type f \( -name BUILD -o -name BUILD.bazel -o -name WORKSPACE \) \
+  -exec rm -f {} \;
+
+touch vendor/BUILD.bazel
+hack/update-bazel.sh

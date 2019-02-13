@@ -34,7 +34,8 @@ By the end of the guide, we should have:
 4. Created an ACME ClusterIssuer using this private key, to issue certificates
    throughout your cluster
 
-5. Configured cert-manager's :doc:`ingress-shim </reference/ingress-shim>` to
+5. Configured cert-manager's
+   :doc:`ingress-shim </tasks/issuing-certificates/ingress-shim>` to
    automatically provision Certificate resources for all Ingress resources with
    the ``kubernetes.io/tls-acme: "true"`` annotation, using the ClusterIssuer
    we have created
@@ -54,7 +55,7 @@ deployment YAMLs, a command like so should do:
 
    $ kubectl scale deployment kube-lego \
        --namespace kube-lego \
-       --replicas=0 \
+       --replicas=0
 
 You can then verify your kube-lego pod is no longer running with:
 
@@ -214,9 +215,10 @@ cert-manager) to automatically create Certificate resources for all Ingress
 resources it finds with appropriate annotations.
 
 More information on the role of ingress-shim can be found
-:doc:`in the docs </reference/ingress-shim>`, but for now we can just run a
-``helm upgrade`` in order to add a few additional flags. Assuming you've named
-your ClusterIssuer ``letsencrypt-staging`` (as above), run:
+:doc:`in the docs </tasks/issuing-certificates/ingress-shim>`, but for now we
+can just run a ``helm upgrade`` in order to add a few additional flags.
+Assuming you've named your ClusterIssuer ``letsencrypt-staging`` (as above),
+run:
 
 .. code-block:: shell
 
@@ -246,16 +248,13 @@ There should be an entry for each ingress in your cluster with the kube-lego
 annotation.
 
 We can also verify that cert-manager has 'adopted' the old TLS certificates by
-'describing' one of these newly created certificates:
+viewing the logs for cert-manager:
 
 .. code-block:: shell
 
-   $ kubectl describe certificate my-example-certificate
+   $ kubectl logs -n kube-system -l app=cert-manager -c cert-manager
    ...
-   Events:
-     Type    Reason            Age                 From                     Message
-     ----    ------            ----                ----                     -------
-     Normal  RenewalScheduled  1m                  cert-manager-controller  Certificate scheduled for renewal in 292 hours
+   I1025 21:54:02.869269       1 sync.go:206] Certificate my-example-certificate scheduled for renewal in 292 hours
 
 Here we can see cert-manager has verified the existing TLS certificate and
 scheduled it to be renewed in 292h time.

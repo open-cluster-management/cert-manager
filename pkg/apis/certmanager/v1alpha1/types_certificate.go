@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,6 +57,12 @@ type CertificateSpec struct {
 	// Organization is the organization to be used on the Certificate
 	Organization []string `json:"organization,omitempty"`
 
+	// Certificate default Duration
+	Duration *metav1.Duration `json:"duration,omitempty"`
+
+	// Certificate renew before expiration duration
+	RenewBefore *metav1.Duration `json:"renewBefore,omitempty"`
+
 	// DNSNames is a list of subject alt names to be used on the Certificate
 	DNSNames []string `json:"dnsNames,omitempty"`
 
@@ -99,29 +105,14 @@ type ACMECertificateConfig struct {
 	Config []DomainSolverConfig `json:"config"`
 }
 
-type DomainSolverConfig struct {
-	Domains      []string `json:"domains"`
-	SolverConfig `json:",inline"`
-}
-
-type SolverConfig struct {
-	HTTP01 *HTTP01SolverConfig `json:"http01,omitempty"`
-	DNS01  *DNS01SolverConfig  `json:"dns01,omitempty"`
-}
-
-type HTTP01SolverConfig struct {
-	Ingress      string  `json:"ingress"`
-	IngressClass *string `json:"ingressClass,omitempty"`
-}
-
-type DNS01SolverConfig struct {
-	Provider string `json:"provider"`
-}
-
 // CertificateStatus defines the observed state of Certificate
 type CertificateStatus struct {
-	Conditions []CertificateCondition `json:"conditions,omitempty"`
-	ACME       *CertificateACMEStatus `json:"acme,omitempty"`
+	Conditions      []CertificateCondition `json:"conditions,omitempty"`
+	LastFailureTime *metav1.Time           `json:"lastFailureTime,omitempty"`
+
+	// The expiration time of the certificate stored in the secret named
+	// by this resource in spec.secretName.
+	NotAfter *metav1.Time `json:"notAfter,omitempty"`
 }
 
 // CertificateCondition contains condition information for an Certificate.
@@ -149,53 +140,11 @@ type CertificateCondition struct {
 type CertificateConditionType string
 
 const (
-	// CertificateConditionReady represents the fact that a given Certificate condition
-	// is in ready state.
+	// CertificateConditionReady indicates that a certificate is ready for use.
+	// This is defined as:
+	// - The target secret exists
+	// - The target secret contains a certificate that has not expired
+	// - The target secret contains a private key valid for the certificate
+	// - The commonName and dnsNames attributes match those specified on the Certificate
 	CertificateConditionReady CertificateConditionType = "Ready"
-
-	// CertificateConditionValidationFailed is used to indicate whether a
-	// validation for a Certificate has failed.
-	// This is currently used by the ACME issuer to track when the last
-	// validation was attempted.
-	CertificateConditionValidationFailed CertificateConditionType = "ValidateFailed"
 )
-
-// CertificateACMEStatus holds the status for an ACME issuer
-type CertificateACMEStatus struct {
-	// Order contains details about the current in-progress ACME Order.
-	Order ACMEOrderStatus `json:"order,omitempty"`
-}
-
-type ACMEOrderStatus struct {
-	// The URL that can be used to get information about the ACME order.
-	URL        string               `json:"url"`
-	Challenges []ACMEOrderChallenge `json:"challenges,omitempty"`
-}
-
-type ACMEOrderChallenge struct {
-	// The URL that can be used to get information about the ACME challenge.
-	URL string `json:"url"`
-
-	// The URL that can be used to get information about the ACME authorization
-	// associated with the challenge.
-	AuthzURL string `json:"authzURL"`
-
-	// Type of ACME challenge
-	// Either http-01 or dns-01
-	Type string `json:"type"`
-
-	// Domain this challenge corresponds to
-	Domain string `json:"domain"`
-
-	// Challenge token for this challenge
-	Token string `json:"token"`
-
-	// Challenge key for this challenge
-	Key string `json:"key"`
-
-	// Set to true if this challenge is for a wildcard domain
-	Wildcard bool `json:"wildcard"`
-
-	// Configuration used to present this challenge
-	SolverConfig `json:",inline"`
-}

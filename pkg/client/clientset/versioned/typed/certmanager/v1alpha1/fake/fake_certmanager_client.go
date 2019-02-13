@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,12 +30,20 @@ func (c *FakeCertmanagerV1alpha1) Certificates(namespace string) v1alpha1.Certif
 	return &FakeCertificates{c, namespace}
 }
 
+func (c *FakeCertmanagerV1alpha1) Challenges(namespace string) v1alpha1.ChallengeInterface {
+	return &FakeChallenges{c, namespace}
+}
+
 func (c *FakeCertmanagerV1alpha1) ClusterIssuers() v1alpha1.ClusterIssuerInterface {
 	return &FakeClusterIssuers{c}
 }
 
 func (c *FakeCertmanagerV1alpha1) Issuers(namespace string) v1alpha1.IssuerInterface {
 	return &FakeIssuers{c, namespace}
+}
+
+func (c *FakeCertmanagerV1alpha1) Orders(namespace string) v1alpha1.OrderInterface {
+	return &FakeOrders{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ func (v *Vault) Setup(ctx context.Context) error {
 	if v.issuer.GetSpec().Vault == nil {
 		glog.Infof("%s: %s", v.issuer.GetObjectMeta().Name, messageVaultConfigRequired)
 		v.issuer.UpdateStatusCondition(v1alpha1.IssuerConditionReady, v1alpha1.ConditionFalse, errorVault, messageVaultConfigRequired)
-		return fmt.Errorf(messageVaultConfigRequired)
+		return nil
 	}
 
 	// check if Vault server info is specified.
@@ -51,7 +51,7 @@ func (v *Vault) Setup(ctx context.Context) error {
 		v.issuer.GetSpec().Vault.Path == "" {
 		glog.Infof("%s: %s", v.issuer.GetObjectMeta().Name, messageServerAndPathRequired)
 		v.issuer.UpdateStatusCondition(v1alpha1.IssuerConditionReady, v1alpha1.ConditionFalse, errorVault, messageServerAndPathRequired)
-		return fmt.Errorf(messageVaultConfigRequired)
+		return nil
 	}
 
 	// check if at least one auth method is specified.
@@ -60,7 +60,7 @@ func (v *Vault) Setup(ctx context.Context) error {
 		v.issuer.GetSpec().Vault.Auth.AppRole.SecretRef.Name == "" {
 		glog.Infof("%s: %s", v.issuer.GetObjectMeta().Name, messsageAuthFieldsRequired)
 		v.issuer.UpdateStatusCondition(v1alpha1.IssuerConditionReady, v1alpha1.ConditionFalse, errorVault, messsageAuthFieldsRequired)
-		return fmt.Errorf(messsageAuthFieldsRequired)
+		return nil
 	}
 
 	// check if only token auth method is set.
@@ -69,7 +69,7 @@ func (v *Vault) Setup(ctx context.Context) error {
 			v.issuer.GetSpec().Vault.Auth.AppRole.SecretRef.Name != "") {
 		glog.Infof("%s: %s", v.issuer.GetObjectMeta().Name, messageAuthFieldRequired)
 		v.issuer.UpdateStatusCondition(v1alpha1.IssuerConditionReady, v1alpha1.ConditionFalse, errorVault, messageAuthFieldRequired)
-		return fmt.Errorf(messageAuthFieldRequired)
+		return nil
 	}
 
 	// check if all mandatory Vault appRole fields are set.
@@ -78,7 +78,7 @@ func (v *Vault) Setup(ctx context.Context) error {
 			v.issuer.GetSpec().Vault.Auth.AppRole.SecretRef.Name == "") {
 		glog.Infof("%s: %s", v.issuer.GetObjectMeta().Name, messageAuthFieldRequired)
 		v.issuer.UpdateStatusCondition(v1alpha1.IssuerConditionReady, v1alpha1.ConditionFalse, errorVault, messageAuthFieldRequired)
-		return fmt.Errorf(messageAuthFieldRequired)
+		return nil
 	}
 
 	client, err := v.initVaultClient()

@@ -12,19 +12,23 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/miekg/dns"
 )
 
-type preCheckDNSFunc func(fqdn, value string, nameservers []string) (bool, error)
+type preCheckDNSFunc func(fqdn, value string, nameservers []string,
+	useAuthoritative bool) (bool, error)
 
 var (
 	// PreCheckDNS checks DNS propagation before notifying ACME that
 	// the DNS challenge is ready.
 	PreCheckDNS preCheckDNSFunc = checkDNSPropagation
-	fqdnToZone                  = map[string]string{}
+
+	fqdnToZoneLock sync.RWMutex
+	fqdnToZone     = map[string]string{}
 )
 
 const defaultResolvConf = "/etc/resolv.conf"
@@ -74,7 +78,8 @@ func updateDomainWithCName(r *dns.Msg, fqdn string) string {
 }
 
 // checkDNSPropagation checks if the expected TXT record has been propagated to all authoritative nameservers.
-func checkDNSPropagation(fqdn, value string, nameservers []string) (bool, error) {
+func checkDNSPropagation(fqdn, value string, nameservers []string,
+	useAuthoritative bool) (bool, error) {
 	// Initial attempt to resolve at the recursive NS
 	r, err := dnsQuery(fqdn, dns.TypeTXT, nameservers, true)
 	if err != nil {
@@ -84,18 +89,25 @@ func checkDNSPropagation(fqdn, value string, nameservers []string) (bool, error)
 		fqdn = updateDomainWithCName(r, fqdn)
 	}
 
+	if !useAuthoritative {
+		return checkAuthoritativeNss(fqdn, value, nameservers)
+	}
+
 	authoritativeNss, err := lookupNameservers(fqdn, nameservers)
 	if err != nil {
 		return false, err
 	}
 
+	for i, ans := range authoritativeNss {
+		authoritativeNss[i] = net.JoinHostPort(ans, "53")
+	}
 	return checkAuthoritativeNss(fqdn, value, authoritativeNss)
 }
 
 // checkAuthoritativeNss queries each of the given nameservers for the expected TXT record.
 func checkAuthoritativeNss(fqdn, value string, nameservers []string) (bool, error) {
 	for _, ns := range nameservers {
-		r, err := dnsQuery(fqdn, dns.TypeTXT, []string{net.JoinHostPort(ns, "53")}, false)
+		r, err := dnsQuery(fqdn, dns.TypeTXT, []string{ns}, true)
 		if err != nil {
 			return false, err
 		}
@@ -141,7 +153,9 @@ func dnsQuery(fqdn string, rtype uint16, nameservers []string, recursive bool) (
 		udp := &dns.Client{Net: "udp", Timeout: DNSTimeout}
 		in, _, err = udp.Exchange(m, ns)
 
-		if err == dns.ErrTruncated {
+		if err == dns.ErrTruncated ||
+			(err != nil && strings.HasPrefix(err.Error(), "read udp") && strings.HasSuffix(err.Error(), "i/o timeout")) {
+			glog.V(6).Infof("UDP dns lookup failed, retrying with TCP: %v", err)
 			tcp := &dns.Client{Net: "tcp", Timeout: DNSTimeout}
 			// If the TCP request succeeds, the err will reset to nil
 			in, _, err = tcp.Exchange(m, ns)
@@ -183,10 +197,13 @@ func lookupNameservers(fqdn string, nameservers []string) ([]string, error) {
 // FindZoneByFqdn determines the zone apex for the given fqdn by recursing up the
 // domain labels until the nameserver returns a SOA record in the answer section.
 func FindZoneByFqdn(fqdn string, nameservers []string) (string, error) {
+	fqdnToZoneLock.RLock()
 	// Do we have it cached?
 	if zone, ok := fqdnToZone[fqdn]; ok {
+		fqdnToZoneLock.RUnlock()
 		return zone, nil
 	}
+	fqdnToZoneLock.RUnlock()
 
 	labelIndexes := dns.Split(fqdn)
 	for _, index := range labelIndexes {
@@ -214,6 +231,9 @@ func FindZoneByFqdn(fqdn string, nameservers []string) (string, error) {
 
 			for _, ans := range in.Answer {
 				if soa, ok := ans.(*dns.SOA); ok {
+					fqdnToZoneLock.Lock()
+					defer fqdnToZoneLock.Unlock()
+
 					zone := soa.Hdr.Name
 					fqdnToZone[fqdn] = zone
 					return zone, nil
@@ -233,11 +253,6 @@ func dnsMsgContainsCNAME(msg *dns.Msg) bool {
 		}
 	}
 	return false
-}
-
-// ClearFqdnCache clears the cache of fqdn to zone mappings. Primarily used in testing.
-func ClearFqdnCache() {
-	fqdnToZone = map[string]string{}
 }
 
 // ToFqdn converts the name into a fqdn appending a trailing dot.

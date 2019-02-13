@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package dns
 import (
 	"errors"
 	"testing"
+
+	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/digitalocean"
 
 	"github.com/jetstack/cert-manager/test/util/generate"
 
@@ -47,10 +49,8 @@ type solverFixture struct {
 
 	// Issuer to be passed to functions on the Solver (a default will be used if nil)
 	Issuer v1alpha1.GenericIssuer
-	// Certificate resource to use during tests
-	Certificate *v1alpha1.Certificate
 	// Challenge resource to use during tests
-	Challenge v1alpha1.ACMEOrderChallenge
+	Challenge *v1alpha1.Challenge
 
 	dnsProviders *fakeDNSProviders
 
@@ -160,8 +160,12 @@ func newFakeDNSProviders() *fakeDNSProviders {
 			f.call("acmedns", host, accountJson, dns01Nameservers)
 			return nil, nil
 		},
-		rfc2136: func(nameserver, tsigAlgorithm, tsigKeyName, tsigSecret string) (*rfc2136.DNSProvider, error) {
-			f.call("rfc2136", nameserver, tsigAlgorithm, tsigKeyName, tsigSecret)
+		rfc2136: func(nameserver, tsigAlgorithm, tsigKeyName, tsigSecret string, dns01Nameservers []string) (*rfc2136.DNSProvider, error) {
+			f.call("rfc2136", nameserver, tsigAlgorithm, tsigKeyName, tsigSecret, util.RecursiveNameservers)
+			return nil, nil
+		},
+		digitalOcean: func(token string, dns01Nameservers []string) (*digitalocean.DNSProvider, error) {
+			f.call("digitalocean", token, util.RecursiveNameservers)
 			return nil, nil
 		},
 	}

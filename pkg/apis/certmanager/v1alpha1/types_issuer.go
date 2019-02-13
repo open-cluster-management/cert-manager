@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -90,6 +91,11 @@ type VaultIssuer struct {
 	Server string `json:"server"`
 	// Vault URL path to the certificate role
 	Path string `json:"path"`
+	// Base64 encoded CA bundle to validate Vault server certificate. Only used
+	// if the Server URL is using HTTPS protocol. This parameter is ignored for
+	// plain HTTP protocol connection. If not set the system root certificates
+	// are used to validate the TLS connection.
+	CABundle []byte `json:"caBundle,omitempty"`
 }
 
 // Vault authentication  can be configured:
@@ -128,13 +134,16 @@ type ACMEIssuer struct {
 	// PrivateKey is the name of a secret containing the private key for this
 	// user account.
 	PrivateKey SecretKeySelector `json:"privateKeySecretRef"`
-	// HTTP01 config
+	// HTTP-01 config
 	HTTP01 *ACMEIssuerHTTP01Config `json:"http01,omitempty"`
 	// DNS-01 config
 	DNS01 *ACMEIssuerDNS01Config `json:"dns01,omitempty"`
 }
 
+// ACMEIssuerHTTP01Config is a structure containing the ACME HTTP configuration options
 type ACMEIssuerHTTP01Config struct {
+	// Optional service type for Kubernetes solver service
+	ServiceType corev1.ServiceType `json:"serviceType,omitempty"`
 }
 
 // ACMEIssuerDNS01Config is a structure containing the ACME DNS configuration
@@ -143,17 +152,44 @@ type ACMEIssuerDNS01Config struct {
 	Providers []ACMEIssuerDNS01Provider `json:"providers"`
 }
 
+// ACMEIssuerDNS01Provider contains configuration for a DNS provider that can
+// be used to solve ACME DNS01 challenges.
 type ACMEIssuerDNS01Provider struct {
+	// Name is the name of the DNS provider, which should be used to reference
+	// this DNS provider configuration on Certificate resources.
 	Name string `json:"name"`
 
-	Akamai     *ACMEIssuerDNS01ProviderAkamai     `json:"akamai,omitempty"`
-	CloudDNS   *ACMEIssuerDNS01ProviderCloudDNS   `json:"clouddns,omitempty"`
-	Cloudflare *ACMEIssuerDNS01ProviderCloudflare `json:"cloudflare,omitempty"`
-	Route53    *ACMEIssuerDNS01ProviderRoute53    `json:"route53,omitempty"`
-	AzureDNS   *ACMEIssuerDNS01ProviderAzureDNS   `json:"azuredns,omitempty"`
-	AcmeDNS    *ACMEIssuerDNS01ProviderAcmeDNS    `json:"acmedns,omitempty"`
-	RFC2136    *ACMEIssuerDNS01ProviderRFC2136    `json:"rfc2136,omitempty"`
+	// CNAMEStrategy configures how the DNS01 provider should handle CNAME
+	// records when found in DNS zones.
+	CNAMEStrategy CNAMEStrategy `json:"cnameStrategy"`
+
+	Akamai       *ACMEIssuerDNS01ProviderAkamai       `json:"akamai,omitempty"`
+	CloudDNS     *ACMEIssuerDNS01ProviderCloudDNS     `json:"clouddns,omitempty"`
+	Cloudflare   *ACMEIssuerDNS01ProviderCloudflare   `json:"cloudflare,omitempty"`
+	Route53      *ACMEIssuerDNS01ProviderRoute53      `json:"route53,omitempty"`
+	AzureDNS     *ACMEIssuerDNS01ProviderAzureDNS     `json:"azuredns,omitempty"`
+	DigitalOcean *ACMEIssuerDNS01ProviderDigitalOcean `json:"digitalocean,omitempty"`
+	AcmeDNS      *ACMEIssuerDNS01ProviderAcmeDNS      `json:"acmedns,omitempty"`
+	RFC2136      *ACMEIssuerDNS01ProviderRFC2136      `json:"rfc2136,omitempty"`
 }
+
+// CNAMEStrategy configures how the DNS01 provider should handle CNAME records
+// when found in DNS zones.
+// By default, the None strategy will be applied (i.e. do not follow CNAMEs).
+type CNAMEStrategy string
+
+const (
+	// NoneStrategy indicates that no CNAME resolution strategy should be used
+	// when determining which DNS zone to update during DNS01 challenges.
+	NoneStrategy = "None"
+
+	// FollowStrategy will cause cert-manager to recurse through CNAMEs in
+	// order to determine which DNS zone to update during DNS01 challenges.
+	// This is useful if you do not want to grant cert-manager access to your
+	// root DNS zone, and instead delegate the _acme-challenge.example.com
+	// subdomain to some other, less privileged domain.
+	FollowStrategy = "Follow"
+)
 
 // ACMEIssuerDNS01ProviderAkamai is a structure containing the DNS
 // configuration for Akamai DNS—Zone Record Management API
@@ -176,6 +212,12 @@ type ACMEIssuerDNS01ProviderCloudDNS struct {
 type ACMEIssuerDNS01ProviderCloudflare struct {
 	Email  string            `json:"email"`
 	APIKey SecretKeySelector `json:"apiKeySecretRef"`
+}
+
+// ACMEIssuerDNS01ProviderDigitalOcean is a structure containing the DNS
+// configuration for DigitalOcean Domains
+type ACMEIssuerDNS01ProviderDigitalOcean struct {
+	Token SecretKeySelector `json:"tokenSecretRef"`
 }
 
 // ACMEIssuerDNS01ProviderRoute53 is a structure containing the Route 53
