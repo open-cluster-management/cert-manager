@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/rhel7/rhel-atomic
+FROM registry.access.redhat.com/rhel7-atomic
 
 ARG VCS_REF
 ARG VCS_URL
@@ -6,11 +6,16 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
-# This might be incorrect - want to add a system group and that a new system uesr to that group
 RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificates && \
+    groupadd -r webhook && \
+    adduser -r -g webhook -u 100 webhook && \
     microdnf clean all
 
 ADD icp-cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
+
+RUN chmod a+x /usr/bin/webhook
+
+USER 100
 
 ENTRYPOINT ["/usr/bin/webhook"]
 

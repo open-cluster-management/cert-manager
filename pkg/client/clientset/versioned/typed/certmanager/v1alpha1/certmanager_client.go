@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,8 +26,10 @@ import (
 type CertmanagerV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	CertificatesGetter
+	ChallengesGetter
 	ClusterIssuersGetter
 	IssuersGetter
+	OrdersGetter
 }
 
 // CertmanagerV1alpha1Client is used to interact with features provided by the certmanager.k8s.io group.
@@ -39,12 +41,20 @@ func (c *CertmanagerV1alpha1Client) Certificates(namespace string) CertificateIn
 	return newCertificates(c, namespace)
 }
 
+func (c *CertmanagerV1alpha1Client) Challenges(namespace string) ChallengeInterface {
+	return newChallenges(c, namespace)
+}
+
 func (c *CertmanagerV1alpha1Client) ClusterIssuers() ClusterIssuerInterface {
 	return newClusterIssuers(c)
 }
 
 func (c *CertmanagerV1alpha1Client) Issuers(namespace string) IssuerInterface {
 	return newIssuers(c, namespace)
+}
+
+func (c *CertmanagerV1alpha1Client) Orders(namespace string) OrderInterface {
+	return newOrders(c, namespace)
 }
 
 // NewForConfig creates a new CertmanagerV1alpha1Client for the given config.

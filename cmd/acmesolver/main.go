@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"log"
 
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/http/solver"
+	"github.com/jetstack/cert-manager/pkg/logs"
 )
 
 // acmesolver solves ACME http-01 challenges. This is intended to run as a pod
@@ -35,6 +36,9 @@ var (
 )
 
 func main() {
+	logs.InitLogs()
+	defer logs.FlushLogs()
+
 	flag.Parse()
 
 	s := &solver.HTTP01Solver{

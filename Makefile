@@ -1,5 +1,5 @@
 include Configfile
-# Copyright 2018 The Jetstack cert-manager contributors.
+# Copyright 2019 The Jetstack cert-manager contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,19 +16,14 @@ include Configfile
 REGISTRY := quay.io/jetstack
 IMAGE_TAGS := canary
 
-# Domain name to use in e2e tests. This is important for ACME HTTP01 e2e tests,
-# which require a domain that resolves to the ingress controller to be used for
-# e2e tests.
-E2E_NGINX_CERTIFICATE_DOMAIN=
-KUBECONFIG ?= $$HOME/.kube/config
-PEBBLE_IMAGE_REPO=quay.io/munnerz/pebble
+GINKGO_SKIP :=
 
 # AppVersion is set as the AppVersion to be compiled into the controller binary.
 # It's used as the default version of the 'acmesolver' image to use for ACME
 # challenge requests, and any other future provider that requires additional
 # image dependencies will use this same tag.
 ifeq ($(APP_VERSION),)
-APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.5.0.1)
+APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.6.1)
 endif
 
 # Get a list of all binaries to be built
@@ -151,7 +146,7 @@ go-test:
 
 go-fmt:
 	@set -e; \
-	GO_FMT=$$(git ls-files *.go | grep -v 'vendor/' | xargs gofmt -d); \
+	GO_FMT=$$(git ls-files *.go | grep -v 'vendor/' | grep -v 'third_party/' | xargs gofmt -d); \
 	if [ -n "$${GO_FMT}" ] ; then \
 		echo "Please run go fmt"; \
 		echo "$$GO_FMT"; \
@@ -159,19 +154,29 @@ go-fmt:
 	fi
 
 e2e_test:
-	# Build the e2e tests
-	go test -o e2e-tests -c ./test/e2e
 	mkdir -p "$$(pwd)/_artifacts"
-	# TODO: make these paths configurable
+	bazel build //hack/bin:helm //test/e2e:e2e.test
 	# Run e2e tests
-	KUBECONFIG=$(KUBECONFIG) CERTMANAGERCONFIG=$(KUBECONFIG) \
-		./e2e-tests \
-			-acme-nginx-certificate-domain=$(E2E_NGINX_CERTIFICATE_DOMAIN) \
-			-cloudflare-email=$${CLOUDFLARE_E2E_EMAIL} \
-			-cloudflare-api-key=$${CLOUDFLARE_E2E_API_TOKEN} \
-			-acme-cloudflare-domain=$${CLOUDFLARE_E2E_DOMAIN} \
-			-pebble-image-repo=$(PEBBLE_IMAGE_REPO) \
-			-report-dir="$${ARTIFACTS:-./_artifacts}"
+	KUBECONFIG=$(KUBECONFIG) \
+		bazel run //vendor/github.com/onsi/ginkgo/ginkgo -- \
+			-nodes 20 \
+			$$(bazel info bazel-genfiles)/test/e2e/e2e.test \
+			-- \
+			--helm-binary-path=$$(bazel info bazel-genfiles)/hack/bin/helm \
+			--repo-root="$$(pwd)" \
+			--report-dir="$${ARTIFACTS:-./_artifacts}" \
+			--ginkgo.skip="$(GINKGO_SKIP)"
+
+# Generate targets
+##################
+
+generate:
+	bazel run //hack:update-bazel
+	bazel run //hack:update-gofmt
+	bazel run //hack:update-codegen
+	bazel run //hack:update-deploy-gen
+	bazel run //hack:update-reference-docs
+	bazel run //hack:update-deps
 
 # Docker targets
 ################
@@ -203,8 +208,8 @@ ifeq ($(OS),rhel7)
 	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
 	$(eval BASE_CMD := cd $(BASE_DIR);)
 	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_FILE_CMD)
-	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
-	scp $(DOCKER_FILE) cloudusr@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
+	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) root@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
+	scp $(DOCKER_FILE) root@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
 
 	# Building docker image.
 	$(SSH_CMD) '$(BASE_CMD) $(DOCKER_BUILD_CMD)'

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,20 +37,27 @@ import (
 	acmecl "github.com/jetstack/cert-manager/third_party/crypto/acme"
 )
 
+type Helper interface {
+	ClientForIssuer(iss cmapi.GenericIssuer) (acme.Interface, error)
+	ReadPrivateKey(sel cmapi.SecretKeySelector, ns string) (*rsa.PrivateKey, error)
+}
+
 // Helper is a structure that provides 'glue' between cert-managers API types and
 // constructs, and ACME clients.
 // For example, it can be used to obtain an ACME client for a IssuerRef that is
 // correctly configured (e.g. with user agents, timeouts, proxy handling etc)
-type Helper struct {
+type helperImpl struct {
 	SecretLister corelisters.SecretLister
 
 	ClusterResourceNamespace string
 }
 
+var _ Helper = &helperImpl{}
+
 // NewHelper is a helper that constructs a new Helper structure with the given
 // secret lister.
-func NewHelper(lister corelisters.SecretLister, ns string) *Helper {
-	return &Helper{
+func NewHelper(lister corelisters.SecretLister, ns string) Helper {
+	return &helperImpl{
 		SecretLister:             lister,
 		ClusterResourceNamespace: ns,
 	}
@@ -70,7 +77,7 @@ func PrivateKeySelector(sel cmapi.SecretKeySelector) cmapi.SecretKeySelector {
 // be returned.
 // A *rsa.PrivateKey will be returned here, as ACME private keys can currently
 // only be RSA.
-func (h *Helper) ReadPrivateKey(sel cmapi.SecretKeySelector, ns string) (*rsa.PrivateKey, error) {
+func (h *helperImpl) ReadPrivateKey(sel cmapi.SecretKeySelector, ns string) (*rsa.PrivateKey, error) {
 	sel = PrivateKeySelector(sel)
 
 	s, err := h.SecretLister.Secrets(ns).Get(sel.Name)
@@ -80,9 +87,10 @@ func (h *Helper) ReadPrivateKey(sel cmapi.SecretKeySelector, ns string) (*rsa.Pr
 
 	data, ok := s.Data[sel.Key]
 	if !ok {
-		return nil, cmerrors.NewInvalidData(fmt.Sprintf("no secret data found for key %q in secret %q", sel.Key, sel.Name))
+		return nil, cmerrors.NewInvalidData("No secret data found for key %q in secret %q", sel.Key, sel.Name)
 	}
 
+	// DecodePrivateKeyBytes already wraps errors with NewInvalidData.
 	pk, err := pki.DecodePrivateKeyBytes(data)
 	if err != nil {
 		return nil, err
@@ -90,7 +98,7 @@ func (h *Helper) ReadPrivateKey(sel cmapi.SecretKeySelector, ns string) (*rsa.Pr
 
 	rsaKey, ok := pk.(*rsa.PrivateKey)
 	if !ok {
-		return nil, fmt.Errorf("ACME private key in %q is not of type RSA", sel.Name)
+		return nil, cmerrors.NewInvalidData("ACME private key in %q is not of type RSA", sel.Name)
 	}
 
 	return rsaKey, nil
@@ -103,20 +111,27 @@ func ClientWithKey(iss cmapi.GenericIssuer, pk *rsa.PrivateKey) (acme.Interface,
 	if acmeSpec == nil {
 		return nil, fmt.Errorf("issuer %q is not an ACME issuer. Ensure the 'acme' stanza is correctly specified on your Issuer resource", iss.GetObjectMeta().Name)
 	}
-
-	return acmemw.NewLogger(&acmecl.Client{
+	acmeStatus := iss.GetStatus().ACME
+	accountURI := ""
+	if acmeStatus != nil && acmeStatus.URI != "" {
+		accountURI = acmeStatus.URI
+	}
+	acmeCl := &acmecl.Client{
 		HTTPClient:   buildHTTPClient(acmeSpec.SkipTLSVerify),
 		Key:          pk,
 		DirectoryURL: acmeSpec.Server,
 		UserAgent:    util.CertManagerUserAgent,
-	}), nil
+	}
+	acmeCl.SetAccountURL(accountURI)
+
+	return acmemw.NewLogger(acmeCl), nil
 }
 
 // ClientForIssuer will return a properly configure ACME client for the given
 // Issuer resource.
 // If the private key for the Issuer does not exist, an error will be returned.
 // If the provided issuer is not an ACME Issuer, an error will be returned.
-func (h *Helper) ClientForIssuer(iss cmapi.GenericIssuer) (acme.Interface, error) {
+func (h *helperImpl) ClientForIssuer(iss cmapi.GenericIssuer) (acme.Interface, error) {
 	acmeSpec := iss.GetSpec().ACME
 	if acmeSpec == nil {
 		return nil, fmt.Errorf("issuer %q is not an ACME issuer. Ensure the 'acme' stanza is correctly specified on your Issuer resource", iss.GetObjectMeta().Name)
@@ -142,7 +157,7 @@ func (h *Helper) ClientForIssuer(iss cmapi.GenericIssuer) (acme.Interface, error
 // In future, we may change to having two global HTTP clients - one that ignores
 // TLS connection errors, and the other that does not.
 func buildHTTPClient(skipTLSVerify bool) *http.Client {
-	return &http.Client{
+	return acme.NewInstrumentedClient(&http.Client{
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			DialContext:           dialTimeout,
@@ -153,7 +168,7 @@ func buildHTTPClient(skipTLSVerify bool) *http.Client {
 			ExpectContinueTimeout: 1 * time.Second,
 		},
 		Timeout: time.Second * 30,
-	}
+	})
 }
 
 var timeout = time.Duration(5 * time.Second)

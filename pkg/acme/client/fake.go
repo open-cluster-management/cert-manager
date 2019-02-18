@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ func (f *FakeACME) AcceptChallenge(ctx context.Context, chal *acme.Challenge) (*
 	if f.FakeAcceptChallenge != nil {
 		return f.FakeAcceptChallenge(ctx, chal)
 	}
-	return nil, fmt.Errorf("AcceptAcceptChallenge not implemented")
+	return nil, fmt.Errorf("AcceptChallenge not implemented")
 }
 
 func (f *FakeACME) GetChallenge(ctx context.Context, url string) (*acme.Challenge, error) {

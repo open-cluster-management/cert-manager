@@ -20,11 +20,19 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates && \
+  addgroup -S webhook && adduser -S -G webhook -u 100 webhook
+
 ADD icp-cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
+
+USER 100
 
 ENTRYPOINT ["/usr/bin/webhook"]
 
-LABEL org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.vcs-url="https://github.com/jetstack/cert-manager" \
-      org.label-schema.license="Apache-2.0"
+LABEL org.label-schema.vendor="IBM" \
+      org.label-schema.name="$IMAGE_NAME" \
+      org.label-schema.description="$IMAGE_DESCRIPTION" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url=$VCS_URL \
+      org.label-schema.license="Licensed Materials - Property of IBM" \
+      org.label-schema.schema-version="1.0"

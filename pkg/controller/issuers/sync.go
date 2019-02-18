@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,13 +49,13 @@ func (c *Controller) Sync(ctx context.Context, iss *v1alpha1.Issuer) (err error)
 		msg := fmt.Sprintf("Resource validation failed: %v", el.ToAggregate())
 		issuerCopy.UpdateStatusCondition(v1alpha1.IssuerConditionReady, v1alpha1.ConditionFalse, errorConfig, msg)
 		return
-	} else {
-		for i, c := range issuerCopy.Status.Conditions {
-			if c.Type == v1alpha1.IssuerConditionReady {
-				if c.Reason == errorConfig && c.Status == v1alpha1.ConditionFalse {
-					issuerCopy.Status.Conditions = append(issuerCopy.Status.Conditions[:i], issuerCopy.Status.Conditions[i+1:]...)
-					break
-				}
+	}
+
+	for i, c := range issuerCopy.Status.Conditions {
+		if c.Type == v1alpha1.IssuerConditionReady {
+			if c.Reason == errorConfig && c.Status == v1alpha1.ConditionFalse {
+				issuerCopy.Status.Conditions = append(issuerCopy.Status.Conditions[:i], issuerCopy.Status.Conditions[i+1:]...)
+				break
 			}
 		}
 	}

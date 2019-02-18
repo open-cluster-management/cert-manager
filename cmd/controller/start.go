@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Jetstack cert-manager contributors.
+Copyright 2019 The Jetstack cert-manager contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@ import (
 
 	"github.com/jetstack/cert-manager/cmd/controller/app"
 	"github.com/jetstack/cert-manager/cmd/controller/app/options"
+	_ "github.com/jetstack/cert-manager/pkg/controller/acmechallenges"
+	_ "github.com/jetstack/cert-manager/pkg/controller/acmeorders"
 	_ "github.com/jetstack/cert-manager/pkg/controller/certificates"
 	_ "github.com/jetstack/cert-manager/pkg/controller/clusterissuers"
 	_ "github.com/jetstack/cert-manager/pkg/controller/ingress-shim"
@@ -77,8 +79,6 @@ to renew certificates at an appropriate time before expiry.`,
 			}
 
 			glog.Infof("starting cert-manager %s (revision %s)", util.AppVersion, util.AppGitCommit)
-
-			go StartPrometheusMetricsServer(stopCh)
 			o.RunCertManagerController(stopCh)
 		},
 	}
