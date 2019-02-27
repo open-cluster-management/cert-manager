@@ -325,6 +325,10 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		secret, err = c.Client.CoreV1().Secrets(namespace).Create(secret)
 	} else {
 		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
+		// Secret is updated, refresh
+		klog.Info("Secret updated, refresh the pods")
+		dep := c.Client.CoreV1().Deployments(namespace)
+		klog.Info(dep)
 	}
 	if err != nil {
 		return nil, err
@@ -357,6 +361,10 @@ func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1
 		// as we have just written a certificate, we should schedule it for renewal
 		c.scheduleRenewal(crt)
 	}
+
+	klog.Info("Finished issuing certificate")
+
+	// When a certificate is issued, we should find all resources that listens to its secret and refresh them
 
 	return nil
 }
