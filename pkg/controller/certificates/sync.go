@@ -351,7 +351,7 @@ func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface 
 	statefulsets, _ := statefulsetsInterface.List(listOptions)
 	daemonsets, _ := daemonsetsInterface.List(listOptions)
 
-	update := time.Now().Format("2006-12-31.0600")
+	update := time.Now().Format("2006-1-31.0600")
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
@@ -359,15 +359,15 @@ NEXT_DEPLOYMENT:
 				klog.Info("!!!! DEPLOYMENT Affected !!!! ")
 				klog.Info(deployment.Name)
 				klog.Info("the updated time " + update)
-				affectedDeployment, _ := deploymentsInterface.Get(deployment.ObjectMeta.Name, metav1.GetOptions{})
-				affectedDeployment.ObjectMeta.Labels[restartLabel] = update
-				affectedDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				dep, err := deploymentsInterface.Update(affectedDeployment)
+				
+				deployment.ObjectMeta.Labels[restartLabel] = update
+				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
+				update, err := deploymentsInterface.Update(deployment)
 				if err != nil {
 					klog.Info("Error updating deployment ")
 					klog.Info(err)
 				}
-				klog.Info("Updated! " + dep.ObjectMeta.Labels[restartLabel])
+
 				continue NEXT_DEPLOYMENT
 			}
 		}
