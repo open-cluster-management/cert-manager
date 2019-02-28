@@ -333,11 +333,19 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 			klog.Info("Error getting deployments")
 			klog.Info(err)
 		} else {
+NEXT_DEP:
 			for _, deployment := range dep.Items {
-				klog.Info("!!!! DEPLOYMENT !!!! ")
-				klog.Info(deployment.Name)
+				for _, volume := range deployment.Spec.Template.Spec.Volumes {
+					if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secretName {
+						klog.Info("!!!! DEPLOYMENT Affected !!!! ")
+						klog.Info(deployment.Name)
+						klog.Info(deployment.Spec.Template.Spec.Volumes)
+						continue NEXT_DEP
+					}
+				}
+				
 			}
-			klog.Info(dep)
+			// klog.Info(dep)
 		}	
 	}
 	if err != nil {
