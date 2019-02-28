@@ -353,6 +353,7 @@ NEXT_DEPLOYMENT:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				klog.Info("!!!! DEPLOYMENT Affected !!!! ")
 				klog.Info(deployment.Name)
+				klog.Info("the updated time " + update)
 				deployment.ObjectMeta.Labels[restartLabel] = update
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				continue NEXT_DEPLOYMENT
