@@ -327,7 +327,8 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
 		// Secret is updated, refresh
 		klog.Info("Secret updated, refresh the pods")
-		dep := c.Client.AppsV1().Deployments(namespace).List()
+		listOptions := &metav1.ListOptions{}
+		dep := c.Client.AppsV1().Deployments(namespace).List(listOptions)
 		for _, deployment := range dep.Items {
 			klog.Info("!!!! DEPLOYMENT !!!! ")
 			klog.Info(deployment.Name)
