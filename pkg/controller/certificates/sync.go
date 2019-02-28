@@ -367,7 +367,7 @@ NEXT_DEPLOYMENT:
 					klog.Info("Error updating deployment ")
 					klog.Info(err)
 				}
-
+				klog.Info(update.ObjectMeta.Labels[restartLabel])
 				continue NEXT_DEPLOYMENT
 			}
 		}
