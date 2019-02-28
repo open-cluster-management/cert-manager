@@ -351,7 +351,7 @@ func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface 
 	statefulsets, _ := statefulsetsInterface.List(listOptions)
 	daemonsets, _ := daemonsetsInterface.List(listOptions)
 
-	update := time.Now().Format("Jan 2, 2006 [3:04pm]")
+	update := time.Now().Format("2006-12-31.0600")
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
