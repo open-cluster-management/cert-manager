@@ -328,30 +328,50 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		// Secret is updated, refresh
 		klog.Info("Secret updated, refresh the pods")
 		listOptions := metav1.ListOptions{}
-		dep, err := c.Client.AppsV1().Deployments(namespace).List(listOptions)
-		if err != nil {
-			klog.Info("Error getting deployments")
-			klog.Info(err)
-		} else {
-NEXT_DEP:
-			for _, deployment := range dep.Items {
-				for _, volume := range deployment.Spec.Template.Spec.Volumes {
-					if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret.Name {
-						klog.Info("!!!! DEPLOYMENT Affected !!!! ")
-						klog.Info(deployment.Name)
-						klog.Info(deployment.Spec.Template.Spec.Volumes)
-						continue NEXT_DEP
-					}
-				}
-				
-			}
-			// klog.Info(dep)
-		}	
+		deployments, _ := c.Client.AppsV1().Deployments(namespace).List(listOptions)
+		statefulsets, _ := c.Client.AppsV1().StatefulSets(namespace).List(listOptions)
+		daemonsets, _ := c.Client.AppsV1().DaemonSets(namespace).List(listOptions)
+		restart(deployments, statefulsets, daemonsets, secret.Name)
 	}
+
 	if err != nil {
 		return nil, err
 	}
+	
 	return secret, nil
+}
+
+func restart(deployments []*v1.Deployment, statefulsets []*v1.StatefulSet, daemonset []*v1.DaemonSet, secret string) {
+NEXT_DEPLOYMENT:
+	for _, deployment := range deployments.Items {
+		for _, volume := range deployment.Spec.Template.Spec.Volumes {
+			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
+				klog.Info("!!!! DEPLOYMENT Affected !!!! ")
+				klog.Info(deployment.Name)
+				continue NEXT_DEPLOYMENT
+			}
+		}
+	}
+NEXT_STATEFULSET:
+	for _, statefulset := range statefulsets.Items {
+		for _, volume := range statefulset.Spec.Template.Spec.Volumes {
+			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
+				klog.Info("!!! Stateful set affected ")
+				klog.Info(statefulset.Name)
+				continue NEXT_STATEFULSET
+			}
+		}
+	}
+NEXT_DAEMONSET:
+	for _, daemonset := range daemonsets.Items {
+		for _, volume := range daemonset.Spec.Template.Spec.Volumes {
+			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
+				klog.Info("!!! Daemon set affected ")
+				klog.Info(daemonset.Name)
+				continue NEXT_DAEMONSET
+			}
+		}
+	}
 }
 
 // return an error on failure. If retrieval is succesful, the certificate data
