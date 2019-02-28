@@ -362,7 +362,11 @@ NEXT_DEPLOYMENT:
 				affectedDeployment, _ := deploymentsInterface.Get(deployment.ObjectMeta.Name, metav1.GetOptions{})
 				affectedDeployment.ObjectMeta.Labels[restartLabel] = update
 				affectedDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				deploymentsInterface.Update(affectedDeployment)
+				dep, err := deploymentsInterface.Update(affectedDeployment)
+				if err {
+					klog.Info("Error updating deployment " + err)
+				}
+				klog.Info("Updated! " + dep.ObjectMeta.Labels[restartLabel])
 				continue NEXT_DEPLOYMENT
 			}
 		}
