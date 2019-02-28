@@ -359,9 +359,10 @@ NEXT_DEPLOYMENT:
 				klog.Info("!!!! DEPLOYMENT Affected !!!! ")
 				klog.Info(deployment.Name)
 				klog.Info("the updated time " + update)
-				deployment.ObjectMeta.Labels[restartLabel] = update
-				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				deploymentsInterface.Update(deployment)
+				affectedDeployment := deploymentsInterface.Get(deployment.ObjectMeta.Name)
+				affectedDeployment.ObjectMeta.Labels[restartLabel] = update
+				affectedDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
+				deploymentsInterface.Update(affectedDeployment)
 				continue NEXT_DEPLOYMENT
 			}
 		}
@@ -374,7 +375,7 @@ NEXT_STATEFULSET:
 				klog.Info(statefulset.Name)
 				statefulset.ObjectMeta.Labels[restartLabel] = update
 				statefulset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				statefulsetsInterface.Update(statefulset)
+				//statefulsetsInterface.Update(statefulset)
 				continue NEXT_STATEFULSET
 			}
 		}
@@ -385,7 +386,7 @@ NEXT_DAEMONSET:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				daemonset.ObjectMeta.Labels[restartLabel] = update
 				daemonset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				daemonsetsInterface.Update(daemonset)
+				//daemonsetsInterface.Update(daemonset)
 				continue NEXT_DAEMONSET
 			}
 		}
