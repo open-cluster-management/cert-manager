@@ -332,10 +332,10 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		// Secret is updated, refresh
 		klog.Info("Secret updated, refresh the pods")
 		
-		deploymentsLister := c.Client.AppsV1().Deployments(namespace)
-		statefulsetsLister := c.Client.AppsV1().StatefulSets(namespace)
-		daemonsetsLister  := c.Client.AppsV1().DaemonSets(namespace)
-		restart(deploymentsLister, statefulsetsLister, daemonsetsLister, secret.Name)
+		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
+		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
+		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
+		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
 	}
 
 	if err != nil {
@@ -345,11 +345,11 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	return secret, nil
 }
 
-func restart(deploymentsLister v1.DeploymentInterface, statefulsetsLister v1.StatefulSetInterface, daemonsetsLister v1.DaemonSetInterface, secret string) {
+func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret string) {
 	listOptions := metav1.ListOptions{}
-	deployments, _ := deploymentsLister.List(listOptions)
-	statefulsets, _ := statefulsetsLister.List(listOptions)
-	daemonsets, _ := daemonsetsLister.List(listOptions)
+	deployments, _ := deploymentsInterface.List(listOptions)
+	statefulsets, _ := statefulsetsInterface.List(listOptions)
+	daemonsets, _ := daemonsetsInterface.List(listOptions)
 
 	update := time.Now().Format("Jan 2, 2006 [3:04pm]")
 NEXT_DEPLOYMENT:
@@ -361,7 +361,7 @@ NEXT_DEPLOYMENT:
 				klog.Info("the updated time " + update)
 				deployment.ObjectMeta.Labels[restartLabel] = update
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				deployments.Update(&deployment)
+				deploymentsInterface.Update(&deployment)
 				continue NEXT_DEPLOYMENT
 			}
 		}
@@ -374,7 +374,7 @@ NEXT_STATEFULSET:
 				klog.Info(statefulset.Name)
 				statefulset.ObjectMeta.Labels[restartLabel] = update
 				statefulset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				statefulsets.Update(&statefulset)
+				statefulsetsInterface.Update(&statefulset)
 				continue NEXT_STATEFULSET
 			}
 		}
@@ -385,7 +385,7 @@ NEXT_DAEMONSET:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				daemonset.ObjectMeta.Labels[restartLabel] = update
 				daemonset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				daemonsets.Update(&daemonset)
+				daemonsetsInterface.Update(&daemonset)
 				continue NEXT_DAEMONSET
 			}
 		}
