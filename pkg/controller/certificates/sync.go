@@ -329,9 +329,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		secret, err = c.Client.CoreV1().Secrets(namespace).Create(secret)
 	} else {
 		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
-		// Secret is updated, refresh
-		klog.Info("Secret updated, refresh the pods")
-		
+		// Secret is updated, refresh pods
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
 		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
 		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
@@ -356,18 +354,12 @@ NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
-				klog.Info("!!!! DEPLOYMENT Affected !!!! ")
-				klog.Info(deployment.Name)
-				klog.Info("the updated time " + update)
-				
 				deployment.ObjectMeta.Labels[restartLabel] = update
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				update, err := deploymentsInterface.Update(&deployment)
+				_, err := deploymentsInterface.Update(&deployment)
 				if err != nil {
-					klog.Info("Error updating deployment ")
-					klog.Info(err)
+					fmt.Errorf("Error updating deployment: %v", err)
 				}
-				klog.Info(update.ObjectMeta.Labels[restartLabel])
 				continue NEXT_DEPLOYMENT
 			}
 		}
@@ -376,11 +368,12 @@ NEXT_STATEFULSET:
 	for _, statefulset := range statefulsets.Items {
 		for _, volume := range statefulset.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
-				klog.Info("!!! Stateful set affected ")
-				klog.Info(statefulset.Name)
 				statefulset.ObjectMeta.Labels[restartLabel] = update
 				statefulset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				statefulsetsInterface.Update(&statefulset)
+				_, err := statefulsetsInterface.Update(&statefulset)
+				if err != nil {
+					fmt.Errorf("Error updating statefulset: %v", err)
+				}
 				continue NEXT_STATEFULSET
 			}
 		}
@@ -391,7 +384,10 @@ NEXT_DAEMONSET:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				daemonset.ObjectMeta.Labels[restartLabel] = update
 				daemonset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				daemonsetsInterface.Update(&daemonset)
+				_, err := daemonsetsInterface.Update(&daemonset)
+				if err != nil {
+					fmt.Errorf("Error updating daemonset: %v", err)
+				}
 				continue NEXT_DAEMONSET
 			}
 		}
