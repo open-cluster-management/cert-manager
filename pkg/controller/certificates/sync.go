@@ -331,11 +331,11 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
 		// Secret is updated, refresh
 		klog.Info("Secret updated, refresh the pods")
-		listOptions := metav1.ListOptions{}
-		deployments, _ := c.Client.AppsV1().Deployments(namespace).List(listOptions)
-		statefulsets, _ := c.Client.AppsV1().StatefulSets(namespace).List(listOptions)
-		daemonsets, _ := c.Client.AppsV1().DaemonSets(namespace).List(listOptions)
-		restart(deployments, statefulsets, daemonsets, secret.Name)
+		
+		deploymentsLister, _ := c.Client.AppsV1().Deployments(namespace)
+		statefulsetsLister, _ := c.Client.AppsV1().StatefulSets(namespace)
+		daemonsetsLister, _ := c.Client.AppsV1().DaemonSets(namespace)
+		restart(deploymentsLister, statefulsetsLister, daemonsetsLIster, secret.Name)
 	}
 
 	if err != nil {
@@ -345,8 +345,13 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	return secret, nil
 }
 
-func restart(deployments *v1.DeploymentList, statefulsets *v1.StatefulSetList, daemonsets *v1.DaemonSetList, secret string) {
-	update := time.Now().Format("Jan 2, 2016 [3:04pm]")
+func restart(deploymentsLister *v1deploymentNamespaceLister, statefulsetsLister *v1.statefulSetNamespaceLister, daemonsetsLister *v1.daemonSetNamespaceLister, secret string) {
+	listOptions := metav1.ListOptions{}
+	deployments, _ := deploymentsLister.List(listOptions)
+	statefulsets, _ := statefulsetsLister.List(listOptions)
+	daemonsets, _ := daemonsetsLister.List(listOptions)
+
+	update := time.Now().Format("Jan 2, 2006 [3:04pm]")
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
