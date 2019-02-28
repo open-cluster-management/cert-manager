@@ -364,7 +364,8 @@ NEXT_DEPLOYMENT:
 				affectedDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				dep, err := deploymentsInterface.Update(affectedDeployment)
 				if err {
-					klog.Info("Error updating deployment " + err)
+					klog.Info("Error updating deployment ")
+					klog.Info(err)
 				}
 				klog.Info("Updated! " + dep.ObjectMeta.Labels[restartLabel])
 				continue NEXT_DEPLOYMENT
