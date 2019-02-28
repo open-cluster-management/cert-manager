@@ -345,7 +345,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	return secret, nil
 }
 
-func restart(deploymentsLister *v1.deploymentNamespaceLister, statefulsetsLister *v1.statefulSetNamespaceLister, daemonsetsLister *v1.daemonSetNamespaceLister, secret string) {
+func restart(deploymentsLister *v1.DeploymentNamespaceLister, statefulsetsLister *v1.StatefulSetNamespaceLister, daemonsetsLister *v1.DaemonSetNamespaceLister, secret string) {
 	listOptions := metav1.ListOptions{}
 	deployments, _ := deploymentsLister.List(listOptions)
 	statefulsets, _ := statefulsetsLister.List(listOptions)
