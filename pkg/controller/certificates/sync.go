@@ -327,7 +327,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
 		// Secret is updated, refresh
 		klog.Info("Secret updated, refresh the pods")
-		dep := c.Client.CoreV1().Deployments(namespace)
+		dep := c.Client.AppsV1().Deployments(namespace)
 		klog.Info(dep)
 	}
 	if err != nil {
