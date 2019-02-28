@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -56,6 +57,8 @@ const (
 	successCertificateRenewed = "CertRenewed"
 
 	messageErrorSavingCertificate = "Error saving TLS certificate: "
+
+	restartLabel = "cert_manager_refresh"
 )
 
 const (
@@ -343,12 +346,15 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 }
 
 func restart(deployments *v1.DeploymentList, statefulsets *v1.StatefulSetList, daemonsets *v1.DaemonSetList, secret string) {
+	update := time.Now().Format("Jan 2, 2016 [3:04pm]")
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				klog.Info("!!!! DEPLOYMENT Affected !!!! ")
 				klog.Info(deployment.Name)
+				deployment.ObjectMeta.Labels[restartLabel] = update
+				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				continue NEXT_DEPLOYMENT
 			}
 		}
@@ -359,6 +365,8 @@ NEXT_STATEFULSET:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				klog.Info("!!! Stateful set affected ")
 				klog.Info(statefulset.Name)
+				statefulset.ObjectMeta.Labels[restartLabel] = update
+				statefulset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				continue NEXT_STATEFULSET
 			}
 		}
@@ -367,8 +375,8 @@ NEXT_DAEMONSET:
 	for _, daemonset := range daemonsets.Items {
 		for _, volume := range daemonset.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
-				klog.Info("!!! Daemon set affected ")
-				klog.Info(daemonset.Name)
+				daemonset.ObjectMeta.Labels[restartLabel] = update
+				daemonset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				continue NEXT_DAEMONSET
 			}
 		}
