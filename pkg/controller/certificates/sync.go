@@ -359,7 +359,7 @@ NEXT_DEPLOYMENT:
 				klog.Info("!!!! DEPLOYMENT Affected !!!! ")
 				klog.Info(deployment.Name)
 				klog.Info("the updated time " + update)
-				affectedDeployment := deploymentsInterface.Get(deployment.ObjectMeta.Name, metav1.GetOptions{})
+				affectedDeployment, _ := deploymentsInterface.Get(deployment.ObjectMeta.Name, metav1.GetOptions{})
 				affectedDeployment.ObjectMeta.Labels[restartLabel] = update
 				affectedDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				deploymentsInterface.Update(affectedDeployment)
