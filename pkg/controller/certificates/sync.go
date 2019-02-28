@@ -344,7 +344,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 
 func restart(deployments []*v1.Deployment, statefulsets []*v1.StatefulSet, daemonsets []*v1.DaemonSet, secret string) {
 NEXT_DEPLOYMENT:
-	for _, deployment := range deployments.Items {
+	for _, deployment := range deployments {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				klog.Info("!!!! DEPLOYMENT Affected !!!! ")
@@ -354,7 +354,7 @@ NEXT_DEPLOYMENT:
 		}
 	}
 NEXT_STATEFULSET:
-	for _, statefulset := range statefulsets.Items {
+	for _, statefulset := range statefulsets {
 		for _, volume := range statefulset.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				klog.Info("!!! Stateful set affected ")
@@ -364,7 +364,7 @@ NEXT_STATEFULSET:
 		}
 	}
 NEXT_DAEMONSET:
-	for _, daemonset := range daemonsets.Items {
+	for _, daemonset := range daemonsets {
 		for _, volume := range daemonset.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				klog.Info("!!! Daemon set affected ")
