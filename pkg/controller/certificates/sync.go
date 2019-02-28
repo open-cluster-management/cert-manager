@@ -24,6 +24,7 @@ import (
 	"reflect"
 	"strings"
 
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -337,11 +338,11 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return secret, nil
 }
 
-func restart(deployments []*v1.Deployment, statefulsets []*v1.StatefulSet, daemonset []*v1.DaemonSet, secret string) {
+func restart(deployments []*v1.Deployment, statefulsets []*v1.StatefulSet, daemonsets []*v1.DaemonSet, secret string) {
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
