@@ -336,7 +336,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 NEXT_DEP:
 			for _, deployment := range dep.Items {
 				for _, volume := range deployment.Spec.Template.Spec.Volumes {
-					if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secretName {
+					if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 						klog.Info("!!!! DEPLOYMENT Affected !!!! ")
 						klog.Info(deployment.Name)
 						klog.Info(deployment.Spec.Template.Spec.Volumes)
