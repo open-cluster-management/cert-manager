@@ -423,6 +423,7 @@ func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1
 		// as we have just written a certificate, we should schedule it for renewal
 		c.scheduleRenewal(crt)
 	}
+	
 	return nil
 }
 
