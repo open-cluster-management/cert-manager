@@ -141,7 +141,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 		klog.V(4).Infof("Invoking issue function as existing certificate does not exist")
 		return c.issue(ctx, i, crtCopy)
 	}
-	
+
 	// begin checking if the TLS certificate is valid/needs a re-issue or renew
 	matches, matchErrs := c.certificateMatchesSpec(crtCopy, key, cert)
 	if !matches {
@@ -330,7 +330,6 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	} else {
 		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
 	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -424,11 +423,6 @@ func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1
 		// as we have just written a certificate, we should schedule it for renewal
 		c.scheduleRenewal(crt)
 	}
-
-	klog.Info("Finished issuing certificate")
-
-	// When a certificate is issued, we should find all resources that listens to its secret and refresh them
-
 	return nil
 }
 
