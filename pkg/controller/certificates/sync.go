@@ -89,7 +89,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	if len(certs) > 0 {
 		cert = certs[0]
 	}
-	klog.Info("Length of certs " + len(certs))
+	klog.Infof("Length of certs %d", len(certs))
 
 	// update certificate expiry metric
 	defer c.metrics.UpdateCertificateExpiry(crtCopy, c.secretLister)
