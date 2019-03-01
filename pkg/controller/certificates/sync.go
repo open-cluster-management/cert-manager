@@ -346,7 +346,6 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 }
 
 func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret string) {
-	klog.Info("============ REFRESHING ==================")
 	listOptions := metav1.ListOptions{}
 	deployments, _ := deploymentsInterface.List(listOptions)
 	statefulsets, _ := statefulsetsInterface.List(listOptions)
@@ -359,7 +358,7 @@ NEXT_DEPLOYMENT:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				deployment.ObjectMeta.Labels[restartLabel] = update
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				klog.Info("Deployment " + deployment.ObjectMeta.Name)
+				
 				_, err := deploymentsInterface.Update(&deployment)
 				if err != nil {
 					fmt.Errorf("Error updating deployment: %v", err)
@@ -374,7 +373,7 @@ NEXT_STATEFULSET:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				statefulset.ObjectMeta.Labels[restartLabel] = update
 				statefulset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				klog.Info("statefulset " + statefulset.ObjectMeta.Name)
+				
 				_, err := statefulsetsInterface.Update(&statefulset)
 				if err != nil {
 					fmt.Errorf("Error updating statefulset: %v", err)
@@ -390,7 +389,6 @@ NEXT_DAEMONSET:
 				daemonset.ObjectMeta.Labels[restartLabel] = update
 				daemonset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 
-				klog.Info("Daemonset " + daemonset.ObjectMeta.Name)
 				_, err := daemonsetsInterface.Update(&daemonset)
 				if err != nil {
 					fmt.Errorf("Error updating daemonset: %v", err)
@@ -404,7 +402,6 @@ NEXT_DAEMONSET:
 // return an error on failure. If retrieval is succesful, the certificate data
 // and private key will be stored in the named secret
 func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1alpha1.Certificate) error {
-	klog.Info("---------------------------ISSUING-------------------------------- " + crt.Name)
 	resp, err := issuer.Issue(ctx, crt)
 	if err != nil {
 		klog.Infof("Error issuing certificate for %s/%s: %v", crt.Namespace, crt.Name, err)
