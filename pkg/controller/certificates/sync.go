@@ -70,6 +70,7 @@ var (
 )
 
 func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err error) {
+	klog.Info("=================== NEW SYNC =================================")
 	crtCopy := crt.DeepCopy()
 	defer func() {
 		if _, saveErr := c.updateCertificateStatus(crt, crtCopy); saveErr != nil {
@@ -88,6 +89,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	if len(certs) > 0 {
 		cert = certs[0]
 	}
+	klog.Info("Length of certs " + len(certs))
 
 	// update certificate expiry metric
 	defer c.metrics.UpdateCertificateExpiry(crtCopy, c.secretLister)
@@ -139,13 +141,15 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 
 	if key == nil || cert == nil {
 		klog.V(4).Infof("Invoking issue function as existing certificate does not exist")
+		klog.Info("2")
 		return c.issue(ctx, i, crtCopy)
 	}
-
+	klog.Info("3")
 	// begin checking if the TLS certificate is valid/needs a re-issue or renew
 	matches, matchErrs := c.certificateMatchesSpec(crtCopy, key, cert)
 	if !matches {
 		klog.V(4).Infof("Invoking issue function due to certificate not matching spec: %s", strings.Join(matchErrs, ", "))
+		klog.Info("4")
 		return c.issue(ctx, i, crtCopy)
 	}
 
@@ -273,6 +277,7 @@ func ownerRef(crt *v1alpha1.Certificate) metav1.OwnerReference {
 }
 
 func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, cert, key, ca []byte) (*corev1.Secret, error) {
+	klog.Info("###################### UPDATING SECRET ######################### " + crt.Name)
 	secret, err := c.secretLister.Secrets(namespace).Get(crt.Spec.SecretName)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
@@ -322,12 +327,14 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 
 	// if it is a new resource
 	if secret.SelfLink == "" {
+		klog.Info("!!!!!!!!!!!!! New secret !!!!!!!!!!!!!")
 		enableOwner := c.CertificateOptions.EnableOwnerRef
 		if enableOwner {
 			secret.SetOwnerReferences(append(secret.GetOwnerReferences(), ownerRef(crt)))
 		}
 		secret, err = c.Client.CoreV1().Secrets(namespace).Create(secret)
 	} else {
+		klog.Info("!!!!!!!!!!!!!! Existing secret !!!!!!!!!!!!!")
 		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
 		// Secret is updated, refresh pods
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
@@ -397,6 +404,7 @@ NEXT_DAEMONSET:
 // return an error on failure. If retrieval is succesful, the certificate data
 // and private key will be stored in the named secret
 func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1alpha1.Certificate) error {
+	klog.Info("---------------------------ISSUING-------------------------------- " + crt.Name)
 	resp, err := issuer.Issue(ctx, crt)
 	if err != nil {
 		klog.Infof("Error issuing certificate for %s/%s: %v", crt.Namespace, crt.Name, err)
