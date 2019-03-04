@@ -76,8 +76,9 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 			err = utilerrors.NewAggregate([]error{saveErr, err})
 		}
 	}()
-	klog.Info("~~~~~~~~~~~~~~~~~~ SYNCING ~~~~~~~~~~~~~~~~~~~~~~~~~")
-	klog.Infof("Certificate condition in the beginning of sync: %v", crt.Status.Conditions)
+
+	renew := len(crt.Status.Conditions)
+
 	// grab existing certificate and validate private key
 	certs, key, err := kube.SecretTLSKeyPair(c.secretLister, crtCopy.Namespace, crtCopy.Spec.SecretName)
 	// if we don't have a certificate, we need to trigger a re-issue immediately
@@ -140,21 +141,21 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 
 	if key == nil || cert == nil {
 		klog.V(4).Infof("Invoking issue function as existing certificate does not exist")
-		return c.issue(ctx, i, crtCopy)
+		return c.issue(ctx, i, crtCopy, renew)
 	}
 
 	// begin checking if the TLS certificate is valid/needs a re-issue or renew
 	matches, matchErrs := c.certificateMatchesSpec(crtCopy, key, cert)
 	if !matches {
 		klog.V(4).Infof("Invoking issue function due to certificate not matching spec: %s", strings.Join(matchErrs, ", "))
-		return c.issue(ctx, i, crtCopy)
+		return c.issue(ctx, i, crtCopy, renew)
 	}
 
 	// check if the certificate needs renewal
 	needsRenew := c.Context.IssuerOptions.CertificateNeedsRenew(cert, crt)
 	if needsRenew {
 		klog.V(4).Infof("Invoking issue function due to certificate needing renewal")
-		return c.issue(ctx, i, crtCopy)
+		return c.issue(ctx, i, crtCopy, renew)
 	}
 	// end checking if the TLS certificate is valid/needs a re-issue or renew
 
@@ -337,13 +338,6 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		return nil, err
 	}
 
-	// Secret is updated, refresh pods
-	deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
-	statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
-	daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
-	
-	restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
-
 	return secret, nil
 }
 
@@ -404,7 +398,7 @@ NEXT_DAEMONSET:
 
 // return an error on failure. If retrieval is succesful, the certificate data
 // and private key will be stored in the named secret
-func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1alpha1.Certificate) error {
+func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1alpha1.Certificate, renew int) error {
 	resp, err := issuer.Issue(ctx, crt)
 	if err != nil {
 		klog.Infof("Error issuing certificate for %s/%s: %v", crt.Namespace, crt.Name, err)
@@ -420,6 +414,16 @@ func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1
 		klog.Info(s)
 		c.Recorder.Event(crt, corev1.EventTypeWarning, errorSavingCertificate, s)
 		return err
+	}
+
+	if renew > 0 {
+		klog.Info("THIS IS NOT A BRAND NEW CERTIFICATE SO REFRESHING")
+		// Secret is updated and this is not a brand new certificate, refresh pods
+		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
+		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
+		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
+		
+		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
 	}
 
 	if len(resp.Certificate) > 0 {
