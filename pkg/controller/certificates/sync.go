@@ -76,7 +76,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 			err = utilerrors.NewAggregate([]error{saveErr, err})
 		}
 	}()
-
+	klog.Info("Certificate condition in the beginning of sync: %v", crt.Status.Conditions)
 	// grab existing certificate and validate private key
 	certs, key, err := kube.SecretTLSKeyPair(c.secretLister, crtCopy.Namespace, crtCopy.Spec.SecretName)
 	// if we don't have a certificate, we need to trigger a re-issue immediately
