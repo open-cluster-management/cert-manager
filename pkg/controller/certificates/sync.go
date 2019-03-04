@@ -274,7 +274,7 @@ func ownerRef(crt *v1alpha1.Certificate) metav1.OwnerReference {
 	}
 }
 
-func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, cert, key, ca []byte) (*corev1.Secret, error) {
+func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, cert, key, ca []byte, renew int) (*corev1.Secret, error) {
 	secret, err := c.secretLister.Secrets(namespace).Get(crt.Spec.SecretName)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
@@ -338,6 +338,16 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		return nil, err
 	}
 
+	if renew > 0 {
+		klog.Info("THIS IS NOT A BRAND NEW CERTIFICATE SO REFRESHING")
+		// Secret is updated and this is not a brand new certificate, refresh pods
+		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
+		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
+		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
+		
+		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
+	}
+	
 	return secret, nil
 }
 
@@ -409,21 +419,11 @@ func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1
 		return nil
 	}
 
-	if _, err := c.updateSecret(crt, crt.Namespace, resp.Certificate, resp.PrivateKey, resp.CA); err != nil {
+	if _, err := c.updateSecret(crt, crt.Namespace, resp.Certificate, resp.PrivateKey, resp.CA, renew); err != nil {
 		s := messageErrorSavingCertificate + err.Error()
 		klog.Info(s)
 		c.Recorder.Event(crt, corev1.EventTypeWarning, errorSavingCertificate, s)
 		return err
-	}
-
-	if renew > 0 {
-		klog.Info("THIS IS NOT A BRAND NEW CERTIFICATE SO REFRESHING")
-		// Secret is updated and this is not a brand new certificate, refresh pods
-		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
-		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
-		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
-		
-		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
 	}
 
 	if len(resp.Certificate) > 0 {
