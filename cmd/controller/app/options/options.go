@@ -141,7 +141,7 @@ func NewControllerOptions() *ControllerOptions {
 		DNS01RecursiveNameservers:          []string{},
 		DNS01RecursiveNameserversOnly:      defaultDNS01RecursiveNameserversOnly,
 		EnableCertificateOwnerRef:          defaultEnableCertificateOwnerRef,
-		EnablePodRefresh:					defaultEnablePodRefresh
+		EnablePodRefresh:					defaultEnablePodRefresh,
 	}
 }
 
