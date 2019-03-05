@@ -79,7 +79,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	}()
 	klog.Infof("Context: %v", ctx)
 	renew := len(crt.Status.Conditions)
-	klog.Infof("Renew length: ", renew)
+	klog.Infof("Renew length: %d", renew)
 
 	// grab existing certificate and validate private key
 	certs, key, err := kube.SecretTLSKeyPair(c.secretLister, crtCopy.Namespace, crtCopy.Spec.SecretName)
@@ -340,7 +340,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		return nil, err
 	}
 
-	if renew > 0 {
+	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
 		klog.Info("THIS IS NOT A BRAND NEW CERTIFICATE SO REFRESHING")
 		// Secret is updated and this is not a brand new certificate, refresh pods
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
