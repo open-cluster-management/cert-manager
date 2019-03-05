@@ -70,14 +70,16 @@ var (
 )
 
 func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err error) {
+	klog.Info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SYNCING ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 	crtCopy := crt.DeepCopy()
 	defer func() {
 		if _, saveErr := c.updateCertificateStatus(crt, crtCopy); saveErr != nil {
 			err = utilerrors.NewAggregate([]error{saveErr, err})
 		}
 	}()
-
+	klog.Infof("Context: %v", ctx)
 	renew := len(crt.Status.Conditions)
+	klog.Infof("Renew length: ", renew)
 
 	// grab existing certificate and validate private key
 	certs, key, err := kube.SecretTLSKeyPair(c.secretLister, crtCopy.Namespace, crtCopy.Spec.SecretName)
@@ -347,7 +349,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		
 		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
 	}
-	
+
 	return secret, nil
 }
 
