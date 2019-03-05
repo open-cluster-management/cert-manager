@@ -339,7 +339,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	if err != nil {
 		return nil, err
 	}
-
+	klog.Info("Enable pod refresh: %t", c.CertificateOptions.EnablePodRefresh)
 	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
 		klog.Info("THIS IS NOT A BRAND NEW CERTIFICATE SO REFRESHING")
 		// Secret is updated and this is not a brand new certificate, refresh pods
