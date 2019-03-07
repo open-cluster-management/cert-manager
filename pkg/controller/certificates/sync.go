@@ -71,16 +71,14 @@ var (
 )
 
 func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err error) {
-	klog.Info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SYNCING ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 	crtCopy := crt.DeepCopy()
 	defer func() {
 		if _, saveErr := c.updateCertificateStatus(crt, crtCopy); saveErr != nil {
 			err = utilerrors.NewAggregate([]error{saveErr, err})
 		}
 	}()
-	klog.Infof("Context: %v", ctx)
+
 	renew := len(crt.Status.Conditions)
-	klog.Infof("Renew length: %d", renew)
 
 	// grab existing certificate and validate private key
 	certs, key, err := kube.SecretTLSKeyPair(c.secretLister, crtCopy.Namespace, crtCopy.Spec.SecretName)
@@ -405,17 +403,14 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 			secret.SetOwnerReferences(append(secret.GetOwnerReferences(), ownerRef(crt)))
 		}
 		secret, err = c.Client.CoreV1().Secrets(namespace).Create(secret)
-		klog.Infof("New Secret creation: Certificate's Condition: %v", crt.Status.Conditions)
 	} else {
 		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
-		klog.Infof("Existing secret: Certificate's Condition: %v", crt.Status.Conditions)
 	}
 	if err != nil {
 		return nil, err
 	}
-	klog.Info("Enable pod refresh: %t", c.CertificateOptions.EnablePodRefresh)
+	
 	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
-		klog.Info("THIS IS NOT A BRAND NEW CERTIFICATE SO REFRESHING")
 		// Secret is updated and this is not a brand new certificate, refresh pods
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
 		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
@@ -434,14 +429,13 @@ func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface 
 	daemonsets, _ := daemonsetsInterface.List(listOptions)
 
 	update := time.Now().Format("2006-1-2.1504")
-	klog.Info("RESTARTING:")
+
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				deployment.ObjectMeta.Labels[restartLabel] = update
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				klog.Info(deployment.ObjectMeta.Name)
 				_, err := deploymentsInterface.Update(&deployment)
 				if err != nil {
 					fmt.Errorf("Error updating deployment: %v", err)
@@ -456,7 +450,6 @@ NEXT_STATEFULSET:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				statefulset.ObjectMeta.Labels[restartLabel] = update
 				statefulset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				klog.Info(statefulset.ObjectMeta.Name)
 				_, err := statefulsetsInterface.Update(&statefulset)
 				if err != nil {
 					fmt.Errorf("Error updating statefulset: %v", err)
@@ -471,7 +464,6 @@ NEXT_DAEMONSET:
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
 				daemonset.ObjectMeta.Labels[restartLabel] = update
 				daemonset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				klog.Info(daemonset.ObjectMeta.Name)
 				_, err := daemonsetsInterface.Update(&daemonset)
 				if err != nil {
 					fmt.Errorf("Error updating daemonset: %v", err)
