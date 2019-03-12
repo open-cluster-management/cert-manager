@@ -17,7 +17,6 @@ limitations under the License.
 package transport
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"strings"
