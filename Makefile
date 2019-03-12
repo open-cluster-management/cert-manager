@@ -154,7 +154,6 @@ dep-verify:
 	$(HACK_DIR)/verify-deps.sh
 
 $(CMDS):
-	go get -v ./...
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-a -tags netgo \
 		-o $(DOCKERFILES)/${APP_NAME}-$@_$(GOOS)_$(GOARCH) \
