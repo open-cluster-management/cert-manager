@@ -18,46 +18,47 @@ IMAGE_TAGS := canary
 
 GINKGO_SKIP :=
 
-# AppVersion is set as the AppVersion to be compiled into the controller binary.
-# It's used as the default version of the 'acmesolver' image to use for ACME
-# challenge requests, and any other future provider that requires additional
-# image dependencies will use this same tag.
-ifeq ($(APP_VERSION),)
-APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.6.1)
-endif
+## e2e test vars
+KUBECTL ?= kubectl
+KUBECONFIG ?= $$HOME/.kube/config
 
 # Get a list of all binaries to be built
 CMDS := $(shell find ./cmd/ -maxdepth 1 -type d -exec basename {} \; | grep -v cmd)
-# Path to dockerfiles directory
-DOCKERFILES := $(HACK_DIR)/build/dockerfiles
-# A list of all types.go files in pkg/apis
-TYPES_FILES := $(shell find pkg/apis -name types.go)
-# docker_build_controller, docker_build_apiserver etc
-DOCKER_BUILD_TARGETS := $(addprefix docker_build_, $(CMDS))
-# docker_push_controller, docker_push_apiserver etc
-DOCKER_PUSH_TARGETS := $(addprefix docker_push_, $(CMDS))
-# docker_push_controller, docker_push_apiserver etc
-DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
 
-# Go build flags
-GOOS := linux
+.PHONY: help build verify push $(CMDS) e2e_test images images_push \
+	verify_lint verify_unit verify_deps verify_codegen verify_docs verify_chart \
 
-GIT_COMMIT = $(shell git rev-parse --short HEAD)
-GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
-
-.PHONY: verify build build-images artifactory-login push-images \
-	generate generate-verify deploy-verify \
-	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
-	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) \
-	verify-lint verify-codegen verify-deps verify-unit \
-	dep-verify verify-docs verify-chart 
-
-# Docker build flags
-DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
-
-lint:
-	# @git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor)
-	@echo "Linting disabled..."
+help:
+	# This Makefile provides common wrappers around Bazel invocations.
+	#
+	### Verify targets
+	#
+	# verify_lint        - run 'lint' targets
+	# verify_unit        - run unit tests
+	# verify_deps        - verifiy vendor/ and Gopkg.lock is up to date
+	# verify_codegen     - verify generated code, including 'static deploy manifests', is up to date
+	# verify_docs        - verify the generated reference docs for API types is up to date
+	# verify_chart       - runs Helm chart linter (e.g. ensuring version has been bumped etc)
+	#
+	### Generate targets
+	#
+	# generate           - regenerate all generated files
+	#
+	### Build targets
+	#
+	# controller         - build a binary of the 'controller'
+	# injectorcontroller - build a binary of the 'injectorcontroller'
+	# webhook            - build a binary of the 'webhook'
+	# acmesolver         - build a binary of the 'acmesolver'
+	# e2e_test           - builds and runs end-to-end tests.
+	#                      NOTE: you probably want to execute ./hack/ci/run-e2e-kind.sh instead of this target
+	# images             - builds docker images for all of the components, saving them in your Docker daemon
+	# images_push        - pushes docker images to the target registry
+	#
+	# Image targets can be run with optional args DOCKER_REPO and DOCKER_TAG:
+	#
+	#     make images DOCKER_REPO=quay.io/yourusername DOCKER_TAG=experimental-tag
+	#
 
 # Alias targets
 ###############
@@ -165,7 +166,8 @@ e2e_test:
 			--helm-binary-path=$$(bazel info bazel-genfiles)/hack/bin/helm \
 			--repo-root="$$(pwd)" \
 			--report-dir="$${ARTIFACTS:-./_artifacts}" \
-			--ginkgo.skip="$(GINKGO_SKIP)"
+			--ginkgo.skip="$(GINKGO_SKIP)" \
+			--kubectl-path="$(KUBECTL)"
 
 # Generate targets
 ##################
@@ -180,62 +182,31 @@ generate:
 
 # Docker targets
 ################
-$(DOCKER_BUILD_TARGETS):
-	$(eval DOCKER_FILE_CMD := $(subst docker_build_,,$@))
-	$(eval WORKING_CHANGES := $(shell git status --porcelain))
-	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
-	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_FILE_CMD))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
-	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 
-	@echo "OS = $(OS)"
-	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
+BAZEL_IMAGE_ENV := APP_VERSION=$(APP_VERSION) DOCKER_REPO=$(DOCKER_REPO) DOCKER_TAG=$(APP_VERSION)
+images:
+	$(BAZEL_IMAGE_ENV) \
+		bazel run //:images
 
-	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
-	@echo "DOCKER_FILE: $(DOCKER_FILE)"
-	
-	$(eval DOCKER_BUILD_CMD := docker build -t $(REPO_URL):$(IMAGE_VERSION) \
-           --build-arg "VCS_REF=$(VCS_REF)" \
-           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
-           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
-           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-		   --build-arg "GOARCH=$(GOARCH)" \
-		   -f $(DOCKER_FILE) $(DOCKERFILES))
-
-ifeq ($(OS),rhel7)
-	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
-	$(eval BASE_CMD := cd $(BASE_DIR);)
-	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_FILE_CMD)
-	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) root@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
-	scp $(DOCKER_FILE) root@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
-
-	# Building docker image.
-	$(SSH_CMD) '$(BASE_CMD) $(DOCKER_BUILD_CMD)'
-	@echo "Built docker image."
-else
-	# Building docker image.
-	$(DOCKER_BUILD_CMD)
-	@echo "Built docker image."
-endif
-
-$(DOCKER_RELEASE_TARGETS):
-	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
-	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-
-	# Pushing docker image.
-	$(SSH_CMD) docker push $(REPO_URL):$(IMAGE_VERSION)
-	@echo "Pushed $(REPO_URL):$(IMAGE_VERSION) to $(REPO_URL)"
-
-ifneq ($(RETAG),)
-	$(SSH_CMD) docker tag $(REPO_URL):$(IMAGE_VERSION) $(REPO_URL):$(RELEASE_TAG)
-	$(SSH_CMD) docker push $(REPO_URL):$(RELEASE_TAG)
-	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG) and pushed to $(REPO_URL)"
-endif
-
-include Makefile.docker
-#include Makefile.test
+images_push: images
+	# we do not use the :push target as Quay.io does not support v2.2
+	# manifests for Docker images, and rules_docker only supports 2.2+
+	# https://github.com/moby/buildkit/issues/409#issuecomment-394757219
+	# source the bazel workspace environment
+	eval $$($(BAZEL_IMAGE_ENV) ./hack/print-workspace-status.sh | tr ' ' '='); \
+	docker tag "$${STABLE_DOCKER_REPO}/cert-manager-acmesolver-amd64:$${STABLE_DOCKER_TAG}" "$${STABLE_DOCKER_REPO}/cert-manager-acmesolver:$${STABLE_DOCKER_TAG}"; \
+	docker tag "$${STABLE_DOCKER_REPO}/cert-manager-controller-amd64:$${STABLE_DOCKER_TAG}" "$${STABLE_DOCKER_REPO}/cert-manager-controller:$${STABLE_DOCKER_TAG}"; \
+	docker tag "$${STABLE_DOCKER_REPO}/cert-manager-injectorcontroller-amd64:$${STABLE_DOCKER_TAG}" "$${STABLE_DOCKER_REPO}/cert-manager-injectorcontroller:$${STABLE_DOCKER_TAG}"; \
+	docker tag "$${STABLE_DOCKER_REPO}/cert-manager-webhook-amd64:$${STABLE_DOCKER_TAG}" "$${STABLE_DOCKER_REPO}/cert-manager-webhook:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-acmesolver:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-controller:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-injectorcontroller:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-webhook:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-acmesolver-arm64:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-controller-arm64:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-injectorcontroller-arm64:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-webhook-arm64:$${STABLE_DOCKER_TAG}";
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-acmesolver-arm:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-controller-arm:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-injectorcontroller-arm:$${STABLE_DOCKER_TAG}"; \
+	docker push "$${STABLE_DOCKER_REPO}/cert-manager-webhook-arm:$${STABLE_DOCKER_TAG}";

@@ -18,6 +18,7 @@ package v1alpha1
 
 const (
 	AltNamesAnnotationKey   = "certmanager.k8s.io/alt-names"
+	IPSANAnnotationKey      = "certmanager.k8s.io/ip-sans"
 	CommonNameAnnotationKey = "certmanager.k8s.io/common-name"
 	IssuerNameAnnotationKey = "certmanager.k8s.io/issuer-name"
 	IssuerKindAnnotationKey = "certmanager.k8s.io/issuer-kind"
@@ -53,6 +54,7 @@ type LocalObjectReference struct {
 // ObjectReference is a reference to an object with a given name and kind.
 type ObjectReference struct {
 	Name string `json:"name"`
+	// +optional
 	Kind string `json:"kind,omitempty"`
 }
 
@@ -65,6 +67,7 @@ const (
 type SecretKeySelector struct {
 	// The name of the secret in the pod's namespace to select from.
 	LocalObjectReference `json:",inline"`
-	// The key of the secret to select from.  Must be a valid secret key.
-	Key string `json:"key"`
+	// The key of the secret to select from. Must be a valid secret key.
+	// +optional
+	Key string `json:"key,omitempty"`
 }

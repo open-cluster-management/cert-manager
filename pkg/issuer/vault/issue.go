@@ -27,11 +27,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/helper/certutil"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/klog"
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/issuer"
@@ -66,7 +66,7 @@ func (v *Vault) Issue(ctx context.Context, crt *v1alpha1.Certificate) (*issuer.I
 		}
 	}
 	if err != nil {
-		glog.Errorf("Error getting private key %q for certificate: %v", crt.Spec.SecretName, err)
+		klog.Errorf("Error getting private key %q for certificate: %v", crt.Spec.SecretName, err)
 		return nil, err
 	}
 
@@ -93,7 +93,7 @@ func (v *Vault) Issue(ctx context.Context, crt *v1alpha1.Certificate) (*issuer.I
 		certDuration = crt.Spec.Duration.Duration
 	}
 
-	certPem, caPem, err := v.requestVaultCert(template.Subject.CommonName, certDuration, template.DNSNames, pemRequestBuf.Bytes())
+	certPem, caPem, err := v.requestVaultCert(template.Subject.CommonName, certDuration, template.DNSNames, pki.IPAddressesToString(template.IPAddresses), pemRequestBuf.Bytes())
 	if err != nil {
 		v.Recorder.Eventf(crt, corev1.EventTypeWarning, "ErrorSigning", "Failed to request certificate: %v", err)
 		return nil, err
@@ -214,19 +214,21 @@ func (v *Vault) requestTokenWithAppRoleRef(client *vault.Client, appRole *v1alph
 	return token, nil
 }
 
-func (v *Vault) requestVaultCert(commonName string, certDuration time.Duration, altNames []string, csr []byte) ([]byte, []byte, error) {
+func (v *Vault) requestVaultCert(commonName string, certDuration time.Duration, altNames []string, ipSans []string, csr []byte) ([]byte, []byte, error) {
+
 	client, err := v.initVaultClient()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	glog.V(4).Infof("Vault certificate request for commonName %s altNames: %q", commonName, altNames)
+	klog.V(4).Infof("Vault certificate request for commonName %s altNames: %q ipSans: %q", commonName, altNames, ipSans)
 
 	parameters := map[string]string{
-		"common_name": commonName,
-		"alt_names":   strings.Join(altNames, ","),
-		"ttl":         certDuration.String(),
-		"csr":         string(csr),
+		"common_name":          commonName,
+		"alt_names":            strings.Join(altNames, ","),
+		"ip_sans":              strings.Join(ipSans, ","),
+		"ttl":                  certDuration.String(),
+		"csr":                  string(csr),
 		"exclude_cn_from_sans": "true",
 	}
 
