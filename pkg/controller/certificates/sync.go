@@ -26,7 +26,8 @@ import (
 	"strings"
 	"time"
 
-	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/client-go/kubernetes/typed/apps/v1"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,7 +60,8 @@ const (
 
 	messageErrorSavingCertificate = "Error saving TLS certificate: "
 
-	restartLabel = "cert_manager_refresh"
+	restartLabel 			= "cert_manager_refresh"
+	noRestartAnnotation 	= "certmanager.k8s.io/no-restart"
 )
 
 const (
@@ -412,16 +414,32 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	
 	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
 		// Secret is updated and this is not a brand new certificate, refresh pods
-		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
-		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
-		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
-		
-		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
+		//deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
+		//statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
+		//daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
+		podsInterface := c.Client.CoreV1().Pods(namespace)
+		restart2(podsInterface, secret.Name)
+		//restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
 	}
 
 	return secret, nil
 }
-
+func restart2(podsInterface v1core.PodInterface, secret string) {
+NEXT_POD:
+	for _, pod := range pods.Items {
+		for _, volume := range pod.Volumes {
+			if volume.SecretName != "" && volume.SecretName == secret && pod.Annotations[noRestartAnnotation] != "true" {
+				klog.Info("Restarting pod")
+				pod.Labels[restartLabel] = update
+				_, err := podsInterface.Update(&pod)
+				if err != nil {
+					fmt.Errorf("Error updating pod: %v", err)
+				}
+				continue NEXT_POD
+			}
+		}
+	}
+}
 func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret string) {
 	listOptions := metav1.ListOptions{}
 	deployments, _ := deploymentsInterface.List(listOptions)
@@ -429,11 +447,11 @@ func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface 
 	daemonsets, _ := daemonsetsInterface.List(listOptions)
 
 	update := time.Now().Format("2006-1-2.1504")
-
+	
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
-			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
+			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && deployment.Spec.Labels {
 				deployment.ObjectMeta.Labels[restartLabel] = update
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				_, err := deploymentsInterface.Update(&deployment)
