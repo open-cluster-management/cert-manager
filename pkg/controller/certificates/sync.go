@@ -425,8 +425,12 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	return secret, nil
 }
 func restart2(podsInterface v1core.PodInterface, secret string) {
+	listOptions := metav1.ListOptions{}
+	pods := podsInterface.List(listOptions)
+	
+	update := time.Now().Format("2006-1-2.1504")
 NEXT_POD:
-	for _, pod := range podsInterface.Items {
+	for _, pod := range pods.Items {
 		for _, volume := range pod.Volumes {
 			if volume.SecretName != "" && volume.SecretName == secret && pod.Annotations[noRestartAnnotation] != "true" {
 				klog.Info("Restarting pod")
