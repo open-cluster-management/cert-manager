@@ -431,10 +431,10 @@ func restart2(podsInterface v1core.PodInterface, secret string) {
 	update := time.Now().Format("2006-1-2.1504")
 NEXT_POD:
 	for _, pod := range pods.Items {
-		for _, volume := range pod.Volumes {
-			if volume.SecretName != "" && volume.SecretName == secret && pod.Annotations[noRestartAnnotation] != "true" {
+		for _, volume := range pod.Spec.Volumes {
+			if volume.SecretName != "" && volume.SecretName == secret && pod.ObjectMeta.Annotations[noRestartAnnotation] != "true" {
 				klog.Info("Restarting pod")
-				pod.Labels[restartLabel] = update
+				pod.ObjectMeta.Labels[restartLabel] = update
 				_, err := podsInterface.Update(&pod)
 				if err != nil {
 					fmt.Errorf("Error updating pod: %v", err)
