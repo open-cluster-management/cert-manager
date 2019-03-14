@@ -436,7 +436,8 @@ NEXT_POD:
 			klog.Infof("Volume for this pod: %v", volume)
 			labels := pod.ObjectMeta.Labels
 			klog.Infof("Labels: %v", labels)
-			if volume.VolumeSource.Secret.SecretName != "" && volume.VolumeSource.Secret.SecretName == secret && (labels == nil || labels[noRestartAnnotation] != "true") {
+			volumeSecret := volume.VolumeSource.Secret
+			if volumeSecret != nil && volumeSecret.SecretName != "" && volumeSecret.SecretName == secret && (labels == nil || labels[noRestartAnnotation] != "true") {
 				klog.Info("Restarting pod")
 				pod.ObjectMeta.Labels[restartLabel] = update
 				_, err := podsInterface.Update(&pod)
