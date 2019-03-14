@@ -426,8 +426,8 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 }
 func restart2(podsInterface v1core.PodInterface, secret string) {
 	listOptions := metav1.ListOptions{}
-	pods := podsInterface.List(listOptions)
-	
+	pods, _ := podsInterface.List(listOptions)
+
 	update := time.Now().Format("2006-1-2.1504")
 NEXT_POD:
 	for _, pod := range pods.Items {
