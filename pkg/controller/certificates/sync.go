@@ -141,7 +141,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	}
 
 	if isTemporaryCertificate(cert) {
-		return c.issue(ctx, i, crtCopy)
+		return c.issue(ctx, i, crtCopy, renew)
 	}
 
 	if key == nil || cert == nil {
@@ -294,7 +294,7 @@ func ownerRef(crt *v1alpha1.Certificate) metav1.OwnerReference {
 // - If the provided certificate is a temporary certificate and the certificate
 //   stored in the secret is already a temporary certificate, then the Secret
 //   **will not** be updated.
-func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, cert, key, ca []byte) (*corev1.Secret, error) {
+func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, cert, key, ca []byte, renew int) (*corev1.Secret, error) {
 	// if the key is not set, we bail out early.
 	// this function should always be called with at least a private key.
 	// in future we'll likely need to relax this requirement, but for now we'll
