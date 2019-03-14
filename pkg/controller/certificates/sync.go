@@ -432,7 +432,7 @@ func restart2(podsInterface v1core.PodInterface, secret string) {
 NEXT_POD:
 	for _, pod := range pods.Items {
 		for _, volume := range pod.Spec.Volumes {
-			if volume.VolumeSource.Secret.SecretName != "" && volume.VolumeSource.Secret.SecretName == secret && pod.ObjectMeta.Annotations[noRestartAnnotation] == nil {
+			if volume.VolumeSource.Secret.SecretName != "" && volume.VolumeSource.Secret.SecretName == secret && (pod.ObjectMeta.Labels == nil || pod.ObjectMeta.Labels[noRestartAnnotation] != "true") {
 				klog.Info("Restarting pod")
 				pod.ObjectMeta.Labels[restartLabel] = update
 				_, err := podsInterface.Update(&pod)
