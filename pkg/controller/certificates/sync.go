@@ -412,7 +412,6 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	}
 	
 	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
-		klog.Info("!!!!!!!!!!!!!!!!!!!RESTARTING PODS!!!!!!!!!!!!!!!!!!!!!!!")
 		// Secret is updated and this is not a brand new certificate, refresh pods
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
 		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
@@ -435,7 +434,6 @@ NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && deployment.ObjectMeta.Annotations[noRestartAnnotation] != "true" {
-				klog.Infof("Restarting deployment: %s", deployment.ObjectMeta.Name)
 				deployment.ObjectMeta.Labels[restartLabel] = update
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				_, err := deploymentsInterface.Update(&deployment)
@@ -443,16 +441,13 @@ NEXT_DEPLOYMENT:
 					fmt.Errorf("Error updating deployment: %v", err)
 				}
 				continue NEXT_DEPLOYMENT
-			} else if deployment.ObjectMeta.Annotations[noRestartAnnotation] == "true" {
-				klog.Infof("Not restarting deployment %s due to no restart annotation.", deployment.ObjectMeta.Name)
 			}
 		}
 	}
 NEXT_STATEFULSET:
 	for _, statefulset := range statefulsets.Items {
 		for _, volume := range statefulset.Spec.Template.Spec.Volumes {
-			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
-				klog.Infof("Restarting statefulset: %s", statefulset.ObjectMeta.Name)
+			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && statefulset.ObjectMeta.Annotations[noRestartAnnotation] != "true" {
 				statefulset.ObjectMeta.Labels[restartLabel] = update
 				statefulset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				_, err := statefulsetsInterface.Update(&statefulset)
@@ -466,8 +461,7 @@ NEXT_STATEFULSET:
 NEXT_DAEMONSET:
 	for _, daemonset := range daemonsets.Items {
 		for _, volume := range daemonset.Spec.Template.Spec.Volumes {
-			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
-				klog.Infof("Restarting daemonset: %s", daemonset.ObjectMeta.Name)
+			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && daemonset.ObjectMeta.Annotations[noRestartAnnotation] != "true"  {
 				daemonset.ObjectMeta.Labels[restartLabel] = update
 				daemonset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				_, err := daemonsetsInterface.Update(&daemonset)
