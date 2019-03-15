@@ -431,7 +431,6 @@ func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface 
 	daemonsets, _ := daemonsetsInterface.List(listOptions)
 
 	update := time.Now().Format("2006-1-2.1504")
-	klog.Info(deployments.Items)
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
@@ -444,6 +443,8 @@ NEXT_DEPLOYMENT:
 					fmt.Errorf("Error updating deployment: %v", err)
 				}
 				continue NEXT_DEPLOYMENT
+			} else if deployment.ObjectMeta.Annotations[noRestartAnnotation] == "true" {
+				klog.Infof("Not restarting deployment %s due to no restart annotation.", deployment.ObjectMeta.Name)
 			}
 		}
 	}
