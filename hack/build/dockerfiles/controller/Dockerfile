@@ -27,7 +27,7 @@ ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
 
 USER certmanager
 
-ENTRYPOINT ["/usr/bin/cert-manager"]
+ENTRYPOINT ["/usr/bin/cert-manager", "--enable-pod-refresh", "true"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \
