@@ -414,40 +414,17 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	
 	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
 		// Secret is updated and this is not a brand new certificate, refresh pods
-		//deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
-		//statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
-		//daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
+		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
+		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
+		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
 		podsInterface := c.Client.CoreV1().Pods(namespace)
-		restart2(podsInterface, secret.Name)
-		//restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
+	
+		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
 	}
 
 	return secret, nil
 }
-func restart2(podsInterface v1core.PodInterface, secret string) {
-	listOptions := metav1.ListOptions{}
-	pods, _ := podsInterface.List(listOptions)
 
-	update := time.Now().Format("2006-1-2.1504")
-NEXT_POD:
-	for _, pod := range pods.Items {
-		for _, volume := range pod.Spec.Volumes {
-			labels := pod.ObjectMeta.Labels
-			volumeSecret := volume.VolumeSource.Secret
-			if volumeSecret != nil && volumeSecret.SecretName != "" && volumeSecret.SecretName == secret && (labels == nil || labels[noRestartAnnotation] != "true") {
-				klog.Infof("Restarting pod: %s", pod.ObjectMeta.Name)
-				pod.ObjectMeta.Labels[restartLabel] = update
-				pod.Spec.Template.ObjectMeta.Labels[restartLabel] = update
-				//err := podsInterface.Delete(pod.ObjectMeta.Name, &metav1.DeleteOptions{})
-				_, err := podsInterface.Update(&pod)
-				if err != nil {
-					fmt.Errorf("Error updating pod: %v", err)
-				}
-				continue NEXT_POD
-			}
-		}
-	}
-}
 func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret string) {
 	listOptions := metav1.ListOptions{}
 	deployments, _ := deploymentsInterface.List(listOptions)
