@@ -118,10 +118,6 @@ tunnel:
 
 # Code generation
 #################
-# This target runs all required generators against our API types.
-generate: $(TYPES_FILES)
-	$(HACK_DIR)/update-codegen.sh
-
 generate-verify:
 	$(HACK_DIR)/verify-codegen.sh
 
