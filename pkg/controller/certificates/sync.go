@@ -435,7 +435,7 @@ func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface 
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
-			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret {
+			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && deployment.ObjectMeta.Annotations[noRestartAnnotation] != "true" {
 				klog.Infof("Restarting deployment: %s", deployment.ObjectMeta.Name)
 				deployment.ObjectMeta.Labels[restartLabel] = update
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = update
