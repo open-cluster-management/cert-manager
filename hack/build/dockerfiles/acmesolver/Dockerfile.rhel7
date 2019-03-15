@@ -10,7 +10,7 @@ RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificate
     adduser -r -u 100 acmesolver && \
     microdnf clean all
 
-# check how this image name is generated
+
 ADD icp-cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
 
 USER 100

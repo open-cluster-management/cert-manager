@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/klog"
 
 	"github.com/jetstack/cert-manager/cmd/controller/app"
 	"github.com/jetstack/cert-manager/cmd/controller/app/options"
@@ -37,6 +37,7 @@ import (
 	_ "github.com/jetstack/cert-manager/pkg/issuer/ca"
 	_ "github.com/jetstack/cert-manager/pkg/issuer/selfsigned"
 	_ "github.com/jetstack/cert-manager/pkg/issuer/vault"
+	_ "github.com/jetstack/cert-manager/pkg/issuer/venafi"
 	"github.com/jetstack/cert-manager/pkg/util"
 )
 
@@ -75,10 +76,10 @@ to renew certificates at an appropriate time before expiry.`,
 		// TODO: Refactor this function from this package
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := o.Validate(args); err != nil {
-				glog.Fatalf("error validating options: %s", err.Error())
+				klog.Fatalf("error validating options: %s", err.Error())
 			}
 
-			glog.Infof("starting cert-manager %s (revision %s)", util.AppVersion, util.AppGitCommit)
+			klog.Infof("starting cert-manager %s (revision %s)", util.AppVersion, util.AppGitCommit)
 			o.RunCertManagerController(stopCh)
 		},
 	}

@@ -26,11 +26,15 @@ import (
 	api "k8s.io/api/core/v1"
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	kscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	clientset "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
+	certmgrscheme "github.com/jetstack/cert-manager/pkg/client/clientset/versioned/scheme"
 	"github.com/jetstack/cert-manager/pkg/util/pki"
 	"github.com/jetstack/cert-manager/test/e2e/framework/addon"
 	"github.com/jetstack/cert-manager/test/e2e/framework/config"
@@ -39,6 +43,14 @@ import (
 	"github.com/jetstack/cert-manager/test/e2e/framework/util"
 	"github.com/jetstack/cert-manager/test/e2e/framework/util/errors"
 )
+
+// TODO: this really should be done somewhere in cert-manager proper
+var Scheme = runtime.NewScheme()
+
+func init() {
+	kscheme.AddToScheme(Scheme)
+	certmgrscheme.AddToScheme(Scheme)
+}
 
 // DefaultConfig contains the default shared config the is likely parsed from
 // command line arguments.
@@ -58,6 +70,9 @@ type Framework struct {
 	CertManagerClientSet   clientset.Interface
 	APIExtensionsClientSet apiextcs.Interface
 
+	// controller-runtime client for newer controllers
+	CRClient crclient.Client
+
 	// Namespace in which all test resources should reside
 	Namespace *v1.Namespace
 
@@ -67,6 +82,7 @@ type Framework struct {
 	cleanupHandle CleanupActionHandle
 
 	requiredAddons []addon.Addon
+	helper         *helper.Helper
 }
 
 // NewDefaultFramework makes a new framework for you, similar to NewFramework.
@@ -85,6 +101,7 @@ func NewFramework(baseName string, cfg *config.Config) *Framework {
 		BaseName: baseName,
 	}
 
+	f.helper = helper.NewHelper(cfg)
 	BeforeEach(f.BeforeEach)
 	AfterEach(f.AfterEach)
 
@@ -111,6 +128,10 @@ func (f *Framework) BeforeEach() {
 	f.CertManagerClientSet, err = clientset.NewForConfig(kubeConfig)
 	Expect(err).NotTo(HaveOccurred())
 
+	By("Creating a controller-runtime client")
+	f.CRClient, err = crclient.New(kubeConfig, crclient.Options{Scheme: Scheme})
+	Expect(err).NotTo(HaveOccurred())
+
 	By("Building a namespace api object")
 	f.Namespace, err = f.CreateKubeNamespace(f.BaseName)
 	Expect(err).NotTo(HaveOccurred())
@@ -120,6 +141,9 @@ func (f *Framework) BeforeEach() {
 	By("Building a ResourceQuota api object")
 	_, err = f.CreateKubeResourceQuota()
 	Expect(err).NotTo(HaveOccurred())
+
+	f.helper.CMClient = f.CertManagerClientSet
+	f.helper.KubeClient = f.KubeClientSet
 }
 
 // AfterEach deletes the namespace, after reading its events.
@@ -196,9 +220,7 @@ func (f *Framework) RequireAddon(a addon.Addon) {
 }
 
 func (f *Framework) Helper() *helper.Helper {
-	return &helper.Helper{
-		KubeClient: f.KubeClientSet,
-	}
+	return f.helper
 }
 
 func (f *Framework) CertificateDurationValid(c *v1alpha1.Certificate, duration time.Duration) {

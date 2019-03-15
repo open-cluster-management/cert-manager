@@ -23,7 +23,7 @@ GINKGO_SKIP :=
 # challenge requests, and any other future provider that requires additional
 # image dependencies will use this same tag.
 ifeq ($(APP_VERSION),)
-APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.6.1)
+APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.7.0)
 endif
 
 # Get a list of all binaries to be built
@@ -38,6 +38,9 @@ DOCKER_BUILD_TARGETS := $(addprefix docker_build_, $(CMDS))
 DOCKER_PUSH_TARGETS := $(addprefix docker_push_, $(CMDS))
 # docker_push_controller, docker_push_apiserver etc
 DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
+## e2e test vars
+KUBECTL ?= kubectl
+KUBECONFIG ?= $$HOME/.kube/config
 
 # Go build flags
 GOOS := linux
@@ -45,7 +48,7 @@ GOOS := linux
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: verify build build-images artifactory-login push-images \
+.PHONY: help verify build build-images artifactory-login push-images \
 	generate generate-verify deploy-verify \
 	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) \
@@ -58,6 +61,30 @@ DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
 lint:
 	# @git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor)
 	@echo "Linting disabled..."
+	
+
+help:
+	# This Makefile provides common wrappers around Bazel invocations.
+	#
+	### Verify targets
+	#
+	# verify_lint        - run 'lint' targets
+	# verify_unit        - run unit tests
+	# verify_deps        - verifiy vendor/ and Gopkg.lock is up to date
+	# verify_codegen     - verify generated code, including 'static deploy manifests', is up to date
+	# verify_docs        - verify the generated reference docs for API types is up to date
+	# verify_chart       - runs Helm chart linter (e.g. ensuring version has been bumped etc)
+	#
+	### Generate targets
+	#
+	# generate           - regenerate all generated files
+	#
+	### Build targets
+	#
+	# build				 - builds all images (controller, acmesolver, webhook)
+	# e2e_test           - builds and runs end-to-end tests.
+	#                      NOTE: you probably want to execute ./hack/ci/run-e2e-kind.sh instead of this target
+	#
 
 # Alias targets
 ###############
@@ -165,7 +192,8 @@ e2e_test:
 			--helm-binary-path=$$(bazel info bazel-genfiles)/hack/bin/helm \
 			--repo-root="$$(pwd)" \
 			--report-dir="$${ARTIFACTS:-./_artifacts}" \
-			--ginkgo.skip="$(GINKGO_SKIP)"
+			--ginkgo.skip="$(GINKGO_SKIP)" \
+			--kubectl-path="$(KUBECTL)"
 
 # Generate targets
 ##################
