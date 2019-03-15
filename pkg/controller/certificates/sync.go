@@ -416,7 +416,6 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
 		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
 		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
-		podsInterface := c.Client.CoreV1().Pods(namespace)
 	
 		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
 	}
