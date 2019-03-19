@@ -423,6 +423,9 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	return secret, nil
 }
 
+// Restart will run every time a secret is updated for a certificate and when
+// pod refresh is enabled. It will edit the deployments, statefulsets, and daemonsets
+// that use the secret being updated, which will trigger the pod to be restarted.
 func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret string) {
 	listOptions := metav1.ListOptions{}
 	deployments, _ := deploymentsInterface.List(listOptions)
