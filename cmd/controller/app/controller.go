@@ -173,6 +173,11 @@ func buildControllerContext(opts *options.ControllerOptions) (*controller.Contex
 
 	sharedInformerFactory := informers.NewFilteredSharedInformerFactory(intcl, time.Second*30, opts.Namespace, nil)
 	kubeSharedInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(cl, time.Second*30, opts.Namespace, nil)
+
+	enablePodRefresh := opts.EnablePodRefresh
+	if value, ok := os.Lookupenv("POD_RESTART") ; ok {
+		enablePodRefresh = value
+	}
 	return &controller.Context{
 		Client:                    cl,
 		CMClient:                  intcl,
