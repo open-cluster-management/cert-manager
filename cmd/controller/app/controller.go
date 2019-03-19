@@ -175,7 +175,7 @@ func buildControllerContext(opts *options.ControllerOptions) (*controller.Contex
 	kubeSharedInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(cl, time.Second*30, opts.Namespace, nil)
 
 	enablePodRefresh := opts.EnablePodRefresh
-	if value, ok := os.Lookupenv("POD_RESTART") ; ok {
+	if value, ok := os.LookupEnv("POD_RESTART") ; ok {
 		enablePodRefresh = value
 	}
 	return &controller.Context{
