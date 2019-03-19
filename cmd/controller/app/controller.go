@@ -215,7 +215,7 @@ func buildControllerContext(opts *options.ControllerOptions) (*controller.Contex
 		},
 		CertificateOptions: controller.CertificateOptions{
 			EnableOwnerRef: 	opts.EnableCertificateOwnerRef,
-			EnablePodRefresh: 	opts.EnablePodRefresh,
+			EnablePodRefresh: 	enablePodRefresh,
 		},
 	}, kubeCfg, nil
 }
