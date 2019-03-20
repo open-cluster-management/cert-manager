@@ -22,6 +22,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"strconv"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -173,6 +174,16 @@ func buildControllerContext(opts *options.ControllerOptions) (*controller.Contex
 
 	sharedInformerFactory := informers.NewFilteredSharedInformerFactory(intcl, time.Second*30, opts.Namespace, nil)
 	kubeSharedInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(cl, time.Second*30, opts.Namespace, nil)
+
+	enablePodRefresh := opts.EnablePodRefresh
+	if value, ok := os.LookupEnv("POD_RESTART") ; ok {
+		boolValue, err := strconv.ParseBool(value)
+		if err != nil {
+			klog.Infof("An error occurred parsing the POD_RESTART environment variable: %s", err.Error())
+			return nil, nil, fmt.Errorf("An error occurred parsing the POD_RESTART environment variable: %s", err.Error())
+		}
+		enablePodRefresh = boolValue
+	}
 	return &controller.Context{
 		Client:                    cl,
 		CMClient:                  intcl,
@@ -203,7 +214,8 @@ func buildControllerContext(opts *options.ControllerOptions) (*controller.Contex
 			DefaultACMEIssuerDNS01ProviderName: opts.DefaultACMEIssuerDNS01ProviderName,
 		},
 		CertificateOptions: controller.CertificateOptions{
-			EnableOwnerRef: opts.EnableCertificateOwnerRef,
+			EnableOwnerRef: 	opts.EnableCertificateOwnerRef,
+			EnablePodRefresh: 	enablePodRefresh,
 		},
 	}, kubeCfg, nil
 }
