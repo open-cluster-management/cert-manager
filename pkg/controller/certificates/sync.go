@@ -602,5 +602,5 @@ func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) {
 
 	cert.ObjectMeta.Labels[issuerLabel] = cert.Spec.IssuerRef.Name
 
-	c.CMClient.CertManagerV1alpha1().Certificates(cert.Namespace).Update(cert)
+	c.CMClient.CertmanagerV1alpha1().Certificates(cert.Namespace).Update(cert)
 }
