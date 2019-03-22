@@ -503,6 +503,7 @@ func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1
 		c.Recorder.Event(crt, corev1.EventTypeNormal, successCertificateIssued, "Certificate issued successfully")
 		// as we have just written a certificate, we should schedule it for renewal
 		c.scheduleRenewal(crt)
+		c.addCertificateLabel(crt)
 	}
 
 	return nil
@@ -594,7 +595,7 @@ func (c *Controller) updateCertificateStatus(old, new *v1alpha1.Certificate) (*v
 	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
 }
 
-func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) error {
+func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) {
 	if cert.ObjectMeta.Labels == nil {
 		cert.ObjectMeta.Labels = make(map[string]string)
 	}
