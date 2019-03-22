@@ -61,6 +61,8 @@ const (
 
 	restartLabel 			= "cert_manager_refresh"
 	noRestartAnnotation 	= "certmanager.k8s.io/no-restart"
+
+	issuerLabel = "issuer"
 )
 
 const (
@@ -590,4 +592,14 @@ func (c *Controller) updateCertificateStatus(old, new *v1alpha1.Certificate) (*v
 	// server with the /status subresource enabled and/or subresource support
 	// for CRDs (https://github.com/kubernetes/kubernetes/issues/38113)
 	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
+}
+
+func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) error {
+	if cert.ObjectMeta.Labels == nil {
+		cert.ObjectMeta.Labels = make(map[string]string)
+	}
+
+	cert.ObjectMeta.Labels[issuerLabel] = cert.Spec.IssuerRef.Name
+
+	c.CMClient.CertManagerV1alpha1().Certificates(cert.Namespace).Update(cert)
 }
