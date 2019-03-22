@@ -170,6 +170,9 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	// If the Certificate is valid and up to date, we schedule a renewal in
 	// the future.
 	c.scheduleRenewal(crt)
+	if crt.ObjectMeta.Labels == nil || crt.ObjectMeta.Labels[issuerLabel] != crt.Spec.IssuerRef.Name {
+		c.addCertificateLabel(crt)
+	}
 
 	return nil
 }
