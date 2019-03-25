@@ -62,7 +62,8 @@ const (
 	restartLabel 			= "cert_manager_refresh"
 	noRestartAnnotation 	= "certmanager.k8s.io/no-restart"
 
-	issuerLabel = "certmanager.k8s.io/issuer"
+	issuerNameLabel 	= "certmanager.k8s.io/issuer-name"
+	issuerKindLabel = "certmanager.k8s.io/issuer-kind"
 )
 
 const (
@@ -170,7 +171,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	// If the Certificate is valid and up to date, we schedule a renewal in
 	// the future.
 	c.scheduleRenewal(crt)
-	if crt.ObjectMeta.Labels == nil || crt.ObjectMeta.Labels[issuerLabel] != crt.Spec.IssuerRef.Name {
+	if crt.ObjectMeta.Labels == nil || crt.ObjectMeta.Labels[issuerNameLabel] != crt.Spec.IssuerRef.Name {
 		c.addCertificateLabel(crt)
 	}
 
@@ -603,7 +604,8 @@ func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) {
 		cert.ObjectMeta.Labels = make(map[string]string)
 	}
 
-	cert.ObjectMeta.Labels[issuerLabel] = cert.Spec.IssuerRef.Name
+	cert.ObjectMeta.Labels[issuerNameLabel] = cert.Spec.IssuerRef.Name
+	cert.ObjectMeta.Labels[issuerKindLabel] = cert.Spec.IssuerRef.Kind
 
 	c.CMClient.CertmanagerV1alpha1().Certificates(cert.Namespace).Update(cert)
 }
