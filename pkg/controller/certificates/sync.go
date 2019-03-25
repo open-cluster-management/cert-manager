@@ -62,7 +62,7 @@ const (
 	restartLabel 			= "cert_manager_refresh"
 	noRestartAnnotation 	= "certmanager.k8s.io/no-restart"
 
-	issuerLabel = "issuer"
+	issuerLabel = "certmanager.k8s.io/issuer"
 )
 
 const (
