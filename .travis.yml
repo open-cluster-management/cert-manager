@@ -8,7 +8,8 @@ go:
 
 os:
   - linux
-
+  - linux-ppc64le
+  - linux-s390
 services:
   - docker
 
@@ -16,8 +17,19 @@ branches:
   only:
     - rhel-image
 
+env:
+  matrix:
+    - OS=rhel7 TARGET=9.42.99.162
+    - OS=linux
+
 matrix:
   fast_finish: true
+  exclude:
+  - os: linux-ppc64le
+    env: OS=rhel7 TARGET=9.42.99.162
+  - os: linux-s390
+    env: OS=rhel7 TARGET=9.42.99.162
+
 
 before_install:
   - source travis-env.sh
