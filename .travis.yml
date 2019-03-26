@@ -15,9 +15,6 @@ services:
 branches:
   only:
     - rhel-image
-env:
-  matrix:
-    - OS=rhel7 TARGET=9.42.99.162
 
 matrix:
   fast_finish: true

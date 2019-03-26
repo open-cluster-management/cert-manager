@@ -19,7 +19,7 @@ ifeq ($(ARCH), x86_64)
 	endif
 else
 	IMAGE_NAME_ARCH_EXT = -$(ARCH)
-	DOCKER_FILE_EXT = .$(ARCH)
+	DOCKER_FILE_EXT = .$(ARCH)-rhel-test
 	GOARCH = $(ARCH)
 endif
 
