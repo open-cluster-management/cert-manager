@@ -6,7 +6,7 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
-RUN microdnf install shadow-utils ca-certificates && \
+RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificates && \
     groupadd -r certmanager && \
     adduser -r -g certmanager -u 100 certmanager && \
     microdnf clean all
