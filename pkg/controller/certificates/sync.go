@@ -66,7 +66,7 @@ const (
 	messageErrorSavingCertificate = "Error saving TLS certificate: "
 
 	restartLabel 			= "cert_manager_refresh"
-	noRestartAnnotation 	= "certmanager.k8s.io/no-restart"
+	noRestartAnnotation 	= "certmanager.k8s.io/disable-restart"
 
 	issuerNameLabel 	= "certmanager.k8s.io/issuer-name"
 	issuerKindLabel = "certmanager.k8s.io/issuer-kind"
