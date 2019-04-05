@@ -38,13 +38,6 @@ before_script:
 
 script:
   - make image
-  - |
-      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
-        make go-test
-        echo "testing complete"
-        make go-fmt
-        echo "go fmt complete"
-      fi
   - make push-images
   - |
       if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
