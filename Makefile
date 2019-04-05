@@ -38,6 +38,8 @@ DOCKER_BUILD_TARGETS := $(addprefix docker_build_, $(CMDS))
 DOCKER_PUSH_TARGETS := $(addprefix docker_push_, $(CMDS))
 # docker_push_controller, docker_push_apiserver etc
 DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
+# docker_retag_controller
+DOCKER_RETAG_TARGETS := $(addprefix docker_retag_, $(CMDS))
 ## e2e test vars
 KUBECTL ?= kubectl
 KUBECONFIG ?= $$HOME/.kube/config
@@ -48,10 +50,10 @@ GOOS := linux
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: help verify build build-images artifactory-login push-images \
+.PHONY: help verify build build-images artifactory-login push-images rhel-images \
 	generate generate-verify deploy-verify \
 	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
-	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) \
+	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) $(DOCKER_RETAG_TARGETS) \
 	verify-lint verify-codegen verify-deps verify-unit \
 	dep-verify verify-docs verify-chart 
 
@@ -108,6 +110,7 @@ verify-chart:
 
 build-images: $(DOCKER_BUILD_TARGETS)
 push-images: $(DOCKER_RELEASE_TARGETS)
+rhel-images: $(DOCKER_RETAG_TARGETS)
 artifactory-login:
 	$(SSH_CMD) docker login $(IMAGE_REPO).$(URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
@@ -247,7 +250,7 @@ endif
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 
@@ -260,6 +263,19 @@ ifneq ($(RETAG),)
 	$(SSH_CMD) docker push $(REPO_URL):$(RELEASE_TAG)
 	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG) and pushed to $(REPO_URL)"
 endif
+	
+
+$(DOCKER_RETAG_TARGETS):
+	$(eval DOCKER_RETAG_CMD := $(subst docker_retag_,,$@))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RETAG_CMD))
+	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
+	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
+	$(eval IMAGE_VERSION_RHEL ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
+
+	docker tag $(REPO_URL):$(IMAGE_VERSION) $(REPO_URL):$(IMAGE_VERSION_RHEL)
+	docker push $(REPO_URL):$(IMAGE_VERSION_RHEL)
+	@echo "Retagged image as $(REPO_URL):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
 
 include Makefile.docker
 #include Makefile.test

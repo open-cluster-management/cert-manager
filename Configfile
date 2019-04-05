@@ -15,12 +15,12 @@ ifeq ($(ARCH), x86_64)
 	GOARCH = amd64
 	ifeq (rhel, $(findstring rhel,$(OS)))
 		DOCKER_FILE_EXT = .rhel-test
-		OPENSHIFT_TAG = -rhel
 	endif
+	OPENSHIFT_TAG = -rhel
 	DOCKER_FILE_EXT = .rhel-test
 else
 	IMAGE_NAME_ARCH_EXT = -$(ARCH)
-	DOCKER_FILE_EXT = .rhel-test
+	DOCKER_FILE_EXT = .$(ARCH)
 	GOARCH = $(ARCH)
 endif
 
