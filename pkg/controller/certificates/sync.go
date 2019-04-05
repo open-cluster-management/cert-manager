@@ -65,8 +65,11 @@ const (
 
 	messageErrorSavingCertificate = "Error saving TLS certificate: "
 
-	restartLabel 			= "cert_manager_refresh"
-	noRestartAnnotation 	= "certmanager.k8s.io/no-restart"
+	restartLabel 			= "certmanager.k8s.io/time-restarted"
+	noRestartAnnotation 	= "certmanager.k8s.io/disable-auto-restart"
+
+	issuerNameLabel 	= "certmanager.k8s.io/issuer-name"
+	issuerKindLabel = "certmanager.k8s.io/issuer-kind"
 )
 
 const (
@@ -174,6 +177,9 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	// If the Certificate is valid and up to date, we schedule a renewal in
 	// the future.
 	c.scheduleRenewal(crt)
+	if crt.ObjectMeta.Labels == nil || crt.ObjectMeta.Labels[issuerNameLabel] != crt.Spec.IssuerRef.Name || crt.ObjectMeta.Labels[issuerKindLabel] != crt.Spec.IssuerRef.Kind {
+		c.addCertificateLabel(crt)
+	}
 
 	return nil
 }
@@ -507,6 +513,7 @@ func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1
 		c.Recorder.Event(crt, corev1.EventTypeNormal, successCertificateIssued, "Certificate issued successfully")
 		// as we have just written a certificate, we should schedule it for renewal
 		c.scheduleRenewal(crt)
+		c.addCertificateLabel(crt)
 	}
 
 	return nil
@@ -596,4 +603,15 @@ func (c *Controller) updateCertificateStatus(old, new *v1alpha1.Certificate) (*v
 	// server with the /status subresource enabled and/or subresource support
 	// for CRDs (https://github.com/kubernetes/kubernetes/issues/38113)
 	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
+}
+
+func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) {
+	if cert.ObjectMeta.Labels == nil {
+		cert.ObjectMeta.Labels = make(map[string]string)
+	}
+
+	cert.ObjectMeta.Labels[issuerNameLabel] = cert.Spec.IssuerRef.Name
+	cert.ObjectMeta.Labels[issuerKindLabel] = cert.Spec.IssuerRef.Kind
+
+	c.CMClient.CertmanagerV1alpha1().Certificates(cert.Namespace).Update(cert)
 }
