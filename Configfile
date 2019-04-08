@@ -3,6 +3,7 @@ OS ?= $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
 GIT_REMOTE_URL = $(shell git config --get remote.origin.url)
 
 IMAGE_DESCRIPTION =
+IMAGE_DESCRIPTION_SHORT = "test"
 SSH_CMD =
 DOCKER_FILE_EXT =
 IMAGE_NAME_ARCH_EXT = 
