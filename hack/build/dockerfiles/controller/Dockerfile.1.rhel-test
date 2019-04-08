@@ -27,3 +27,10 @@ LABEL org.label-schema.vendor="IBM" \
       org.label-schema.vcs-url=$VCS_URL \
       org.label-schema.license="Licensed Materials - Property of IBM" \
       org.label-schema.schema-version="1.0"
+
+LABEL name="$IMAGE_NAME"
+LABEL vendor="IBM"
+LABEL version="1.0"
+LABEL release="$VCS_REF"
+LABEL summary="$IMAGE_DESCRIPTION_SHORT"
+LABEL description="$IMAGE_DESCRIPTION"
