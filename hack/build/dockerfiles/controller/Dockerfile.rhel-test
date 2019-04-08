@@ -15,7 +15,8 @@ ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
 
 RUN chmod a+x /usr/bin/cert-manager
 
-ADD licenses /licenses
+RUN mkdir /licenses
+ADD licenses/* /licenses
 RUN ls /licenses
 
 USER certmanager
