@@ -1,19 +1,22 @@
-FROM registry.access.redhat.com/rhel7-atomic
+FROM registry.access.redhat.com/ubi7-dev-preview/ubi-minimal
 
 ARG VCS_REF
 ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
+ARG HOME
 
-RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificates && \
+RUN microdnf install shadow-utils ca-certificates && \
     groupadd -r webhook && \
     adduser -r -g webhook -u 100 webhook && \
     microdnf clean all
 
 ADD icp-cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
 
-RUN chmod a+x /usr/bin/webhook
+RUN mkdir /licenses
+
+ADD LICENSE /licenses
 
 USER 100
 
@@ -27,3 +30,10 @@ LABEL org.label-schema.vendor="IBM" \
       org.label-schema.vcs-url=$VCS_URL \
       org.label-schema.license="Licensed Materials - Property of IBM" \
       org.label-schema.schema-version="1.0"
+
+LABEL name="$IMAGE_NAME" \
+      vendor="IBM" \
+      version="1.0" \
+      release="$VCS_REF" \
+      summary="$IMAGE_DESCRIPTION_SHORT" \
+      description="$IMAGE_DESCRIPTION" \
