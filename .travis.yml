@@ -8,12 +8,18 @@ go:
 
 os:
   - linux
+  - linux-ppc64le
+  - linux-s390
 
 services:
   - docker
 
 branches:
   only:
+    - master
+    - /^[0-9]+\..*$/
+    - /^v[0-9]+\..*$/
+    - /^release-[0-9]+\..*$/
     - rhel-certification
 
 matrix:
@@ -26,7 +32,6 @@ install:
   - docker info
 
 before_script:
-  - make tunnel
   - make artifactory-login
 
 script:

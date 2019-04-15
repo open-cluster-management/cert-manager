@@ -114,11 +114,6 @@ rhel-images: $(DOCKER_RETAG_TARGETS)
 artifactory-login:
 	$(SSH_CMD) docker login $(IMAGE_REPO).$(URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
-tunnel:
-	$(shell cp rhel-buildmachines/id_rsa ~/.ssh/rhel_id_rsa)
-	$(shell cp rhel-buildmachines/config ~/.ssh/config)
-	$(shell chmod 0600 ~/.ssh/rhel_id_rsa)
-
 # Code generation
 #################
 generate-verify:
