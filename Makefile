@@ -27,7 +27,7 @@ APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /de
 endif
 
 # Get a list of all binaries to be built
-CMDS := controller #$(shell find ./cmd/ -maxdepth 1 -type d -exec basename {} \; | grep -v cmd)
+CMDS := $(shell find ./cmd/ -maxdepth 1 -type d -exec basename {} \; | grep -v cmd)
 # Path to dockerfiles directory
 DOCKERFILES := $(HACK_DIR)/build/dockerfiles
 # A list of all types.go files in pkg/apis
@@ -230,24 +230,12 @@ $(DOCKER_BUILD_TARGETS):
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+		   --build-arg "SUMMARY=$(SUMMARY)" \
 		   --build-arg "GOARCH=$(GOARCH)" \
 		   -f $(DOCKER_FILE) $(DOCKERFILES))
-
-ifeq ($(OS),rhel7)
-	$(eval BASE_DIR := go/src/github.com/jetstack/cert-manager/)
-	$(eval BASE_CMD := cd $(BASE_DIR);)
-	$(SSH_CMD) mkdir -p $(BASE_DIR)$(DOCKERFILES)/$(DOCKER_FILE_CMD)
-	scp $(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH) root@${TARGET}:$(BASE_DIR)$(DOCKERFILES)/$(IMAGE_NAME)_$(GOOS)_$(GOARCH)
-	scp $(DOCKER_FILE) root@${TARGET}:$(BASE_DIR)$(DOCKER_FILE)
-
-	# Building docker image.
-	$(SSH_CMD) '$(BASE_CMD) $(DOCKER_BUILD_CMD)'
-	@echo "Built docker image."
-else
 	# Building docker image.
 	$(DOCKER_BUILD_CMD)
 	@echo "Built docker image."
-endif
 
 $(DOCKER_RELEASE_TARGETS):
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))

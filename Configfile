@@ -3,8 +3,7 @@ OS ?= $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
 GIT_REMOTE_URL = $(shell git config --get remote.origin.url)
 
 IMAGE_DESCRIPTION =
-IMAGE_DESCRIPTION_SHORT = "test"
-SSH_CMD =
+SUMMARY = "test"
 DOCKER_FILE_EXT =
 IMAGE_NAME_ARCH_EXT = 
 MANIFEST_TOOL_NAME =
@@ -14,19 +13,12 @@ OPENSHIFT_TAG =
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
 	GOARCH = amd64
-	ifeq (rhel, $(findstring rhel,$(OS)))
-		DOCKER_FILE_EXT = .rhel-test
-	endif
 	OPENSHIFT_TAG = -rhel
-	DOCKER_FILE_EXT = .rhel-test
+	DOCKER_FILE_EXT = .rhel
 else
 	IMAGE_NAME_ARCH_EXT = -$(ARCH)
 	DOCKER_FILE_EXT = .$(ARCH)
 	GOARCH = $(ARCH)
-endif
-
-ifeq (rhel7, $(OS))
-	SSH_CMD=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${TARGET}
 endif
 
 DEFAULT_S390X_IMAGE ?= ibmcom/pause-s390x:3.0
