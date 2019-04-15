@@ -38,4 +38,4 @@ LABEL name="$IMAGE_NAME" \
       version="1.0" \
       release="$VCS_REF" \
       summary="$IMAGE_DESCRIPTION_SHORT" \
-      description="$IMAGE_DESCRIPTION" \
+      description="$IMAGE_DESCRIPTION"
