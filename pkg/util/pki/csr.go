@@ -250,6 +250,7 @@ func EncodeX509Chain(certs []*x509.Certificate) ([]byte, error) {
 	klog.Infof("Certs: %v", certs)
 	caPem := bytes.NewBuffer([]byte{})
 	for _, cert := range certs {
+		klog.Infof("This cert: %v", cert)
 		if bytes.Equal(cert.RawIssuer, cert.RawSubject) {
 			klog.Info("The bytes are equal, this is a self signed cert")
 			klog.Infof("%v", cert.RawIssuer)
