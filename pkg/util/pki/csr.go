@@ -27,6 +27,7 @@ import (
 	"math/big"
 	"net"
 	"time"
+	"k8s.io/klog"
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 )
@@ -245,13 +246,19 @@ func EncodeX509(cert *x509.Certificate) ([]byte, error) {
 
 // EncodeX509Chain will encode an *x509.Certificate chain into PEM format.
 func EncodeX509Chain(certs []*x509.Certificate) ([]byte, error) {
+	klog.Info("Inside the encode x509 chain")
+	klog.Infof("Certs: %v", certs)
 	caPem := bytes.NewBuffer([]byte{})
 	for _, cert := range certs {
 		if bytes.Equal(cert.RawIssuer, cert.RawSubject) {
+			klog.Info("The bytes are equal, this is a self signed cert")
+			klog.Infof("%v", cert.RawIssuer)
+			klog.Infof("%v", cert.RawSubject)
 			// Don't include self-signed certificate
 			continue
 		}
 		err := pem.Encode(caPem, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+		klog.Info("Encoded the ca cert into this pem")
 		if err != nil {
 			return nil, err
 		}
