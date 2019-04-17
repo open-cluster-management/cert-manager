@@ -219,6 +219,12 @@ func SignCertificate(template *x509.Certificate, issuerCert *x509.Certificate, p
 		return nil, nil, fmt.Errorf("error encoding certificate PEM: %s", err.Error())
 	}
 
+	// bundle the CA
+	err = pem.Encode(pemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: issuerCert.Raw})
+	if err != nil {
+		return nil, nil, fmt.Errorf("error encoding issuer cetificate PEM: %s", err.Error())
+	}
+
 	return pemBytes.Bytes(), cert, err
 }
 
@@ -246,20 +252,13 @@ func EncodeX509(cert *x509.Certificate) ([]byte, error) {
 
 // EncodeX509Chain will encode an *x509.Certificate chain into PEM format.
 func EncodeX509Chain(certs []*x509.Certificate) ([]byte, error) {
-	klog.Info("Inside the encode x509 chain")
-	klog.Infof("Certs: %v", certs)
 	caPem := bytes.NewBuffer([]byte{})
 	for _, cert := range certs {
-		klog.Infof("This cert: %v", cert)
 		if bytes.Equal(cert.RawIssuer, cert.RawSubject) {
-			klog.Info("The bytes are equal, this is a self signed cert")
-			klog.Infof("%v", cert.RawIssuer)
-			klog.Infof("%v", cert.RawSubject)
 			// Don't include self-signed certificate
 			continue
 		}
 		err := pem.Encode(caPem, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
-		klog.Info("Encoded the ca cert into this pem")
 		if err != nil {
 			return nil, err
 		}
