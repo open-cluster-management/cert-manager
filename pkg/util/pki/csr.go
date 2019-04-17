@@ -219,12 +219,6 @@ func SignCertificate(template *x509.Certificate, issuerCert *x509.Certificate, p
 		return nil, nil, fmt.Errorf("error encoding certificate PEM: %s", err.Error())
 	}
 
-	// bundle the CA
-	err = pem.Encode(pemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: issuerCert.Raw})
-	if err != nil {
-		return nil, nil, fmt.Errorf("error encoding issuer cetificate PEM: %s", err.Error())
-	}
-
 	return pemBytes.Bytes(), cert, err
 }
 
@@ -254,10 +248,6 @@ func EncodeX509(cert *x509.Certificate) ([]byte, error) {
 func EncodeX509Chain(certs []*x509.Certificate) ([]byte, error) {
 	caPem := bytes.NewBuffer([]byte{})
 	for _, cert := range certs {
-		if bytes.Equal(cert.RawIssuer, cert.RawSubject) {
-			// Don't include self-signed certificate
-			continue
-		}
 		err := pem.Encode(caPem, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 		if err != nil {
 			return nil, err
