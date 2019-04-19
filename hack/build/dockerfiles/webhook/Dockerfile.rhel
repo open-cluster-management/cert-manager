@@ -32,9 +32,9 @@ LABEL org.label-schema.vendor="IBM" \
       org.label-schema.license="Licensed Materials - Property of IBM" \
       org.label-schema.schema-version="1.0"
 
-LABEL name="$IMAGE_NAME" \
-      vendor="IBM" \
-      version="1.0" \
-      release="$VCS_REF" \
-      summary="$SUMMARY" \
-      description="$IMAGE_DESCRIPTION" \
+LABEL name="$IMAGE_NAME"
+LABEL vendor="IBM"
+LABEL version="1.0"
+LABEL release="$VCS_REF"
+LABEL summary="$SUMMARY"
+LABEL description="$IMAGE_DESCRIPTION"
