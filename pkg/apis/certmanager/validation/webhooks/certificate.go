@@ -61,7 +61,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 	err = validation.ValidateCertificate(obj).ToAggregate()
 	if err != nil {
-		klog.Infof("%s", obj.IssuerRef.Kind)
+		klog.Infof("%s", obj.CertificateSpec.IssuerRef.Kind)
 		status.Allowed = false
 		status.Result = &metav1.Status{
 			Status: metav1.StatusFailure, Code: http.StatusNotAcceptable, Reason: metav1.StatusReasonNotAcceptable,
