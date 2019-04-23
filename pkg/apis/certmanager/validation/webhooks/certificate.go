@@ -83,7 +83,7 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 }
 
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
-	issuerKind := obj.Spec.IssuerRef.Kind
+	issuerKind := crt.Spec.IssuerRef.Kind
 	if issuerKind == "ClusterIssuer" {
 		userGroups := request.UserInfo.Groups
 		for _, group := range userGroups {
@@ -93,4 +93,5 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		}
 		return false
 	}
+	return true
 }
