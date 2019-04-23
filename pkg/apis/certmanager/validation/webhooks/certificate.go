@@ -19,6 +19,7 @@ package webhooks
 import (
 	"encoding/json"
 	"net/http"
+	"k8s.io/klog"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,6 +61,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 	err = validation.ValidateCertificate(obj).ToAggregate()
 	if err != nil {
+		klog.Infof("%s", obj.IssuerRef.Kind)
 		status.Allowed = false
 		status.Result = &metav1.Status{
 			Status: metav1.StatusFailure, Code: http.StatusNotAcceptable, Reason: metav1.StatusReasonNotAcceptable,
@@ -71,4 +73,8 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	status.Allowed = true
 
 	return status
+}
+
+func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
+	klog.Infof("%v", admissionSpec.UserInfo)
 }
