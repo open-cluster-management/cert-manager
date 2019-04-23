@@ -61,7 +61,15 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 	klog.Infof("%s", obj.Spec.IssuerRef.Kind)
 	findUser(admissionSpec)
-
+	if !(allowed(admissionSpec, obj)) {
+		klog.Info("UNAUTHORIZED")
+		status.Allowed = false
+		status.Result = &metav1.Status{
+			Status: metav1.StatusFailure, Code: http.StatusUnauthorized, Reason: metav1.StatusReasonUnauthorized,
+			Message: err.Error(),
+		}
+		return status
+	}
 	err = validation.ValidateCertificate(obj).ToAggregate()
 	if err != nil {
 		status.Allowed = false
