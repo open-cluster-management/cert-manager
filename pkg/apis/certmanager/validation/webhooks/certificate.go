@@ -59,9 +59,11 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 		return status
 	}
 
+	klog.Infof("%s", obj.Spec.IssuerRef.Kind)
+	findUser(admissionSpec)
+
 	err = validation.ValidateCertificate(obj).ToAggregate()
 	if err != nil {
-		klog.Infof("%s", obj.Spec.IssuerRef.Kind)
 		status.Allowed = false
 		status.Result = &metav1.Status{
 			Status: metav1.StatusFailure, Code: http.StatusNotAcceptable, Reason: metav1.StatusReasonNotAcceptable,
@@ -77,4 +79,18 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 	klog.Infof("%v", admissionSpec.UserInfo)
+	klog.Infof("%v", admissionSpec.UserInfo.Groups)
+}
+
+func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
+	issuerKind := obj.Spec.IssuerRef.Kind
+	if issuerKind == "ClusterIssuer" {
+		userGroups := request.UserInfo.Groups
+		for _, group := range userGroups {
+			if group == "clusteradmin" {
+				return true
+			}
+		}
+		return false
+	}
 }
