@@ -60,6 +60,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	}
 
 	klog.Infof("%s", obj.Spec.IssuerRef.Kind)
+	klog.Infof("------------- USER INFO FOR %s --------------", obj.ObjectMeta.Name)
 	findUser(admissionSpec)
 	authorized := allowed(admissionSpec, obj)
 	if !authorized {
@@ -88,16 +89,18 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 }
 
 func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
-	klog.Infof("%v", admissionSpec.UserInfo)
-	klog.Infof("%v", admissionSpec.UserInfo.Groups)
+	klog.Infof("USERINFO: %v", admissionSpec.UserInfo)
+	klog.Infof("USERNAME: %s", admissionSpec.UserInfo.Username)
+	klog.Infof("UID: %s", admissionSpec.UserInfo.UID)
+	klog.Infof("GROUPS: %v", admissionSpec.UserInfo.Groups)
 }
 
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	if issuerKind == "ClusterIssuer" {
-		userGroups := request.UserInfo.Groups
+		userGroups := request.UserInfo.Username
 		for _, group := range userGroups {
-			if group == "clusteradmin" {
+			if group == "https://mycluster.icp:9443/oidc/endpoint/OP#admin" {
 				return true
 			}
 		}
