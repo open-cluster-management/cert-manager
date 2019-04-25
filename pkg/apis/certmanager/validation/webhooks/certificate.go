@@ -67,7 +67,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 		status.Allowed = false
 		status.Result = &metav1.Status{
 			Status: metav1.StatusFailure, Code: http.StatusUnauthorized, Reason: metav1.StatusReasonUnauthorized,
-			Message: err.Error(),
+			Message: "User is unauthorized to create this certificate with this issuer.",
 		}
 		return status
 	}
