@@ -219,6 +219,7 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILES)
+	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/package.yaml $(DOCKERFILES)
 	
 	$(eval DOCKER_BUILD_CMD := docker build -t $(REPO_URL):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \

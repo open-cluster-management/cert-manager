@@ -18,7 +18,8 @@ RUN chmod a+x /usr/bin/acmesolver
 
 RUN mkdir /licenses
 
-ADD LICENSE /licenses
+COPY LICENSE /licenses
+COPY package.yaml /licenses
 
 USER 100
 

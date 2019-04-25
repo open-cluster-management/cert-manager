@@ -16,7 +16,8 @@ ADD icp-cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
 
 RUN mkdir /licenses
 
-ADD LICENSE /licenses
+COPY LICENSE /licenses
+COPY package.yaml /licenses
 
 USER 100
 
