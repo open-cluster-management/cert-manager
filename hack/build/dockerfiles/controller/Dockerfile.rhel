@@ -20,7 +20,7 @@ RUN chmod a+x /usr/bin/cert-manager
 RUN mkdir /licenses
 
 COPY LICENSE /licenses
-COPY package.yaml /licenses
+COPY packages.yaml /licenses
 
 USER certmanager
 

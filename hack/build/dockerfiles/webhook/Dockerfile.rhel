@@ -17,7 +17,8 @@ ADD icp-cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
 
 RUN mkdir /licenses
 
-ADD LICENSE /licenses
+COPY LICENSE /licenses
+COPY packages.yaml /licenses
 
 USER 100
 

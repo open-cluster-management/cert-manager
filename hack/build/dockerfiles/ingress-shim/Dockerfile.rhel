@@ -17,7 +17,7 @@ ADD icp-cert-manager-ingress-shim_linux_$GOARCH /usr/bin/ingress-shim
 RUN mkdir /licenses
 
 COPY LICENSE /licenses
-COPY package.yaml /licenses
+COPY packages.yaml /licenses
 
 USER certmanager
 
