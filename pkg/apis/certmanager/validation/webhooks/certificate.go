@@ -17,6 +17,7 @@ limitations under the License.
 package webhooks
 
 import (
+	"strings"
 	"encoding/json"
 	"net/http"
 	"k8s.io/klog"
@@ -98,11 +99,9 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	if issuerKind == "ClusterIssuer" {
-		userGroups := request.UserInfo.Username
-		for _, group := range userGroups {
-			if group == "https://mycluster.icp:9443/oidc/endpoint/OP#admin" {
-				return true
-			}
+		username := request.UserInfo.Username
+		if strings.Contains(username, "admin") {
+			return true
 		}
 		return false
 	}
