@@ -99,9 +99,11 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	if issuerKind == "ClusterIssuer" {
-		username := request.UserInfo.Username
-		if strings.Contains(username, "admin") {
-			return true
+		groups := request.UserInfo.Groups
+		for _, group := range groups {
+			if group == "system:serviceaccounts:cert-manager" || "system:masters" {
+				return true
+			}
 		}
 		return false
 	}
