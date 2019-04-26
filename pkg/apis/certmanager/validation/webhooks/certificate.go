@@ -101,7 +101,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 	if issuerKind == "ClusterIssuer" {
 		groups := request.UserInfo.Groups
 		for _, group := range groups {
-			if group == "system:serviceaccounts:cert-manager" || "system:masters" {
+			if group == "system:serviceaccounts:cert-manager" || group == "system:masters" {
 				return true
 			}
 		}
