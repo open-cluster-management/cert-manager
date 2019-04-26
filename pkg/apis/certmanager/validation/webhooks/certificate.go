@@ -17,7 +17,6 @@ limitations under the License.
 package webhooks
 
 import (
-	"strings"
 	"encoding/json"
 	"net/http"
 	"k8s.io/klog"
