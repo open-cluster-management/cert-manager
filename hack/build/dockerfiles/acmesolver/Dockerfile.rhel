@@ -1,21 +1,29 @@
-FROM registry.access.redhat.com/rhel7/rhel-atomic
+FROM registry.access.redhat.com/ubi7/ubi-minimal
 
 ARG VCS_REF
 ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
+ARG SUMMARY
 ARG GOARCH
+ARG HOME
 
-RUN microdnf --enablerepo=rhel-7-server-rpms install shadow-utils ca-certificates && \
+RUN microdnf install shadow-utils ca-certificates && \
     adduser -r -u 100 acmesolver && \
     microdnf clean all
 
-
 ADD icp-cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
 
-USER 100
-ENTRYPOINT ["/usr/bin/acmesolver"]
+RUN chmod a+x /usr/bin/acmesolver
 
+RUN mkdir /licenses
+
+COPY LICENSE /licenses
+COPY packages.yaml /licenses
+
+USER 100
+
+ENTRYPOINT ["/usr/bin/acmesolver"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \
@@ -25,3 +33,10 @@ LABEL org.label-schema.vendor="IBM" \
       org.label-schema.vcs-url=$VCS_URL \
       org.label-schema.license="Licensed Materials - Property of IBM" \
       org.label-schema.schema-version="1.0"
+
+LABEL name="$IMAGE_NAME"
+LABEL vendor="IBM"
+LABEL version="1.0"
+LABEL release="$VCS_REF"
+LABEL summary="$SUMMARY"
+LABEL description="$IMAGE_DESCRIPTION"
