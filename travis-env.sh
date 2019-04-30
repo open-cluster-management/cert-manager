@@ -7,15 +7,15 @@ if [ "$TRAVIS_BRANCH" = "master" ] && ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" 
     IMAGE_REPO=hyc-cloud-private-integration-docker-local
     NAMESPACE=ibmcom
 
-    if [ "$OS" = "rhel7" ]; then
-        IMAGE_VERSION="${IMAGE_VERSION}-rhel"
-        RELEASE_TAG="${RELEASE_TAG}-rhel"
-    fi
+    IMAGE_VERSION_RHEL="${IMAGE_VERSION}-rhel"
+    RELEASE_TAG_RHEL="${RELEASE_TAG}-rhel"
 
     export IMAGE_REPO="$IMAGE_REPO"
     export NAMESPACE="$NAMESPACE"
     export RELEASE_TAG="$RELEASE_TAG"
     export IMAGE_VERSION="$IMAGE_VERSION"
+    export IMAGE_VERSION_RHEL="$IMAGE_VERSION_RHEL"
+    export RELEASE_TAG_RHEL="$RELEASE_TAG_RHEL"
     export RETAG="$RETAG"
 fi
 
