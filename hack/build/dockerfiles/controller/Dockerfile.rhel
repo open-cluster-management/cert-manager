@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi7-dev-preview/ubi-minimal
+FROM registry.access.redhat.com/ubi7/ubi-minimal:7.6-123
 
 ARG VCS_REF
 ARG VCS_URL
@@ -19,7 +19,8 @@ RUN chmod a+x /usr/bin/cert-manager
 
 RUN mkdir /licenses
 
-ADD LICENSE /licenses
+COPY LICENSE /licenses
+COPY packages.yaml /licenses
 
 USER certmanager
 

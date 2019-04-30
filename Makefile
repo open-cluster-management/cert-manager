@@ -219,6 +219,7 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILES)
+	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/packages.yaml $(DOCKERFILES)
 	
 	$(eval DOCKER_BUILD_CMD := docker build -t $(REPO_URL):$(IMAGE_VERSION) \
            --build-arg "VCS_REF=$(VCS_REF)" \
@@ -261,6 +262,12 @@ $(DOCKER_RETAG_TARGETS):
 	docker tag $(REPO_URL):$(IMAGE_VERSION) $(REPO_URL):$(IMAGE_VERSION_RHEL)
 	docker push $(REPO_URL):$(IMAGE_VERSION_RHEL)
 	@echo "Retagged image as $(REPO_URL):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
+	
+ifneq ($(RETAG),)
+	$(SSH_CMD) docker tag $(REPO_URL):$(IMAGE_VERSION_RHEL) $(REPO_URL):$(RELEASE_TAG_RHEL)
+	$(SSH_CMD) docker push $(REPO_URL):$(RELEASE_TAG_RHEL)
+	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG_RHEL) and pushed to $(REPO_URL)"
+endif
 
 include Makefile.docker
 #include Makefile.test
