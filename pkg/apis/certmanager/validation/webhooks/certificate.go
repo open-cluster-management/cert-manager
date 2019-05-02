@@ -37,13 +37,7 @@ import (
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation"
 )
-//OIDCTokenResponse is a type
-type OIDCTokenResponse struct {
-	AccessToken string `json:"access_token"` //"crn:v1:icp:private:k8:mycluster:n/default:::",
-	TokenType   string `json:"token_type"`   //"crn:v1:icp:private:k8:mycluster:n/default:::",
-	ExpiresIn   string `json:"expires_in"`   //"crn:v1:icp:private:k8:mycluster:n/default:::",
-	Expiration  string `json:"expiration"`   //"crn:v1:icp:private:k8:mycluster:n/default:::",
-}
+
 type CertificateAdmissionHook struct {
 }
 
