@@ -210,6 +210,8 @@ func getHighestRole(token string, uid string) (string, error) {
 	}
 	request.Header.Add("Accept", "application/json")
 	request.Header.Add("Authorization", "Bearer " + token)
+	klog.Infof("URL: %s", fmt.Sprintf("%s%s", management_url, api))
+	klog.Infof("auth bearer: %s", token)
 	res, err := client.Do(request)
 	if err != nil { 
 		klog.Infof("Error occurred sending request to get highest role: %s", err.Error())
