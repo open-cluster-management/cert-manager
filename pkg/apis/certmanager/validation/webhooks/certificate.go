@@ -124,7 +124,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 				klog.Infof("Error occurred getting the access token: %s", err.Error())
 				return false
 			}
-			highestRole, err := getHighestRole(accessToken)
+			highestRole, err := getHighestRole(accessToken, uid.Fragment)
 			if err != nil {
 				klog.Infof("Error occurred getting the highest role for user: %s", err.Error())
 				return false
@@ -153,12 +153,13 @@ func getAccessToken() (string, error) {
 		klog.Infof("Error occurred reading api key file: %s", err.Error())
 		return "", err
 	}
+	klog.Infof(apiKey)
 	// Use api key to get access token
 	management_url := "https://9.46.73.170:8443"
 	accessTokenApi := "iam-token/oidc/token"
 	data := url.Values{}
 	data.Set("grant_type", "urn:ibm:params:oauth:grant-type:apikey")
-	data.Add("apikey", apiKey)
+	//data.Add("apikey", apiKey)
 	data.Add("response_type", "cloud_iam")
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -193,12 +194,15 @@ func getAccessToken() (string, error) {
 	return tokenResponse.AccessToken, nil
 }
 
-func getHighestRole(token string) (string, error) {
+func getHighestRole(token string, uid string) (string, error) {
 	management_url := "https://9.46.73.170:8443"
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	client := &http.Client{
 		Transport: tr,
 		Timeout:   10 * time.Second}
-	api := fmt.Sprintf("/idmgmt/identity/api/v1/teams/roleMappings?userid=%s", uid.Fragment)
+	api := fmt.Sprintf("/idmgmt/identity/api/v1/teams/roleMappings?userid=%s", uid)
 	request, err := http.NewRequest("GET", fmt.Sprintf("%s%s", management_url, api), nil)
 	if err != nil {
 		klog.Infof("Error creating request for highest role: %s", err.Error())
@@ -206,7 +210,7 @@ func getHighestRole(token string) (string, error) {
 	}
 	request.Header.Add("Accept", "application/json")
 	request.Header.Add("Authorization", "Bearer " + token)
-	res, err := client.do(request)
+	res, err := client.Do(request)
 	if err != nil { 
 		klog.Infof("Error occurred sending request to get highest role: %s", err.Error())
 		return "", err
