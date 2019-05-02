@@ -75,7 +75,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	klog.Infof("%s", obj.Spec.IssuerRef.Kind)
 	klog.Infof("------------- USER INFO FOR %s --------------", obj.ObjectMeta.Name)
 	findUser(admissionSpec)
-	authorized := allowed(admissionSpec, obj)
+	authorized := allowed(c.DefaultAdmin, admissionSpec, obj)
 	if !authorized {
 		klog.Info("UNAUTHORIZED")
 		status.Allowed = false
@@ -108,7 +108,7 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 	klog.Infof("GROUPS: %v", admissionSpec.UserInfo.Groups)
 }
 
-func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
+func allowed(defaultAdmin string, request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	username := request.UserInfo.Username
 	uid, err := url.Parse(username)
@@ -120,7 +120,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		
 		if uid.Fragment != "" {
 			// Make api call to iam to check user id
-			if uid.Fragment == DEFAULT_ADMIN {
+			if uid.Fragment == defaultAdmin {
 				return true
 			}
 /* 			accessToken, err := getAccessToken()
