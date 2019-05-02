@@ -148,18 +148,18 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 
 func getAccessToken() (string, error) {
 	file := "/etc/cfc/api-key"
-	apiKey, err := ioutil.ReadFile(file)
+	apiKeyFile, err := ioutil.ReadFile(file)
 	if err != nil {
 		klog.Infof("Error occurred reading api key file: %s", err.Error())
 		return "", err
 	}
-	klog.Infof(string(apiKey))
+	apiKey := string(apiKeyFile)
 	// Use api key to get access token
 	management_url := "https://9.46.73.170:8443"
 	accessTokenApi := "iam-token/oidc/token"
 	data := url.Values{}
 	data.Set("grant_type", "urn:ibm:params:oauth:grant-type:apikey")
-	//data.Add("apikey", apiKey)
+	data.Add("apikey", apiKey)
 	data.Add("response_type", "cloud_iam")
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
