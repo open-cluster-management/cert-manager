@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"io/ioutil"
 	"k8s.io/klog"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -30,9 +31,13 @@ import (
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation"
 )
-const (
-	admin = url.Parse("https://mycluster.icp:9443/oidc/endpoint/OP#admin")
-)
+//OIDCTokenResponse is a type
+type OIDCTokenResponse struct {
+	AccessToken string `json:"access_token"` //"crn:v1:icp:private:k8:mycluster:n/default:::",
+	TokenType   string `json:"token_type"`   //"crn:v1:icp:private:k8:mycluster:n/default:::",
+	ExpiresIn   string `json:"expires_in"`   //"crn:v1:icp:private:k8:mycluster:n/default:::",
+	Expiration  string `json:"expiration"`   //"crn:v1:icp:private:k8:mycluster:n/default:::",
+}
 type CertificateAdmissionHook struct {
 }
 
@@ -100,9 +105,31 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
+	username := admissionSpec.UserInfo.Username
+	uid, err := url.parse(username)
+	if err != nil {
+		klog.Infof("An error occurred parsing the username %s to a url: %s", username, err.Error())
+		return false
+	}
 	if issuerKind == "ClusterIssuer" {
-		if admissionSpec.UserInfo.Username == admin.String() {
-			return true
+		
+		if uid.Fragment != nil && uid.Fragment != "" {
+			// Make api call to iam to check user id
+			accessToken, err := getAccessToken()
+			if err != nil {
+				klog.Infof("Error occurred getting the access token: %s", err.Error())
+				return false
+			}
+			highestRole, err := getHighestRole(accessToken)
+			if err != nil {
+				klog.Infof("Error occurred getting the highest role for user: %s", err.Error())
+				return false
+			}
+			klog.Infof("Highest role: %s", highestRole)
+			if highestRole == "ClusterAdmin" {
+				return true
+			}
+			return false
 		}
 		groups := request.UserInfo.Groups
 		for _, group := range groups {
@@ -113,4 +140,78 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		return false
 	}
 	return true
+}
+
+func getAccessToken() (string, error) {
+	file := "/etc/cfc/api-key"
+	apiKey, err := ioutil.ReadFile(file)
+	if err != nil {
+		klog.Infof("Error occurred reading api key file: %s", err.Error())
+		return "", err
+	}
+	// Use api key to get access token
+	url := "https://9.46.73.170:8443"
+	accessTokenApi := "iam-token/oidc/token"
+	data := url.Values{}
+	data.Set("grant_type", "urn:ibm:params:oauth:grant-type:apikey")
+	data.Add("apikey", apiKey)
+	data.Add("response_type", "cloud_iam")
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   10 * time.Second}
+	reqBody := [](data.Encode())
+	request, err := http.NewRequest("POST", fmt.Sprintf("%s/%s", url, accessTokenApi), reqBody)
+	if err != nil {
+		klog.Infof("Error occurred creating a new request: %s", err.Error())
+		return "", err
+	}
+	request.Header.Add("Accept", "application/json")
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	res, err := client.Do(request)
+	if err != nil {
+		klog.Infof("Error occurred sending request: %s", err.Error())
+		return "", err
+	}
+	if res.StatusCode > 299 {
+		return "", fmt.Errorf("%s\n%s", "StatusCode from request is not 200, ", res.Status)
+	}
+	defer res.Body.Close()
+	out, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		klog.Infof("Error retrieving OIDC Key: %v", err)
+		return "", err
+	}
+	var tokenResponse OIDCTokenResponse
+	json.Unmarshal(out, &tokenResponse)
+	return tokenResponse.AccessToken, nil
+}
+
+func getHighestRole(token string) (string, error) {
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   10 * time.Second}
+	api := fmt.Sprintf("/idmgmt/identity/api/v1/teams/roleMappings?userid=%s", uid.Fragment)
+	request, err := http.NewRequest("GET", fmt.Sprintf("%s%s", url, api), nil)
+	if err != nil {
+		klog.Infof("Error creating request for highest role: %s", err.Error())
+		return "", err
+	}
+	request.Header.Add("Accept", "application/json")
+	request.Header.Add("Authorization", "Bearer " + token)
+	res, err := client.do(request)
+	if err != nil { 
+		klog.Infof("Error occurred sending request to get highest role: %s", err.Error())
+		return "", err
+	}
+	out, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		klog.Infof("Error retrieving highest role: %s", err.Error())
+		return "", err
+	}
+	var highestRole string
+	json.Unmarshal(out, &highestRole)
+	return highestRole, nil
 }
