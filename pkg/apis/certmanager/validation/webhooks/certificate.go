@@ -78,7 +78,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	klog.Infof("%s", obj.Spec.IssuerRef.Kind)
 	klog.Infof("------------- USER INFO FOR %s --------------", obj.ObjectMeta.Name)
 	findUser(admissionSpec)
-	authorized := allowed(c.DefaultAdmin, admissionSpec, obj)
+	authorized := allowed(admissionSpec, obj)
 	if !authorized {
 		klog.Info("UNAUTHORIZED")
 		status.Allowed = false
