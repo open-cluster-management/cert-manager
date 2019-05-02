@@ -439,7 +439,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 // pod refresh is enabled. It will edit the deployments, statefulsets, and daemonsets
 // that use the secret being updated, which will trigger the pod to be restarted.
 func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret string) {
-	klog.Info("Restarting pods associated with")
+	klog.Infof("Restarting pods that use secret %s", secret)
 	listOptions := metav1.ListOptions{}
 	deployments, _ := deploymentsInterface.List(listOptions)
 	statefulsets, _ := statefulsetsInterface.List(listOptions)
