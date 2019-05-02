@@ -27,7 +27,7 @@ import (
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation/webhooks"
 )
 
-var certHook cmd.ValidatingAdmissionHook = &webhooks.CertificateAdmissionHook{}
+var certHook cmd.ValidatingAdmissionHook = &webhooks.CertificateAdmissionHook{ DefaultAdmin: "", }
 var issuerHook cmd.ValidatingAdmissionHook = &webhooks.IssuerAdmissionHook{}
 var clusterIssuerHook cmd.ValidatingAdmissionHook = &webhooks.ClusterIssuerAdmissionHook{}
 
@@ -43,6 +43,9 @@ func main() {
 	tlsflagSet.Parse(os.Args[1:])
 	if *tlsflagVal != "" {
 		runfilewatch(*tlsflagVal)
+	}
+	if value, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
+		certHook.DefaultAdmin = value
 	}
 
 	cmd.RunAdmissionServer(

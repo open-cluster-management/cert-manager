@@ -43,6 +43,7 @@ type OIDCTokenResponse struct {
 	Expiration  string `json:"expiration"`   //"crn:v1:icp:private:k8:mycluster:n/default:::",
 }
 type CertificateAdmissionHook struct {
+	DefaultAdmin string
 }
 
 func (c *CertificateAdmissionHook) Initialize(kubeClientConfig *restclient.Config, stopCh <-chan struct{}) error {
@@ -119,7 +120,10 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		
 		if uid.Fragment != "" {
 			// Make api call to iam to check user id
-			accessToken, err := getAccessToken()
+			if uid.Fragment == DEFAULT_ADMIN {
+				return true
+			}
+/* 			accessToken, err := getAccessToken()
 			if err != nil {
 				klog.Infof("Error occurred getting the access token: %s", err.Error())
 				return false
@@ -132,8 +136,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 			klog.Infof("Highest role: %s", highestRole)
 			if highestRole == "ClusterAdmin" {
 				return true
-			}
-			return false
+			} */
 		}
 		groups := request.UserInfo.Groups
 		for _, group := range groups {
@@ -201,7 +204,7 @@ func getHighestRole(token string, uid string) (string, error) {
 	}
 	client := &http.Client{
 		Transport: tr,
-		Timeout:   10 * time.Second}
+		Timeout:   60 * time.Second}
 	api := fmt.Sprintf("/idmgmt/identity/api/v1/teams/roleMappings?userid=%s", uid)
 	request, err := http.NewRequest("GET", fmt.Sprintf("%s%s", management_url, api), nil)
 	if err != nil {
