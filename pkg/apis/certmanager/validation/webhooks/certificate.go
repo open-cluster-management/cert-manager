@@ -153,7 +153,7 @@ func getAccessToken() (string, error) {
 		klog.Infof("Error occurred reading api key file: %s", err.Error())
 		return "", err
 	}
-	klog.Infof(apiKey)
+	klog.Infof(string(apiKey))
 	// Use api key to get access token
 	management_url := "https://9.46.73.170:8443"
 	accessTokenApi := "iam-token/oidc/token"
