@@ -44,11 +44,8 @@ type OIDCTokenResponse struct {
 }
 type CertificateAdmissionHook struct {
 }
-var defaultAdmin string
+type DefaultAdmin string
 
-func (c *CertificateAdmissionHook) SetUp(admin string) {
-	defaultAdmin = admin
-}
 func (c *CertificateAdmissionHook) Initialize(kubeClientConfig *restclient.Config, stopCh <-chan struct{}) error {
 	return nil
 }
@@ -123,7 +120,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		
 		if uid.Fragment != "" {
 			// Make api call to iam to check user id
-			if uid.Fragment == defaultAdmin {
+			if uid.Fragment == DefaultAdmin {
 				return true
 			}
 /* 			accessToken, err := getAccessToken()
