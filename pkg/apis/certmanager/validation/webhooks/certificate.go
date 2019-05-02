@@ -106,7 +106,7 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	username := admissionSpec.UserInfo.Username
-	uid, err := url.parse(username)
+	uid, err := url.Parse(username)
 	if err != nil {
 		klog.Infof("An error occurred parsing the username %s to a url: %s", username, err.Error())
 		return false
@@ -163,7 +163,7 @@ func getAccessToken() (string, error) {
 		Transport: tr,
 		Timeout:   10 * time.Second}
 	reqBody := [](data.Encode())
-	request, err := http.NewRequest("POST", fmt.Sprintf("%s/%s", url, accessTokenApi), reqBody)
+	request, err := http.NewRequest("POST", fmt.Sprintf("%s/%s", url, accessTokenApi), ioutil.NopCloser(bytes.NewReader(reqBody)))
 	if err != nil {
 		klog.Infof("Error occurred creating a new request: %s", err.Error())
 		return "", err
