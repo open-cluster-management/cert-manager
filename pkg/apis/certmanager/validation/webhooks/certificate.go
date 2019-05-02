@@ -19,6 +19,7 @@ package webhooks
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"k8s.io/klog"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -29,7 +30,9 @@ import (
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation"
 )
-
+const (
+	admin := url.Parse("https://mycluster.icp:9443/oidc/endpoint/OP#admin")
+)
 type CertificateAdmissionHook struct {
 }
 
@@ -98,6 +101,9 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	if issuerKind == "ClusterIssuer" {
+		if admissionSpec.UserInfo.Username == admin.String() {
+			return true
+		}
 		groups := request.UserInfo.Groups
 		for _, group := range groups {
 			if group == "system:serviceaccounts:cert-manager" || group == "system:masters" {
