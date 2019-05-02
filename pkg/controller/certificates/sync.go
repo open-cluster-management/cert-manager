@@ -439,12 +439,14 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 // pod refresh is enabled. It will edit the deployments, statefulsets, and daemonsets
 // that use the secret being updated, which will trigger the pod to be restarted.
 func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret string) {
+	klog.Info("Restarting pods associated with")
 	listOptions := metav1.ListOptions{}
 	deployments, _ := deploymentsInterface.List(listOptions)
 	statefulsets, _ := statefulsetsInterface.List(listOptions)
 	daemonsets, _ := daemonsetsInterface.List(listOptions)
 
 	update := time.Now().Format("2006-1-2.1504")
+	klog.Info("DEPLOYMENTS")
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
@@ -455,10 +457,12 @@ NEXT_DEPLOYMENT:
 				if err != nil {
 					fmt.Errorf("Error updating deployment: %v", err)
 				}
+				klog.Info(deployment.ObjectMeta.Name)
 				continue NEXT_DEPLOYMENT
 			}
 		}
 	}
+	klog.Info("STATEFULSETS")
 NEXT_STATEFULSET:
 	for _, statefulset := range statefulsets.Items {
 		for _, volume := range statefulset.Spec.Template.Spec.Volumes {
@@ -469,10 +473,12 @@ NEXT_STATEFULSET:
 				if err != nil {
 					fmt.Errorf("Error updating statefulset: %v", err)
 				}
+				klog.Info(statefulset.ObjectMeta.Name)
 				continue NEXT_STATEFULSET
 			}
 		}
 	}
+	klog.Info("DAEMONSET")
 NEXT_DAEMONSET:
 	for _, daemonset := range daemonsets.Items {
 		for _, volume := range daemonset.Spec.Template.Spec.Volumes {
@@ -483,6 +489,7 @@ NEXT_DAEMONSET:
 				if err != nil {
 					fmt.Errorf("Error updating daemonset: %v", err)
 				}
+				klog.Info(daemonset.ObjectMeta.Name)
 				continue NEXT_DAEMONSET
 			}
 		}
