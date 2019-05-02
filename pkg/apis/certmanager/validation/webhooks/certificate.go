@@ -17,16 +17,11 @@ limitations under the License.
 package webhooks
 
 import (
-	"crypto/tls"
-	"time"
-	"fmt"
 	"os"
-	"bytes"
 	"strings"
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"io/ioutil"
 	"k8s.io/klog"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
