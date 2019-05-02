@@ -45,7 +45,7 @@ func main() {
 		runfilewatch(*tlsflagVal)
 	}
 	if value, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
-		certHook.DefaultAdmin = value
+		certHook.SetUp(value)
 	}
 
 	cmd.RunAdmissionServer(

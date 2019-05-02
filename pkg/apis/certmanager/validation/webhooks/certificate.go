@@ -43,9 +43,12 @@ type OIDCTokenResponse struct {
 	Expiration  string `json:"expiration"`   //"crn:v1:icp:private:k8:mycluster:n/default:::",
 }
 type CertificateAdmissionHook struct {
-	DefaultAdmin string
 }
+var defaultAdmin string
 
+func (c *CertificateAdmissionHook) SetUp(admin string) {
+	defaultAdmin = admin
+}
 func (c *CertificateAdmissionHook) Initialize(kubeClientConfig *restclient.Config, stopCh <-chan struct{}) error {
 	return nil
 }
@@ -108,7 +111,7 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 	klog.Infof("GROUPS: %v", admissionSpec.UserInfo.Groups)
 }
 
-func allowed(defaultAdmin string, request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
+func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	username := request.UserInfo.Username
 	uid, err := url.Parse(username)
