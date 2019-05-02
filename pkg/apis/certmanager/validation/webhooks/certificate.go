@@ -121,6 +121,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		
 		if uid.Fragment != "" {
 			if value, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
+				klog.Infof("Value: %s\nFragment: %s", value, uid.Fragment)
 				if uid.Fragment == value {
 					return true
 				}
