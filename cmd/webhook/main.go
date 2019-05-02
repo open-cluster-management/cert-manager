@@ -44,9 +44,6 @@ func main() {
 	if *tlsflagVal != "" {
 		runfilewatch(*tlsflagVal)
 	}
-	if value, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
-		&webhooks.DefaultAdmin = value
-	}
 
 	cmd.RunAdmissionServer(
 		certHook,

@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"time"
 	"fmt"
+	"os"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -44,7 +45,6 @@ type OIDCTokenResponse struct {
 }
 type CertificateAdmissionHook struct {
 }
-type DefaultAdmin string
 
 func (c *CertificateAdmissionHook) Initialize(kubeClientConfig *restclient.Config, stopCh <-chan struct{}) error {
 	klog.Infof("%v", kubeClientConfig)
@@ -120,10 +120,13 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 	if issuerKind == "ClusterIssuer" {
 		
 		if uid.Fragment != "" {
-			// Make api call to iam to check user id
-			if uid.Fragment == DefaultAdmin {
-				return true
+			if value, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
+				if uid.Fragment == value {
+					return true
+				}
 			}
+			// Make api call to iam to check user id
+			
 /* 			accessToken, err := getAccessToken()
 			if err != nil {
 				klog.Infof("Error occurred getting the access token: %s", err.Error())
