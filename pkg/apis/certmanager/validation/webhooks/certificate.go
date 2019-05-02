@@ -162,7 +162,7 @@ func getAccessToken() (string, error) {
 	client := &http.Client{
 		Transport: tr,
 		Timeout:   10 * time.Second}
-	reqBody := [](data.Encode())
+	reqBody := []byte(data.Encode())
 	request, err := http.NewRequest("POST", fmt.Sprintf("%s/%s", url, accessTokenApi), ioutil.NopCloser(bytes.NewReader(reqBody)))
 	if err != nil {
 		klog.Infof("Error occurred creating a new request: %s", err.Error())
