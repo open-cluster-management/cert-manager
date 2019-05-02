@@ -37,7 +37,6 @@ type CertificateAdmissionHook struct {
 }
 
 func (c *CertificateAdmissionHook) Initialize(kubeClientConfig *restclient.Config, stopCh <-chan struct{}) error {
-	klog.Infof("%v", kubeClientConfig)
 	return nil
 }
 
