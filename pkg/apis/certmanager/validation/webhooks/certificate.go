@@ -31,7 +31,7 @@ import (
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation"
 )
 const (
-	admin := url.Parse("https://mycluster.icp:9443/oidc/endpoint/OP#admin")
+	admin = url.Parse("https://mycluster.icp:9443/oidc/endpoint/OP#admin")
 )
 type CertificateAdmissionHook struct {
 }
