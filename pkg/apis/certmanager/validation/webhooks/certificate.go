@@ -17,6 +17,10 @@ limitations under the License.
 package webhooks
 
 import (
+	"crypto/tls"
+	"time"
+	"fmt"
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -105,7 +109,7 @@ func findUser(admissionSpec *admissionv1beta1.AdmissionRequest) {
 
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
-	username := admissionSpec.UserInfo.Username
+	username := request.UserInfo.Username
 	uid, err := url.Parse(username)
 	if err != nil {
 		klog.Infof("An error occurred parsing the username %s to a url: %s", username, err.Error())
@@ -113,7 +117,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 	}
 	if issuerKind == "ClusterIssuer" {
 		
-		if uid.Fragment != nil && uid.Fragment != "" {
+		if uid.Fragment != "" {
 			// Make api call to iam to check user id
 			accessToken, err := getAccessToken()
 			if err != nil {
@@ -150,7 +154,7 @@ func getAccessToken() (string, error) {
 		return "", err
 	}
 	// Use api key to get access token
-	url := "https://9.46.73.170:8443"
+	management_url := "https://9.46.73.170:8443"
 	accessTokenApi := "iam-token/oidc/token"
 	data := url.Values{}
 	data.Set("grant_type", "urn:ibm:params:oauth:grant-type:apikey")
@@ -163,7 +167,7 @@ func getAccessToken() (string, error) {
 		Transport: tr,
 		Timeout:   10 * time.Second}
 	reqBody := []byte(data.Encode())
-	request, err := http.NewRequest("POST", fmt.Sprintf("%s/%s", url, accessTokenApi), ioutil.NopCloser(bytes.NewReader(reqBody)))
+	request, err := http.NewRequest("POST", fmt.Sprintf("%s/%s", management_url, accessTokenApi), ioutil.NopCloser(bytes.NewReader(reqBody)))
 	if err != nil {
 		klog.Infof("Error occurred creating a new request: %s", err.Error())
 		return "", err
@@ -190,11 +194,12 @@ func getAccessToken() (string, error) {
 }
 
 func getHighestRole(token string) (string, error) {
+	management_url := "https://9.46.73.170:8443"
 	client := &http.Client{
 		Transport: tr,
 		Timeout:   10 * time.Second}
 	api := fmt.Sprintf("/idmgmt/identity/api/v1/teams/roleMappings?userid=%s", uid.Fragment)
-	request, err := http.NewRequest("GET", fmt.Sprintf("%s%s", url, api), nil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("%s%s", management_url, api), nil)
 	if err != nil {
 		klog.Infof("Error creating request for highest role: %s", err.Error())
 		return "", err
