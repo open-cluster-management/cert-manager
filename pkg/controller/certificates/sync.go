@@ -470,7 +470,7 @@ NEXT_STATEFULSET:
 				if err != nil {
 					fmt.Errorf("Error updating statefulset: %v", err)
 				}
-				klog.Infof("%s Cert-Manager Restarting Resource: Certificate=%s, Secret=%s, StatefulSet=%s", update, cert, secret, deployment.ObjectMeta.Name)
+				klog.Infof("%s Cert-Manager Restarting Resource: Certificate=%s, Secret=%s, StatefulSet=%s", update, cert, secret, statefulset.ObjectMeta.Name)
 				continue NEXT_STATEFULSET
 			}
 		}
@@ -485,7 +485,7 @@ NEXT_DAEMONSET:
 				if err != nil {
 					fmt.Errorf("Error updating daemonset: %v", err)
 				}
-				klog.Infof("%s Cert-Manager Restarting Resource: Certificate=%s, Secret=%s, DaemonSet=%s", update, cert, secret, deployment.ObjectMeta.Name)
+				klog.Infof("%s Cert-Manager Restarting Resource: Certificate=%s, Secret=%s, DaemonSet=%s", update, cert, secret, daemonset.ObjectMeta.Name)
 				continue NEXT_DAEMONSET
 			}
 		}
