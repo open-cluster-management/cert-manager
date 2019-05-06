@@ -8,13 +8,18 @@ go:
 
 os:
   - linux
+  - linux-ppc64le
+  - linux-s390
 
 services:
   - docker
 
 branches:
   only:
-    - increase-logging
+    - master
+    - /^[0-9]+\..*$/
+    - /^v[0-9]+\..*$/
+    - /^release-[0-9]+\..*$/
 
 matrix:
   fast_finish: true
@@ -31,4 +36,28 @@ before_script:
 
 script:
   - make image
+  - |
+      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
+        make go-test
+        echo "testing complete"
+        make go-fmt
+        echo "go fmt complete"
+      fi
   - make push-images
+  - |
+      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
+        make rhel-images
+      fi
+  
+after_success:
+  - |
+      if [[ "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then
+        curl -Lo travis_after_all.py https://raw.github.com/dmakhno/travis_after_all/master/travis_after_all.py
+        python travis_after_all.py https://travis.ibm.com/api
+        export $(cat .to_export_back)
+        if [[ "$BUILD_LEADER" == "YES" ]]; then
+          if [[ "$BUILD_AGGREGATE_STATUS" != "others_succeeded" ]]; then
+            echo "Some jobs failed" && exit 1
+          fi
+        fi
+      fi
