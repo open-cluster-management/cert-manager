@@ -429,7 +429,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
 		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
 	
-		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name)
+		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name, crt.Name)
 	}
 
 	return secret, nil
@@ -438,7 +438,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 // Restart will run every time a secret is updated for a certificate and when
 // pod refresh is enabled. It will edit the deployments, statefulsets, and daemonsets
 // that use the secret being updated, which will trigger the pod to be restarted.
-func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret string) {
+func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret, cert string) {
 	listOptions := metav1.ListOptions{}
 	deployments, _ := deploymentsInterface.List(listOptions)
 	statefulsets, _ := statefulsetsInterface.List(listOptions)
@@ -455,6 +455,7 @@ NEXT_DEPLOYMENT:
 				if err != nil {
 					fmt.Errorf("Error updating deployment: %v", err)
 				}
+				klog.Infof("%s Cert-Manager Restarting Resource: Certificate=%s, Secret=%s, Deployment=%s", update, cert, secret, deployment.ObjectMeta.Name)
 				continue NEXT_DEPLOYMENT
 			}
 		}
@@ -469,6 +470,7 @@ NEXT_STATEFULSET:
 				if err != nil {
 					fmt.Errorf("Error updating statefulset: %v", err)
 				}
+				klog.Infof("%s Cert-Manager Restarting Resource: Certificate=%s, Secret=%s, StatefulSet=%s", update, cert, secret, statefulset.ObjectMeta.Name)
 				continue NEXT_STATEFULSET
 			}
 		}
@@ -483,6 +485,7 @@ NEXT_DAEMONSET:
 				if err != nil {
 					fmt.Errorf("Error updating daemonset: %v", err)
 				}
+				klog.Infof("%s Cert-Manager Restarting Resource: Certificate=%s, Secret=%s, DaemonSet=%s", update, cert, secret, daemonset.ObjectMeta.Name)
 				continue NEXT_DAEMONSET
 			}
 		}
