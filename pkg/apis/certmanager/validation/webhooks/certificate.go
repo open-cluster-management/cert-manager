@@ -98,11 +98,17 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 	if issuerKind == "ClusterIssuer" {
 		if uid.Fragment != "" {
 			// Check if this user is the default cluster admin
-			if value, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
-				value = strings.TrimSpace(value)
-				if uid.Fragment == value {
-					return true
-				}
+			if admin, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
+				if oidcUrl, exists := os.LookupEnv("OIDC_URL"); exists {
+					admin = strings.TrimSpace(admin)
+					oidcUrl = strings.TrimSpace(oidcUrl)
+					oidcUrl = fmt.Sprintf("%s#%s", oidcUrl, admin)
+					if uid.Fragment == admin && uid.String() == oidcUrl {
+						klog.Infof("The url: %s and the passed in url: %s", oidcUrl, uid.String())
+						return true
+					}
+				} 
+				
 			}
 		}
 		// If the user is in systems:master group (ClusterAdmin)
