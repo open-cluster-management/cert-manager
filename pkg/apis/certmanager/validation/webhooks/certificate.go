@@ -97,6 +97,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		return false
 	}
 	if issuerKind == "ClusterIssuer" {
+		klog.Info("================CHECKING CLUSTERISSUER================")
 		if uid.Fragment != "" {
 			// Check if this user is the default cluster admin
 			if admin, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
@@ -110,8 +111,9 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 					}
 					klog.Infof("The url: %s and the passed in url: %s", oidcUrl, uid.String())
 				}
-				
+				klog.Info("Can't find oidc url env")
 			}
+			klog.Info("Can't find admin env")
 		}
 		// If the user is in systems:master group (ClusterAdmin)
 		groups := request.UserInfo.Groups
