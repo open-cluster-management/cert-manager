@@ -108,7 +108,8 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 						klog.Infof("The url: %s and the passed in url: %s", oidcUrl, uid.String())
 						return true
 					}
-				} 
+					klog.Infof("The url: %s and the passed in url: %s", oidcUrl, uid.String())
+				}
 				
 			}
 		}
