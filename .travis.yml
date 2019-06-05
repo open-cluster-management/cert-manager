@@ -45,6 +45,7 @@ script:
       if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
         make rhel-images
       fi
+  - make push-images
   
 after_success:
   - |

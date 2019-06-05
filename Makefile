@@ -241,9 +241,10 @@ $(DOCKER_RELEASE_TARGETS):
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-
+	$(eval DOCKER_URI := $(REPO_URL):$(IMAGE_VERSION))
 	# Pushing docker image.
-	$(SSH_CMD) docker push $(REPO_URL):$(IMAGE_VERSION)
+	#$(SSH_CMD) docker push 
+	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Pushed $(REPO_URL):$(IMAGE_VERSION) to $(REPO_URL)"
 
 ifneq ($(RETAG),)
