@@ -233,7 +233,7 @@ $(DOCKER_BUILD_TARGETS):
 
 	@echo "OS = $(OS)"
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
-	$(eval DOCKER_BUILD_PATH := $(DOCKERFILES))
+	$(eval DOCKER_BUILD_PATH := /home/travis/gopath/src/github.com/jetstack/cert-manager/$(DOCKERFILES))
 	@echo "DOCKER_BUILD_PATH=$(DOCKER_BUILD_PATH)"
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
