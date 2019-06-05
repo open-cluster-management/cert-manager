@@ -214,6 +214,7 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "OS = $(OS)"
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 	$(eval DOCKER_BUILD_PATH := $(DOCKER_BUILD_PATH)/$(DOCKER_FILE_CMD))
+	$(eval DOCKER_IMAGE := $(REPO_URL):$(IMAGE_VERSION))
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILES)
@@ -236,7 +237,10 @@ $(DOCKER_BUILD_TARGETS):
 		   --build-arg "SUMMARY=$(SUMMARY)" \
 		   --build-arg "GOARCH=$(GOARCH)"')
 	# Building docker image.
-	@make DOCKER_BUILD_PATH=$(DOCKER_BUILD_PATH) DOCKER_BUILD_OPTS=$(DOCKER_BUILD_OPTS) docker:build
+	@make DOCKER_BUILD_PATH=$(DOCKER_BUILD_PATH) \
+			DOCKER_BUILD_OPTS=$(DOCKER_BUILD_OPTS) \
+			DOCKER_IMAGE=$(DOCKER_IMAGE) \
+			DOCKER_BUILD_TAG=$(IMAGE_VERSION) docker:build
 	# $(DOCKER_BUILD_CMD)
 	@echo "Built docker image."
 
