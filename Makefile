@@ -219,15 +219,6 @@ $(DOCKER_BUILD_TARGETS):
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILES)
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILES)
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/packages.yaml $(DOCKERFILES)
-	
-	$(eval DOCKER_BUILD_CMD := docker build -t $(REPO_URL):$(IMAGE_VERSION) \
-           --build-arg "VCS_REF=$(VCS_REF)" \
-           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
-           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
-           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-		   --build-arg "SUMMARY=$(SUMMARY)" \
-		   --build-arg "GOARCH=$(GOARCH)" \
-		   -f $(DOCKER_FILE) $(DOCKERFILES))
 
 	$(eval DOCKER_BUILD_OPTS := '--build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
