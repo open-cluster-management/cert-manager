@@ -35,3 +35,4 @@ ARTIFACTORY_PASSWORD ?=
 IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
 URL ?= artifactory.swg-devops.com
 NAMESPACE ?= ibmcom
+DOCKER_REGISTRY ?= $(IMAGE_REPO).$(URL)/$(NAMESPACE)
