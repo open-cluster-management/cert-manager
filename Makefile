@@ -149,7 +149,7 @@ dep-verify:
 $(CMDS):
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-a -tags netgo \
-		-o $(DOCKERFILES)/${APP_NAME}-$@_$(GOOS)_$(GOARCH) \
+		-o $(DOCKERFILES)/$@/${APP_NAME}-$@_$(GOOS)_$(GOARCH) \
 		$(GOLDFLAGS) \
 		./cmd/$@
 
@@ -199,33 +199,6 @@ generate:
 	bazel run //hack:update-reference-docs
 	bazel run //hack:update-deps
 
-build\:acmesolver:
-	$(eval DOCKER_FILE := hack/build/dockerfiles/acmesolver/Dockerfile.rhel)
-	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
-	$(eval WORKING_CHANGES := $(shell git status --porcelain))
-	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
-	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
-	$(eval IMAGE_NAME := $(APP_NAME)-acmesolver)
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
-	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-	$(eval DOCKER_BUILD_PATH := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles/acmesolver/)
-
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILES)
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILES)
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/packages.yaml $(DOCKERFILES)
-
-	$(eval DOCKER_BUILD_OPTS := --build-arg "VCS_REF=$(VCS_REF)" \
-           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
-           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
-           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-		   --build-arg "SUMMARY=$(SUMMARY)" \
-		   --build-arg "GOARCH=$(GOARCH)")
-	# Building docker image.
-	@make docker:build docker:info
-	# $(DOCKER_BUILD_CMD)
-	@echo "Built docker image."
-
 # Docker targets
 ################
 $(DOCKER_BUILD_TARGETS):
@@ -241,9 +214,7 @@ $(DOCKER_BUILD_TARGETS):
 	@echo "OS = $(OS)"
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
 	$(eval DOCKER_BUILD_PATH := $(DOCKER_BUILD_PATH)/$(DOCKER_FILE_CMD))
-	@echo "DOCKER_BUILD_PATH=$(DOCKER_BUILD_PATH)"
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
-	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILES)
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILES)
