@@ -24,7 +24,7 @@ APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /de
 endif
 
 # Get a list of all binaries to be built
-CMDS := acmesolver #$(shell find ./cmd/ -maxdepth 1 -type d -exec basename {} \; | grep -v cmd)
+CMDS := $(shell find ./cmd/ -maxdepth 1 -type d -exec basename {} \; | grep -v cmd)
 # Path to dockerfiles directory
 DOCKERFILES := $(HACK_DIR)/build/dockerfiles
 # A list of all types.go files in pkg/apis
