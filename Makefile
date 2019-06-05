@@ -69,7 +69,7 @@ GOOS := linux
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: help verify build build-images artifactory-login push-images rhel-images \
+.PHONY: help-cm verify build build-images artifactory-login push-images rhel-images \
 	generate generate-verify deploy-verify \
 	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) $(DOCKER_RETAG_TARGETS) \
@@ -84,7 +84,7 @@ lint:
 	@echo "Linting disabled..."
 	
 
-help:
+help-cm:
 	# This Makefile provides common wrappers around Bazel invocations.
 	#
 	### Verify targets
@@ -233,6 +233,7 @@ $(DOCKER_BUILD_TARGETS):
 
 	@echo "OS = $(OS)"
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
+	$(eval DOCKER_BUILD_PATH := $(DOCKERFILES))
 
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
