@@ -12,25 +12,7 @@ include Configfile
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
 
-.PHONY: default
-default:: init;
-
-.PHONY: init\:
-init::
-	@mkdir -p variables
-ifndef GITHUB_USER
-	$(info GITHUB_USER not defined)
-	exit -1
-endif
-	$(info Using GITHUB_USER=$(GITHUB_USER))
-ifndef GITHUB_TOKEN
-	$(info GITHUB_TOKEN not defined)
-	exit -1
-endif
-
--include $(shell curl -fso .build-harness -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3.raw" "https://raw.github.ibm.com/ICP-DevOps/build-harness/master/templates/Makefile.build-harness"; echo .build-harness)
 
 REGISTRY := quay.io/jetstack
 IMAGE_TAGS := canary
@@ -62,12 +44,33 @@ DOCKER_RETAG_TARGETS := $(addprefix docker_retag_, $(CMDS))
 ## e2e test vars
 KUBECTL ?= kubectl
 KUBECONFIG ?= $$HOME/.kube/config
+DOCKER_BUILD_PATH := /home/travis/gopath/src/github.com/jetstack/cert-manager/$(DOCKERFILES)
 
 # Go build flags
 GOOS := linux
 
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
+
+GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
+
+.PHONY: default
+default:: init;
+
+.PHONY: init\:
+init::
+	@mkdir -p variables
+ifndef GITHUB_USER
+	$(info GITHUB_USER not defined)
+	exit -1
+endif
+	$(info Using GITHUB_USER=$(GITHUB_USER))
+ifndef GITHUB_TOKEN
+	$(info GITHUB_TOKEN not defined)
+	exit -1
+endif
+
+-include $(shell curl -fso .build-harness -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3.raw" "https://raw.github.ibm.com/ICP-DevOps/build-harness/master/templates/Makefile.build-harness"; echo .build-harness)
 
 .PHONY: help-cm verify build build-images artifactory-login push-images rhel-images \
 	generate generate-verify deploy-verify \
@@ -233,7 +236,7 @@ $(DOCKER_BUILD_TARGETS):
 
 	@echo "OS = $(OS)"
 	$(eval DOCKER_FILE := $(DOCKERFILES)/$(DOCKER_FILE_CMD)/Dockerfile$(DOCKER_FILE_EXT))
-	$(eval DOCKER_BUILD_PATH := /home/travis/gopath/src/github.com/jetstack/cert-manager/$(DOCKERFILES))
+	
 	@echo "DOCKER_BUILD_PATH=$(DOCKER_BUILD_PATH)"
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
