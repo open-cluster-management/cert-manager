@@ -264,7 +264,7 @@ $(DOCKER_BUILD_TARGETS):
 		   --build-arg "SUMMARY=$(SUMMARY)" \
 		   --build-arg "GOARCH=$(GOARCH)")
 	# Building docker image.
-	@make docker:build docker:info
+	@make DOCKER_BUILD_PATH=$(DOCKER_BUILD_PATH) docker:build
 	# $(DOCKER_BUILD_CMD)
 	@echo "Built docker image."
 
