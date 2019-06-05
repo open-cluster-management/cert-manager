@@ -13,10 +13,6 @@ include Configfile
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-REGISTRY := quay.io/jetstack
-IMAGE_TAGS := canary
-
 GINKGO_SKIP :=
 
 # AppVersion is set as the AppVersion to be compiled into the controller binary.
