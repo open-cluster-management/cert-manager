@@ -243,13 +243,16 @@ $(DOCKER_RELEASE_TARGETS):
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 	$(eval DOCKER_URI := $(REPO_URL):$(IMAGE_VERSION))
 	# Pushing docker image.
-	#$(SSH_CMD) docker push 
 	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Pushed $(REPO_URL):$(IMAGE_VERSION) to $(REPO_URL)"
 
 ifneq ($(RETAG),)
-	$(SSH_CMD) docker tag $(REPO_URL):$(IMAGE_VERSION) $(REPO_URL):$(RELEASE_TAG)
-	$(SSH_CMD) docker push $(REPO_URL):$(RELEASE_TAG)
+	$(eval DOCKER_URI := $(REPO_URL):$(RELEASE_TAG))
+	@make DOCKER_IMAGE=$(REPO_URL) \
+		DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
+		DOCKER_URI=$(DOCKER_URI) \
+		docker:tag
+	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG) and pushed to $(REPO_URL)"
 endif
 	
@@ -261,14 +264,22 @@ $(DOCKER_RETAG_TARGETS):
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 	$(eval IMAGE_VERSION_RHEL ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
+	$(eval IMAGE_RETAG := $(REPO_URL):$(IMAGE_VERSION_RHEL))
 
-	docker tag $(REPO_URL):$(IMAGE_VERSION) $(REPO_URL):$(IMAGE_VERSION_RHEL)
-	docker push $(REPO_URL):$(IMAGE_VERSION_RHEL)
+	@make DOCKER_IMAGE=$(REPO_URL) \
+		DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
+		DOCKER_URI=$(IMAGE_RETAG)
+		docker:tag
+	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
 	@echo "Retagged image as $(REPO_URL):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
 	
 ifneq ($(RETAG),)
-	$(SSH_CMD) docker tag $(REPO_URL):$(IMAGE_VERSION_RHEL) $(REPO_URL):$(RELEASE_TAG_RHEL)
-	$(SSH_CMD) docker push $(REPO_URL):$(RELEASE_TAG_RHEL)
+	$(eval IMAGE_RETAG := $(REPO_URL):$(RELEASE_TAG_RHEL))
+	@make DOCKER_IMAGE=$(REPO_URL) \
+		DOCKER_BUILD_TAG=$(IMAGE_VERSION_RHEL) \
+		DOCKER_URI=$(IMAGE_RETAG)
+		docker:tag
+	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
 	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG_RHEL) and pushed to $(REPO_URL)"
 endif
 
