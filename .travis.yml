@@ -34,13 +34,13 @@ before_script:
 
 script:
   - make build
-    - |
-      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
-        make go-test
-        echo "testing complete"
-        make go-fmt
-        echo "go fmt complete"
-      fi
+  - |
+    if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
+      make go-test
+      echo "testing complete"
+      make go-fmt
+      echo "go fmt complete"
+    fi
   - |
       if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
         make rhel-images
