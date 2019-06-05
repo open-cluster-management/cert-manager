@@ -229,12 +229,12 @@ $(DOCKER_BUILD_TARGETS):
 		   --build-arg "GOARCH=$(GOARCH)" \
 		   -f $(DOCKER_FILE) $(DOCKERFILES))
 
-	$(eval DOCKER_BUILD_OPTS := --build-arg "VCS_REF=$(VCS_REF)" \
+	$(eval DOCKER_BUILD_OPTS := '--build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
 		   --build-arg "SUMMARY=$(SUMMARY)" \
-		   --build-arg "GOARCH=$(GOARCH)")
+		   --build-arg "GOARCH=$(GOARCH)"')
 	# Building docker image.
 	@make DOCKER_BUILD_PATH=$(DOCKER_BUILD_PATH) DOCKER_BUILD_OPTS=$(DOCKER_BUILD_OPTS) docker:build
 	# $(DOCKER_BUILD_CMD)
