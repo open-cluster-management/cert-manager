@@ -204,7 +204,7 @@ generate:
 	bazel run //hack:update-deps
 
 build\:acmesolver:
-	DOCKER_FILE = hack/build/dockerfiles/acmesolver/Dockerfile.rhel
+	$(eval DOCKER_FILE := hack/build/dockerfiles/acmesolver/Dockerfile.rhel)
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
@@ -213,7 +213,7 @@ build\:acmesolver:
 	$(eval IMAGE_NAME := $(APP_NAME)-acmesolver)
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-	DOCKER_BUILD_PATH = /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles/acmesolver/
+	$(eval DOCKER_BUILD_PATH := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles/acmesolver/)
 
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILES)
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILES)
