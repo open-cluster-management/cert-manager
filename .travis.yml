@@ -28,7 +28,6 @@ install:
   - docker info
 
 before_script:
-  - make init
   - make docker:login
 
 script:
