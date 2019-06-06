@@ -30,7 +30,6 @@ before_install:
 
 before_script:
   - make init
-  - make docker:login
 
 stages:
   - lint
@@ -59,23 +58,22 @@ jobs:
       script:
         - make -s build-go
     - stage: build
-      name: "build images"
+      name: "build docker images"
+      os: linux
+      script:
+        - make -s build-images
+    - stage: build
+      name: "build docker images"
+      os: linux-ppc64le
+      script:
+        - make -s build-images
+    - stage: build
+      name: "build docker images"
+      os: linux-s390x
       script:
         - make -s build-images
     - stage: publish
       name: "push images to remote repo"
       script:
+        - make docker:login
         - make -s push-images
-  
-after_success:
-  - |
-      if [[ "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then
-        curl -Lo travis_after_all.py https://raw.github.com/dmakhno/travis_after_all/master/travis_after_all.py
-        python travis_after_all.py https://travis.ibm.com/api
-        export $(cat .to_export_back)
-        if [[ "$BUILD_LEADER" == "YES" ]]; then
-          if [[ "$BUILD_AGGREGATE_STATUS" != "others_succeeded" ]]; then
-            echo "Some jobs failed" && exit 1
-          fi
-        fi
-      fi
