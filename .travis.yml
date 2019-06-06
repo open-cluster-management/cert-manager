@@ -55,10 +55,17 @@ jobs:
         - make init
         - make image
     - stage: publish
-      os:
-        - linux
-        - linux-ppc64le
-        - linux-s390x
+      os: linux
+      script:
+        - make docker:login
+        - make push-images
+    - stage: publish
+      os: linux-ppc64le
+      script:
+        - make docker:login
+        - make push-images
+    - stage: publish
+      os: linux-s390x
       script:
         - make docker:login
         - make push-images
