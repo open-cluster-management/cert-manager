@@ -45,12 +45,10 @@ jobs:
         - make lint
     - stage: test
       name: "run go-fmt"
-      os: linux
       script:
         - make go-fmt
     - stage: test
       name: "run unit tests"
-      os: linux
       script:
         - make go-test
     - stage: build
