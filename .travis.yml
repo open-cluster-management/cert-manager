@@ -30,12 +30,61 @@ stages:
   - publish
 
 jobs:
-  include:             
+  include:
+    - stage: lint
+      script:
+        - make lint
+    - stage: test
+      os: linux
+      script:
+        - make go-fmt
+        - make go-test
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make image
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make image
+     - stage: build
+      os: linux
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make image
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make image
     - stage: build
       os: linux
       env:
         - PROJECT=controller
-        - TEST=controller
       script:
         - make init
         - make image
@@ -50,6 +99,27 @@ jobs:
       os: linux-s390
       env:
         - PROJECT=controller
+      script:
+        - make init
+        - make image
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make image
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=webhook
       script:
         - make init
         - make image
