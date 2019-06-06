@@ -8,7 +8,7 @@
 
  To read the International Program License Agreement (IPLA) for IBM Cloud Private 3.2.0
  and IBM Multicloud Manager 3.2.0, complete the following steps:
- 
+
  1. Open the following link: https://www-03.ibm.com/software/sla/sladb.nsf/search?OpenForm
 
  2. Search for one of the following License Information numbers:

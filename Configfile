@@ -5,9 +5,9 @@ GIT_REMOTE_URL = $(shell git config --get remote.origin.url)
 IMAGE_DESCRIPTION =
 SUMMARY = Certificate Management
 DOCKER_FILE_EXT =
-IMAGE_NAME_ARCH_EXT = 
+IMAGE_NAME_ARCH_EXT =
 MANIFEST_TOOL_NAME =
-GOARCH = 
+GOARCH =
 OPENSHIFT_TAG =
 
 ifeq ($(ARCH), x86_64)
@@ -21,16 +21,14 @@ else
 	GOARCH = $(ARCH)
 endif
 
-DEFAULT_S390X_IMAGE ?= ibmcom/pause-s390x:3.0
-
 PACKAGE_NAME = github.ibm.com/IBMPrivateCloud/ibm-cert-manager
 APP_NAME = icp-cert-manager
 IMAGE_TAGS = canary
 GOPATH ?= $HOME/go
 HACK_DIR ?= hack
 
-ARTIFACTORY_USERNAME ?= 
-ARTIFACTORY_PASSWORD ?= 
+ARTIFACTORY_USERNAME ?=
+ARTIFACTORY_PASSWORD ?=
 
 IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local
 URL ?= artifactory.swg-devops.com

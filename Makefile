@@ -54,7 +54,7 @@ GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $
 	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) $(DOCKER_RETAG_TARGETS) \
 	verify-lint verify-codegen verify-deps verify-unit \
-	dep-verify verify-docs verify-chart 
+	dep-verify verify-docs verify-chart
 
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
@@ -62,7 +62,7 @@ DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
 lint:
 	# @git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor)
 	@echo "Linting disabled..."
-	
+
 
 help-cm:
 	# This Makefile provides common wrappers around Bazel invocations.
@@ -97,7 +97,7 @@ verify: verify-lint verify-codegen verify-deps verify-unit
 verify-lint: hack-verify go-fmt
 verify-unit: go-test
 verify-deps: dep-verify
-verify-codegen: generate-verify deploy-verify 
+verify-codegen: generate-verify deploy-verify
 verify-pr: hack-verify-pr
 
 # requires docker
@@ -255,8 +255,7 @@ ifneq ($(RETAG),)
 		docker:tag
 	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG) and pushed to $(REPO_URL)"
-endif
-	
+endif	
 
 $(DOCKER_RETAG_TARGETS):
 	$(eval DOCKER_RETAG_CMD := $(subst docker_retag_,,$@))
@@ -273,7 +272,7 @@ $(DOCKER_RETAG_TARGETS):
 		docker:tag
 	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
 	@echo "Retagged image as $(REPO_URL):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
-	
+
 ifneq ($(RETAG),)
 	$(eval IMAGE_RETAG := $(REPO_URL):$(RELEASE_TAG_RHEL))
 	@make DOCKER_IMAGE=$(REPO_URL) \

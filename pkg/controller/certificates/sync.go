@@ -422,13 +422,13 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
 		// Secret is updated and this is not a brand new certificate, refresh pods
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
 		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
 		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
-	
+
 		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name, crt.Name)
 	}
 
