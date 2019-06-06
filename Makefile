@@ -209,8 +209,6 @@ generate:
 # Docker targets
 ################
 docker-image:
-	$(eval PROJECT := $(echo $PROJECT))
-	$(eval TEST := $(echo $TEST))
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
@@ -220,7 +218,7 @@ docker-image:
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 	$(eval DOCKER_FILE := Dockerfile$(DOCKER_FILE_EXT))
 	$(eval DOCKERFILE_PATH := $(DOCKERFILES)/$(PROJECT))
-	@echo "TEST: $(TEST) PROJECT: $(PROJECT) and PATH: $(DOCKERFILE_PATH)"
+	@echo "PROJECT: $(PROJECT) and PATH: $(DOCKERFILE_PATH)"
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILE_PATH)
