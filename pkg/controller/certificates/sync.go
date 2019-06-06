@@ -32,12 +32,12 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/klog"
 
 	apiutil "github.com/jetstack/cert-manager/pkg/api/util"
@@ -65,10 +65,10 @@ const (
 
 	messageErrorSavingCertificate = "Error saving TLS certificate: "
 
-	restartLabel 			= "certmanager.k8s.io/time-restarted"
-	noRestartAnnotation 	= "certmanager.k8s.io/disable-auto-restart"
+	restartLabel        = "certmanager.k8s.io/time-restarted"
+	noRestartAnnotation = "certmanager.k8s.io/disable-auto-restart"
 
-	issuerNameLabel 	= "certmanager.k8s.io/issuer-name"
+	issuerNameLabel = "certmanager.k8s.io/issuer-name"
 	issuerKindLabel = "certmanager.k8s.io/issuer-kind"
 )
 
@@ -427,7 +427,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		// Secret is updated and this is not a brand new certificate, refresh pods
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
 		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
-		daemonsetsInterface  := c.Client.AppsV1().DaemonSets(namespace)
+		daemonsetsInterface := c.Client.AppsV1().DaemonSets(namespace)
 
 		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name, crt.Name)
 	}
@@ -478,7 +478,7 @@ NEXT_STATEFULSET:
 NEXT_DAEMONSET:
 	for _, daemonset := range daemonsets.Items {
 		for _, volume := range daemonset.Spec.Template.Spec.Volumes {
-			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && daemonset.ObjectMeta.Annotations[noRestartAnnotation] != "true"  {
+			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && daemonset.ObjectMeta.Annotations[noRestartAnnotation] != "true" {
 				daemonset.ObjectMeta.Labels[restartLabel] = update
 				daemonset.Spec.Template.ObjectMeta.Labels[restartLabel] = update
 				_, err := daemonsetsInterface.Update(&daemonset)
