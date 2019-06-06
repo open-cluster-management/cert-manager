@@ -45,84 +45,84 @@ jobs:
         - PROJECT=acmesolver
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux-ppc64le
       env:
         - PROJECT=acmesolver
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux-s390
       env:
         - PROJECT=acmesolver
       script:
         - make init
-        - make image
+        - make build
      - stage: build
       os: linux
       env:
         - PROJECT=cainjector
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux-ppc64le
       env:
         - PROJECT=cainjector
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux-s390
       env:
         - PROJECT=cainjector
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux
       env:
         - PROJECT=controller
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux-ppc64le
       env:
         - PROJECT=controller
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux-s390
       env:
         - PROJECT=controller
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux
       env:
         - PROJECT=webhook
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux-ppc64le
       env:
         - PROJECT=webhook
       script:
         - make init
-        - make image
+        - make build
     - stage: build
       os: linux-s390
       env:
         - PROJECT=webhook
       script:
         - make init
-        - make image
+        - make build
     - stage: publish
       os: linux
       script:
