@@ -38,22 +38,27 @@ jobs:
       os: linux
       script:
         - make go-fmt
-        - make go-test
-    - stage: test
-      os: linux-s390x
+        - make go-test              
+    - stage: build
+      os: linux
       script:
-        - make go-fmt
-        - make go-test
-    - stage: test
+        - make init
+        - make image
+    - stage: build
       os: linux-ppc64le
       script:
-        - make go-fmt
-        - make go-test                
+        - make init
+        - make image
     - stage: build
+      os: linux-s390x
       script:
         - make init
         - make image
     - stage: publish
+      os:
+        - linux
+        - linux-ppc64le
+        - linux-s390x
       script:
         - make docker:login
         - make push-images
