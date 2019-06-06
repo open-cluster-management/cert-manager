@@ -152,8 +152,7 @@ dep-verify:
 	@echo Running dep
 	$(HACK_DIR)/verify-deps.sh
 
-build-go-binary:
-	$(eval PROJECT := $(echo $PROJECT))
+go-binary:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-a -tags netgo \
 		-o $(DOCKERFILES)/$(PROJECT)/${APP_NAME}-$(PROJECT)_$(GOOS)_$(GOARCH) \
