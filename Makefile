@@ -216,9 +216,9 @@ $(DOCKER_BUILD_TARGETS):
 	$(eval DOCKERFILE_PATH := $(DOCKER_BUILD_PATH)/$(DOCKER_FILE_CMD))
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILES)
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILES)
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/packages.yaml $(DOCKERFILES)
+	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILE_PATH)
+	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILE_PATH)
+	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/packages.yaml $(DOCKERFILE_PATH)
 
 	$(eval DOCKER_BUILD_OPTS := '--build-arg "VCS_REF=$(VCS_REF)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
