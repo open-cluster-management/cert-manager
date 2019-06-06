@@ -161,7 +161,6 @@ build-go-binary:
 		./cmd/$(PROJECT)
 
 go-test:
-	go get -v ./...
 	go test -v \
 	    -race \
 		$$(go list ./... | \
@@ -220,6 +219,7 @@ docker-image:
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 	$(eval DOCKER_FILE := Dockerfile$(DOCKER_FILE_EXT))
 	$(eval DOCKERFILE_PATH := $(DOCKERFILES)/$(PROJECT))
+	@echo "PROJECT: $(PROJECT) and PATH: $(DOCKERFILE_PATH)"
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILE_PATH)
@@ -232,13 +232,13 @@ docker-image:
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
 		   --build-arg "SUMMARY=$(SUMMARY)" \
 		   --build-arg "GOARCH=$(GOARCH)"')
+
 	# Building docker image.
 	@make DOCKER_BUILD_PATH=$(DOCKERFILE_PATH) \
 			DOCKER_BUILD_OPTS=$(DOCKER_BUILD_OPTS) \
 			DOCKER_IMAGE=$(REPO_URL) \
 			DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
 			DOCKER_FILE=$(DOCKER_FILE) docker:build
-	# $(DOCKER_BUILD_CMD)
 	@echo "Built docker image."
 
 docker-release:
