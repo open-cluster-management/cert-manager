@@ -49,7 +49,7 @@ GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
 
-.PHONY: help-cm verify build build-images artifactory-login push-images rhel-images \
+.PHONY: help-cm verify build build-go build-images artifactory-login push-images rhel-images \
 	generate generate-verify deploy-verify \
 	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) $(DOCKER_RETAG_TARGETS) \
@@ -91,6 +91,7 @@ help-cm:
 ###############
 image:: build
 build: $(CMDS) build-images
+build-go: $(CMDS)
 
 verify: verify-lint verify-codegen verify-deps verify-unit
 
@@ -154,6 +155,7 @@ $(CMDS):
 		./cmd/$@
 
 go-test:
+	go get -v ./...
 	go test -v \
 	    -race \
 		$$(go list ./... | \

@@ -1,6 +1,5 @@
 language: bash
 sudo: true
-group: legacy
 
 language: go
 go_import_path: github.com/jetstack/cert-manager
@@ -29,28 +28,44 @@ matrix:
 before_install:
   - source travis-env.sh
 
-install:
-  - docker info
-
 before_script:
   - make init
   - make docker:login
-  - make lint
 
-script:
-  - make build
-  - |
-    if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
-      make go-test
-      echo "testing complete"
-      make go-fmt
-      echo "go fmt complete"
-    fi
-  - |
-      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
-        make rhel-images
-      fi
-  - make push-images
+stages:
+  - lint
+  - test
+  - build
+  - publish
+
+jobs:
+  include:
+    - stage: lint
+      name: "source code"
+      script:
+        - make -s lint
+    - stage: test
+      name: "run go-fmt"
+      os: linux
+      script:
+        - make -s go-fmt
+    - stage: test
+      name: "run unit tests"
+      os: linux
+      script:
+        - make -s go-test
+    - stage: build
+      name: "build go binary"
+      script:
+        - make -s build-go
+    - stage: build
+      name: "build images"
+      script:
+        - make -s build-images
+    - stage: publish
+      name: "push images to remote repo"
+      script:
+        - make -s push-images
   
 after_success:
   - |
