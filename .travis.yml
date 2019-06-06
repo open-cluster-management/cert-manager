@@ -1,6 +1,5 @@
 language: bash
 sudo: true
-group: legacy
 
 language: go
 go_import_path: github.com/jetstack/cert-manager
@@ -29,14 +28,27 @@ matrix:
 before_install:
   - source travis-env.sh
 
-install:
-  - docker info
+stages:
+  - lint
+  - test
+  - build
+  - publish
 
-before_script:
-  - make init
-  - make docker:login
-  - make lint
-
-script:
-  - make build
-  - make push-images
+jobs:
+  include:
+    - stage: lint
+      script:
+        - make lint
+    - stage: test
+      os: linux
+      script:
+        - make go-fmt
+        - make go-test
+    - stage: build
+      script:
+        - make init
+        - make image
+    - stage: publish
+      script:
+        - make docker:login
+        - make push-images
