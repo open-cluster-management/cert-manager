@@ -54,7 +54,7 @@ jobs:
         - make init
         - make image
     - stage: build
-      os: linux-s390x
+      os: linux-s390
       env:
         - IMAGE=controller
       script:
@@ -71,7 +71,7 @@ jobs:
         - make docker:login
         - make push-images
     - stage: publish
-      os: linux-s390x
+      os: linux-s390
       script:
         - make docker:login
         - make push-images
