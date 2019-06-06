@@ -43,24 +43,14 @@ ifeq ($(APP_VERSION),)
 APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.7.0)
 endif
 
-# Get a list of all binaries to be built
-CMDS := $(shell find ./cmd/ -maxdepth 1 -type d -exec basename {} \; | grep -v cmd)
 # Path to dockerfiles directory
-DOCKERFILES := $(HACK_DIR)/build/dockerfiles
+DOCKERFILES := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
 # A list of all types.go files in pkg/apis
 TYPES_FILES := $(shell find pkg/apis -name types.go)
-# docker_build_controller, docker_build_apiserver etc
-DOCKER_BUILD_TARGETS := $(addprefix docker_build_, $(CMDS))
-# docker_push_controller, docker_push_apiserver etc
-DOCKER_PUSH_TARGETS := $(addprefix docker_push_, $(CMDS))
-# docker_push_controller, docker_push_apiserver etc
-DOCKER_RELEASE_TARGETS := $(addprefix docker_release_, $(CMDS))
-# docker_retag_controller
-DOCKER_RETAG_TARGETS := $(addprefix docker_retag_, $(CMDS))
 ## e2e test vars
 KUBECTL ?= kubectl
 KUBECONFIG ?= $$HOME/.kube/config
-DOCKER_BUILD_PATH := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
+
 
 # Go build flags
 GOOS := linux
@@ -69,10 +59,9 @@ GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
 
-.PHONY: help-cm verify build build-images artifactory-login push-images rhel-images \
+.PHONY: help-cm verify build go-binary docker-image docker-release docker-retag \
 	generate generate-verify deploy-verify \
-	$(CMDS) go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
-	$(DOCKER_BUILD_TARGETS) $(DOCKER_PUSH_TARGETS) $(DOCKER_RELEASE_TARGETS) $(DOCKER_RETAG_TARGETS) \
+	go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
 	verify-lint verify-codegen verify-deps verify-unit \
 	dep-verify verify-docs verify-chart
 
@@ -110,7 +99,7 @@ help-cm:
 # Alias targets
 ###############
 image:: build
-build: $(CMDS) build-images
+build: go-binary docker-image
 
 verify: verify-lint verify-codegen verify-deps verify-unit
 
@@ -127,9 +116,6 @@ verify-docs:
 verify-chart:
 	$(HACK_DIR)/verify-chart-version.sh
 
-build-images: $(DOCKER_BUILD_TARGETS)
-push-images: $(DOCKER_RELEASE_TARGETS)
-rhel-images: $(DOCKER_RETAG_TARGETS)
 artifactory-login:
 	$(SSH_CMD) docker login $(IMAGE_REPO).$(URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
 
@@ -166,12 +152,13 @@ dep-verify:
 	@echo Running dep
 	$(HACK_DIR)/verify-deps.sh
 
-$(CMDS):
+build-go-binary:
+	$(eval PROJECT := $(echo $PROJECT))
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-a -tags netgo \
-		-o $(DOCKERFILES)/$@/${APP_NAME}-$@_$(GOOS)_$(GOARCH) \
+		-o $(DOCKERFILES)/$(PROJECT)/${APP_NAME}-$(PROJECT)_$(GOOS)_$(GOARCH) \
 		$(GOLDFLAGS) \
-		./cmd/$@
+		./cmd/$(PROJECT)
 
 go-test:
 	go get -v ./...
@@ -222,21 +209,17 @@ generate:
 
 # Docker targets
 ################
-$(DOCKER_BUILD_TARGETS):
-	$(eval IMAGE := $(echo $IMAGE))
-	$(eval DOCKER_FILE_CMD := $(IMAGE))
-	#$(eval DOCKER_FILE_CMD := $(subst docker_build_,,$@))
+docker-image:
+	$(eval PROJECT := $(echo $PROJECT))
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_FILE_CMD))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-
-	@echo "OS = $(OS)"
 	$(eval DOCKER_FILE := Dockerfile$(DOCKER_FILE_EXT))
-	$(eval DOCKERFILE_PATH := $(DOCKER_BUILD_PATH)/$(DOCKER_FILE_CMD))
+	$(eval DOCKERFILE_PATH := $(DOCKERFILES)/$(PROJECT))
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILE_PATH)
@@ -258,7 +241,7 @@ $(DOCKER_BUILD_TARGETS):
 	# $(DOCKER_BUILD_CMD)
 	@echo "Built docker image."
 
-$(DOCKER_RELEASE_TARGETS):
+docker-release:
 	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
@@ -279,7 +262,7 @@ ifneq ($(RETAG),)
 	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG) and pushed to $(REPO_URL)"
 endif
 
-$(DOCKER_RETAG_TARGETS):
+docker-retag:
 	$(eval DOCKER_RETAG_CMD := $(subst docker_retag_,,$@))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RETAG_CMD))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
