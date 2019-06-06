@@ -223,7 +223,9 @@ generate:
 # Docker targets
 ################
 $(DOCKER_BUILD_TARGETS):
-	$(eval DOCKER_FILE_CMD := $(subst docker_build_,,$@))
+	$(eval IMAGE := $(echo $IMAGE))
+	$(eval DOCKER_FILE_CMD := $(IMAGE))
+	#$(eval DOCKER_FILE_CMD := $(subst docker_build_,,$@))
 	$(eval WORKING_CHANGES := $(shell git status --porcelain))
 	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
 	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))

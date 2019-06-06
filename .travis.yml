@@ -41,16 +41,22 @@ jobs:
         - make go-test              
     - stage: build
       os: linux
+      env:
+        - IMAGE=controller
       script:
         - make init
         - make image
     - stage: build
       os: linux-ppc64le
+      env:
+        - IMAGE=controller
       script:
         - make init
         - make image
     - stage: build
       os: linux-s390x
+      env:
+        - IMAGE=controller
       script:
         - make init
         - make image
