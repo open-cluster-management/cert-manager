@@ -58,7 +58,6 @@ GOOS := linux
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-
 .PHONY: help-cm verify build go-binary docker-image docker-release docker-retag \
 	generate generate-verify deploy-verify \
 	go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
@@ -160,6 +159,7 @@ go-binary:
 		./cmd/$(PROJECT)
 
 go-test:
+	go get ./...
 	go test -v \
 	    -race \
 		$$(go list ./... | \
