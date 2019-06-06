@@ -1,5 +1,6 @@
 language: bash
 sudo: true
+group: legacy
 
 language: go
 go_import_path: github.com/jetstack/cert-manager
