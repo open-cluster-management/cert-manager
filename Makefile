@@ -255,7 +255,7 @@ ifneq ($(RETAG),)
 		docker:tag
 	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG) and pushed to $(REPO_URL)"
-endif	
+endif
 
 $(DOCKER_RETAG_TARGETS):
 	$(eval DOCKER_RETAG_CMD := $(subst docker_retag_,,$@))
