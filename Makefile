@@ -64,6 +64,7 @@ build: go-binary docker-image
 go-verify: go-fmt go-test
 
 dep-verify:
+	go get -u github.com/golang/dep/cmd/dep
 	@echo Running dep
 	$(HACK_DIR)/verify-deps.sh
 
