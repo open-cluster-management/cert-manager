@@ -99,9 +99,6 @@ deploy-verify:
 
 # Go targets
 #################
-dep-verify:
-	@echo Running dep
-	$(HACK_DIR)/verify-deps.sh
 
 e2e_test:
 	mkdir -p "$$(pwd)/_artifacts"

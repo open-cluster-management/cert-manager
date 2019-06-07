@@ -63,6 +63,10 @@ build: go-binary docker-image
 #################
 go-verify: go-fmt go-test
 
+dep-verify:
+	@echo Running dep
+	$(HACK_DIR)/verify-deps.sh
+
 # Builds the go binaries for the project.
 go-binary:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
@@ -71,7 +75,7 @@ go-binary:
 		$(GOLDFLAGS) \
 		./cmd/$(PROJECT)
 
-go-test:
+go-test: dep-verify
 	go test -v \
 	    -race \
 		$$(go list ./... | \
