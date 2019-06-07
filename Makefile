@@ -126,7 +126,7 @@ docker-image:
 	@echo "Built docker image."
 
 docker-push:
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
 	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
