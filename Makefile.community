@@ -1,0 +1,130 @@
+# Copyright 2019 The Jetstack cert-manager contributors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+GINKGO_SKIP :=
+
+# A list of all types.go files in pkg/apis
+TYPES_FILES := $(shell find pkg/apis -name types.go)
+## e2e test vars
+KUBECTL ?= kubectl
+KUBECONFIG ?= $$HOME/.kube/config
+
+GIT_COMMIT = $(shell git rev-parse --short HEAD)
+
+.PHONY: help-cm verify generate generate-verify deploy-verify \
+	e2e-test go-verify hack-verify hack-verify-pr \
+	verify-lint verify-codegen verify-deps verify-unit \
+	dep-verify verify-docs verify-chart
+
+lint:
+	@git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor | grep -v docs | grep -v deploy | grep -v hack)
+	#@echo "Linting disabled..."
+
+
+help-cm:
+	# This Makefile provides common wrappers around Bazel invocations.
+	#
+	### Verify targets
+	#
+	# verify_lint        - run 'lint' targets
+	# verify_unit        - run unit tests
+	# verify_deps        - verifiy vendor/ and Gopkg.lock is up to date
+	# verify_codegen     - verify generated code, including 'static deploy manifests', is up to date
+	# verify_docs        - verify the generated reference docs for API types is up to date
+	# verify_chart       - runs Helm chart linter (e.g. ensuring version has been bumped etc)
+	#
+	### Generate targets
+	#
+	# generate           - regenerate all generated files
+	#
+	### Build targets
+	#
+	# build				 - builds all images (controller, acmesolver, webhook)
+	# e2e_test           - builds and runs end-to-end tests.
+	#                      NOTE: you probably want to execute ./hack/ci/run-e2e-kind.sh instead of this target
+	#
+
+# Alias targets
+###############
+verify: verify-lint verify-codegen verify-deps verify-unit
+
+verify-lint: hack-verify go-fmt
+verify-unit: go-test
+verify-deps: dep-verify
+verify-codegen: generate-verify deploy-verify
+verify-pr: hack-verify-pr
+
+# requires docker
+verify-docs:
+	$(HACK_DIR)/verify-reference-docs.sh
+# requires docker
+verify-chart:
+	$(HACK_DIR)/verify-chart-version.sh
+
+# Code generation
+#################
+generate-verify:
+	$(HACK_DIR)/verify-codegen.sh
+
+# Hack targets
+##############
+hack-verify:
+	@echo Running boilerplate header checker
+	$(HACK_DIR)/verify_boilerplate.py
+	@echo Running href checker
+	$(HACK_DIR)/verify-links.sh
+	@echo Running errexit checker
+	$(HACK_DIR)/verify-errexit.sh
+
+hack-verify-pr:
+	@echo Running helm chart version checker
+	$(HACK_DIR)/verify-chart-version.sh
+	@echo Running reference docs checker
+	IMAGE=eu.gcr.io/jetstack-build-infra/gen-apidocs-img $(HACK_DIR)/verify-reference-docs.sh
+
+deploy-verify:
+	@echo Running deploy-gen
+	$(HACK_DIR)/verify-deploy-gen.sh
+
+# Go targets
+#################
+dep-verify:
+	@echo Running dep
+	$(HACK_DIR)/verify-deps.sh
+
+e2e_test:
+	mkdir -p "$$(pwd)/_artifacts"
+	bazel build //hack/bin:helm //test/e2e:e2e.test
+	# Run e2e tests
+	KUBECONFIG=$(KUBECONFIG) \
+		bazel run //vendor/github.com/onsi/ginkgo/ginkgo -- \
+			-nodes 20 \
+			$$(bazel info bazel-genfiles)/test/e2e/e2e.test \
+			-- \
+			--helm-binary-path=$$(bazel info bazel-genfiles)/hack/bin/helm \
+			--repo-root="$$(pwd)" \
+			--report-dir="$${ARTIFACTS:-./_artifacts}" \
+			--ginkgo.skip="$(GINKGO_SKIP)" \
+			--kubectl-path="$(KUBECTL)"
+
+# Generate targets
+##################
+
+generate:
+	bazel run //hack:update-bazel
+	bazel run //hack:update-gofmt
+	bazel run //hack:update-codegen
+	bazel run //hack:update-deploy-gen
+	bazel run //hack:update-reference-docs
+	bazel run //hack:update-deps

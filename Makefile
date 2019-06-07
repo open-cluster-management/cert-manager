@@ -13,6 +13,8 @@ include Configfile
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# CICD BUILD HARNESS
+####################
 GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
 
 .PHONY: default
@@ -32,25 +34,10 @@ ifndef GITHUB_TOKEN
 endif
 
 -include $(shell curl -fso .build-harness -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3.raw" "https://raw.github.ibm.com/ICP-DevOps/build-harness/master/templates/Makefile.build-harness"; echo .build-harness)
-
-GINKGO_SKIP :=
-
-# AppVersion is set as the AppVersion to be compiled into the controller binary.
-# It's used as the default version of the 'acmesolver' image to use for ACME
-# challenge requests, and any other future provider that requires additional
-# image dependencies will use this same tag.
-ifeq ($(APP_VERSION),)
-APP_VERSION := $(if $(shell cat VERSION 2> /dev/null),$(shell cat VERSION 2> /dev/null),0.7.0)
-endif
+####################
 
 # Path to dockerfiles directory
 DOCKERFILES := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
-# A list of all types.go files in pkg/apis
-TYPES_FILES := $(shell find pkg/apis -name types.go)
-## e2e test vars
-KUBECTL ?= kubectl
-KUBECONFIG ?= $$HOME/.kube/config
-
 
 # Go build flags
 GOOS := linux
@@ -58,99 +45,25 @@ GOOS := linux
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
-.PHONY: help-cm verify build go-binary docker-image docker-release docker-retag \
-	generate generate-verify deploy-verify \
-	go-test go-fmt e2e-test go-verify hack-verify hack-verify-pr \
-	verify-lint verify-codegen verify-deps verify-unit \
-	dep-verify verify-docs verify-chart
+.PHONY: lint build go-binary docker-image docker-push rhel-image \
+	go-test go-fmt go-verify 
 
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
 
 lint:
 	@git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor | grep -v docs | grep -v deploy | grep -v hack)
-	#@echo "Linting disabled..."
-
-
-help-cm:
-	# This Makefile provides common wrappers around Bazel invocations.
-	#
-	### Verify targets
-	#
-	# verify_lint        - run 'lint' targets
-	# verify_unit        - run unit tests
-	# verify_deps        - verifiy vendor/ and Gopkg.lock is up to date
-	# verify_codegen     - verify generated code, including 'static deploy manifests', is up to date
-	# verify_docs        - verify the generated reference docs for API types is up to date
-	# verify_chart       - runs Helm chart linter (e.g. ensuring version has been bumped etc)
-	#
-	### Generate targets
-	#
-	# generate           - regenerate all generated files
-	#
-	### Build targets
-	#
-	# build				 - builds all images (controller, acmesolver, webhook)
-	# e2e_test           - builds and runs end-to-end tests.
-	#                      NOTE: you probably want to execute ./hack/ci/run-e2e-kind.sh instead of this target
-	#
 
 # Alias targets
 ###############
 image:: build
 build: go-binary docker-image
 
-verify: verify-lint verify-codegen verify-deps verify-unit
-
-verify-lint: hack-verify go-fmt
-verify-unit: go-test
-verify-deps: dep-verify
-verify-codegen: generate-verify deploy-verify
-verify-pr: hack-verify-pr
-
-# requires docker
-verify-docs:
-	$(HACK_DIR)/verify-reference-docs.sh
-# requires docker
-verify-chart:
-	$(HACK_DIR)/verify-chart-version.sh
-
-artifactory-login:
-	$(SSH_CMD) docker login $(IMAGE_REPO).$(URL) --username $(ARTIFACTORY_USERNAME) --password $(ARTIFACTORY_PASSWORD)
-
-# Code generation
-#################
-generate-verify:
-	$(HACK_DIR)/verify-codegen.sh
-
-# Hack targets
-##############
-hack-verify:
-	@echo Running boilerplate header checker
-	$(HACK_DIR)/verify_boilerplate.py
-	@echo Running href checker
-	$(HACK_DIR)/verify-links.sh
-	@echo Running errexit checker
-	$(HACK_DIR)/verify-errexit.sh
-
-hack-verify-pr:
-	@echo Running helm chart version checker
-	$(HACK_DIR)/verify-chart-version.sh
-	@echo Running reference docs checker
-	IMAGE=eu.gcr.io/jetstack-build-infra/gen-apidocs-img $(HACK_DIR)/verify-reference-docs.sh
-
-deploy-verify:
-	@echo Running deploy-gen
-	$(HACK_DIR)/verify-deploy-gen.sh
-
 # Go targets
 #################
 go-verify: go-fmt go-test
 
-dep-verify:
-	@echo Running dep
-	$(HACK_DIR)/verify-deps.sh
-
+# Builds the go binaries for the project.
 go-binary:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-a -tags netgo \
@@ -159,7 +72,6 @@ go-binary:
 		./cmd/$(PROJECT)
 
 go-test:
-	go get ./...
 	go test -v \
 	    -race \
 		$$(go list ./... | \
@@ -167,7 +79,7 @@ go-test:
 			grep -v '/test/e2e' | \
 			grep -v '/pkg/client' | \
 			grep -v '/third_party' | \
-			grep -v '/docs/generated' \
+			grep -v '/docs/' \
 		)
 
 go-fmt:
@@ -178,32 +90,6 @@ go-fmt:
 		echo "$$GO_FMT"; \
 		exit 1; \
 	fi
-
-e2e_test:
-	mkdir -p "$$(pwd)/_artifacts"
-	bazel build //hack/bin:helm //test/e2e:e2e.test
-	# Run e2e tests
-	KUBECONFIG=$(KUBECONFIG) \
-		bazel run //vendor/github.com/onsi/ginkgo/ginkgo -- \
-			-nodes 20 \
-			$$(bazel info bazel-genfiles)/test/e2e/e2e.test \
-			-- \
-			--helm-binary-path=$$(bazel info bazel-genfiles)/hack/bin/helm \
-			--repo-root="$$(pwd)" \
-			--report-dir="$${ARTIFACTS:-./_artifacts}" \
-			--ginkgo.skip="$(GINKGO_SKIP)" \
-			--kubectl-path="$(KUBECTL)"
-
-# Generate targets
-##################
-
-generate:
-	bazel run //hack:update-bazel
-	bazel run //hack:update-gofmt
-	bazel run //hack:update-codegen
-	bazel run //hack:update-deploy-gen
-	bazel run //hack:update-reference-docs
-	bazel run //hack:update-deps
 
 # Docker targets
 ################
@@ -239,8 +125,7 @@ docker-image:
 			DOCKER_FILE=$(DOCKER_FILE) docker:build
 	@echo "Built docker image."
 
-docker-release:
-	$(eval DOCKER_RELEASE_CMD := $(subst docker_release_,,$@))
+docker-push:
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RELEASE_CMD))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
@@ -260,8 +145,8 @@ ifneq ($(RETAG),)
 	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG) and pushed to $(REPO_URL)"
 endif
 
-docker-retag:
-	$(eval DOCKER_RETAG_CMD := $(subst docker_retag_,,$@))
+# Retags the image with the rhel tag.
+rhel-image:
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RETAG_CMD))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
@@ -285,7 +170,3 @@ ifneq ($(RETAG),)
 	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
 	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG_RHEL) and pushed to $(REPO_URL)"
 endif
-
-# include Makefile.bh
-include Makefile.docker
-#include Makefile.test

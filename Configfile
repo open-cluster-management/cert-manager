@@ -1,14 +1,29 @@
+# Build settings
+################
 ARCH = $(shell uname -m)
 OS ?= $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
 GIT_REMOTE_URL = $(shell git config --get remote.origin.url)
 
+# Project settings
+##################
+GOARCH =
+OPENSHIFT_TAG =
+
+GOPATH ?= $HOME/go
+HACK_DIR ?= hack
+
+# Image settings
+################
+PACKAGE_NAME = github.ibm.com/IBMPrivateCloud/ibm-cert-manager
+APP_NAME = icp-cert-manager
+APP_VERSION = 0.7.0
+
+IMAGE_TAGS = canary
 IMAGE_DESCRIPTION =
 SUMMARY = Certificate Management
 DOCKER_FILE_EXT =
 IMAGE_NAME_ARCH_EXT =
 MANIFEST_TOOL_NAME =
-GOARCH =
-OPENSHIFT_TAG =
 
 ifeq ($(ARCH), x86_64)
 	IMAGE_NAME_ARCH_EXT = -amd64
@@ -21,12 +36,8 @@ else
 	GOARCH = $(ARCH)
 endif
 
-PACKAGE_NAME = github.ibm.com/IBMPrivateCloud/ibm-cert-manager
-APP_NAME = icp-cert-manager
-IMAGE_TAGS = canary
-GOPATH ?= $HOME/go
-HACK_DIR ?= hack
-
+# Docker registry settings
+##########################
 ARTIFACTORY_USERNAME ?=
 ARTIFACTORY_PASSWORD ?=
 

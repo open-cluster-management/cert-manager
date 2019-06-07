@@ -27,7 +27,6 @@ stages:
   - lint
   - test
   - build
-  - publish
 
 jobs:
   include:
@@ -46,6 +45,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux-ppc64le
       env:
@@ -53,6 +54,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux-s390
       env:
@@ -60,6 +63,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux
       env:
@@ -67,6 +72,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux-ppc64le
       env:
@@ -74,6 +81,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux-s390
       env:
@@ -81,6 +90,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push  
     - stage: build
       os: linux
       env:
@@ -88,6 +99,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux-ppc64le
       env:
@@ -95,6 +108,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux-s390
       env:
@@ -102,6 +117,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux
       env:
@@ -109,6 +126,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux-ppc64le
       env:
@@ -116,6 +135,8 @@ jobs:
       script:
         - make init
         - make build
+        - make docker:login
+        - make docker-push
     - stage: build
       os: linux-s390
       env:
@@ -123,18 +144,5 @@ jobs:
       script:
         - make init
         - make build
-    - stage: publish
-      os: linux
-      script:
         - make docker:login
-        - make push-images
-    - stage: publish
-      os: linux-ppc64le
-      script:
-        - make docker:login
-        - make push-images
-    - stage: publish
-      os: linux-s390
-      script:
-        - make docker:login
-        - make push-images
+        - make docker-push
