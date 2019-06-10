@@ -64,7 +64,6 @@ build: go-binary docker-image
 go-verify: go-fmt go-test
 
 dep-verify:
-	go get -u github.com/golang/dep/cmd/dep
 	go get -u github.com/bazelbuild/bazel-gazelle/cmd/gazelle
 	go get k8s.io/repo-infra/kazel
 	sudo pip install --upgrade buildozer
@@ -80,7 +79,17 @@ go-binary:
 		./cmd/$(PROJECT)
 
 go-test:
-	go get -v ./...
+	go get -u github.com/golang/dep/cmd/dep
+	dep ensure
+	go test -v \
+	    -race \
+		$$(go list ./... | \
+			grep -v '/vendor/' | \
+			grep -v '/test/e2e' | \
+			grep -v '/pkg/client' | \
+			grep -v '/third_party' | \
+			grep -v '/docs/' \
+		)
 
 go-fmt:
 	@set -e; \
