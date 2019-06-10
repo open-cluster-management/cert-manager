@@ -36,7 +36,6 @@ jobs:
     - stage: test
       os: linux
       script:
-        - make go-fmt
         - make go-test
     - stage: build
       os: linux

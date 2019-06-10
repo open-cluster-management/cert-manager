@@ -81,15 +81,6 @@ go-binary:
 
 go-test:
 	go get -v ./...
-	go test -v \
-	    -race \
-		$$(go list ./... | \
-			grep -v '/vendor/' | \
-			grep -v '/test/e2e' | \
-			grep -v '/pkg/client' | \
-			grep -v '/third_party' | \
-			grep -v '/docs/' \
-		)
 
 go-fmt:
 	@set -e; \
