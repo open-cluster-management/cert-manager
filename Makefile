@@ -79,7 +79,8 @@ go-binary:
 		$(GOLDFLAGS) \
 		./cmd/$(PROJECT)
 
-go-test: dep-verify
+go-test:
+	go get -v ./...
 	go test -v \
 	    -race \
 		$$(go list ./... | \
