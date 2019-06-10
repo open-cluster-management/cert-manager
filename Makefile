@@ -66,6 +66,7 @@ go-verify: go-fmt go-test
 dep-verify:
 	go get -u github.com/golang/dep/cmd/dep
 	go get -u github.com/bazelbuild/bazel-gazelle/cmd/gazelle
+	go get k8s.io/repo-infra/kazel
 	@echo Running dep
 	$(HACK_DIR)/verify-deps.sh
 
