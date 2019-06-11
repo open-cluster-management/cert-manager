@@ -4,8 +4,8 @@ if [ "$TRAVIS_BRANCH" = "master" ] && ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" 
     RELEASE_TAG=latest
     IMAGE_VERSION=0.7.0
 
-    IMAGE_REPO=hyc-cloud-private-integration-docker-local
     NAMESPACE=ibmcom
+    IMAGE_REPO=hyc-cloud-private-integration-docker-local.artifactory.swg-devops.com
 
     IMAGE_VERSION_RHEL="${IMAGE_VERSION}-rhel"
     RELEASE_TAG_RHEL="${RELEASE_TAG}-rhel"

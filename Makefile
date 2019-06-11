@@ -37,12 +37,8 @@ endif
 ####################
 
 # Path to dockerfiles directory
-DOCKERFILES := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
 
-# Go build flags
-GOOS := linux
-
-GIT_COMMIT = $(shell git rev-parse --short HEAD)
+# Look at what these mean
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
 .PHONY: lint build go-binary docker-image docker-push rhel-image \
@@ -62,13 +58,6 @@ build: go-binary docker-image
 # Go targets
 #################
 go-verify: go-fmt go-test
-
-dep-verify:
-	go get -u github.com/bazelbuild/bazel-gazelle/cmd/gazelle
-	go get k8s.io/repo-infra/kazel
-	sudo pip install --upgrade buildozer
-	@echo Running dep
-	$(HACK_DIR)/verify-deps.sh
 
 # Builds the go binaries for the project.
 go-binary:
@@ -103,23 +92,21 @@ go-fmt:
 # Docker targets
 ################
 docker-image:
-	$(eval WORKING_CHANGES := $(shell git status --porcelain))
-	$(eval BUILD_DATE := $(shell date +%m/%d@%H:%M:%S))
-	$(eval VCS_REF := $(if $(WORKING_CHANGES),$(GIT_COMMIT)-$(BUILD_DATE),$(GIT_COMMIT)))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
-	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
+	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
+	$(eval IMAGE := $(IMAGE_REPO)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 	$(eval DOCKER_FILE := Dockerfile$(DOCKER_FILE_EXT))
 	$(eval DOCKERFILE_PATH := $(DOCKERFILES)/$(PROJECT))
 	@echo "PROJECT: $(PROJECT) and PATH: $(DOCKERFILE_PATH)"
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 
+	@echo "HOME: $(HOME)"
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILE_PATH)
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILE_PATH)
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/packages.yaml $(DOCKERFILE_PATH)
 
-	$(eval DOCKER_BUILD_OPTS := '--build-arg "VCS_REF=$(VCS_REF)" \
+	$(eval DOCKER_BUILD_OPTS := '--build-arg "VCS_REF=$(GIT_COMMIT)" \
            --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
            --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
            --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
@@ -129,7 +116,7 @@ docker-image:
 	# Building docker image.
 	@make DOCKER_BUILD_PATH=$(DOCKERFILE_PATH) \
 			DOCKER_BUILD_OPTS=$(DOCKER_BUILD_OPTS) \
-			DOCKER_IMAGE=$(REPO_URL) \
+			DOCKER_IMAGE=$(IMAGE) \
 			DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
 			DOCKER_FILE=$(DOCKER_FILE) docker:build
 	@echo "Built docker image."
@@ -137,16 +124,16 @@ docker-image:
 docker-push:
 	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
-	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
+	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
+	$(eval IMAGE := $(IMAGE_REPO)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 	$(eval DOCKER_URI := $(REPO_URL):$(IMAGE_VERSION))
 	# Pushing docker image.
 	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Pushed $(REPO_URL):$(IMAGE_VERSION) to $(REPO_URL)"
 
 ifneq ($(RETAG),)
-	$(eval DOCKER_URI := $(REPO_URL):$(RELEASE_TAG))
-	@make DOCKER_IMAGE=$(REPO_URL) \
+	$(eval DOCKER_URI := $(IMAEG):$(RELEASE_TAG))
+	@make DOCKER_IMAGE=$(IMAGE) \
 		DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
 		DOCKER_URI=$(DOCKER_URI) \
 		docker:tag
@@ -158,24 +145,24 @@ endif
 rhel-image:
 	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RETAG_CMD))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)$(IMAGE_NAME_ARCH_EXT))
-	$(eval REPO_URL := $(IMAGE_REPO).$(URL)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-	$(eval IMAGE_VERSION_RHEL ?= $(APP_VERSION)-$(GIT_COMMIT)$(OPENSHIFT_TAG))
-	$(eval IMAGE_RETAG := $(REPO_URL):$(IMAGE_VERSION_RHEL))
+	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
+	$(eval IMAGE := $(IMAGE_REPO)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
+	$(eval IMAGE_VERSION_RHEL ?= $(APP_VERSION)-$(GIT_COMMIT)-rhel)
+	$(eval IMAGE_RETAG := $(IMAGE):$(IMAGE_VERSION_RHEL))
 
-	@make DOCKER_IMAGE=$(REPO_URL) \
+	@make DOCKER_IMAGE=$(IMAGE) \
 		DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
 		DOCKER_URI=$(IMAGE_RETAG)
 		docker:tag
 	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
-	@echo "Retagged image as $(REPO_URL):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
+	@echo "Retagged image as $(IMAGE):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
 
 ifneq ($(RETAG),)
-	$(eval IMAGE_RETAG := $(REPO_URL):$(RELEASE_TAG_RHEL))
-	@make DOCKER_IMAGE=$(REPO_URL) \
+	$(eval IMAGE_RETAG := $(IMAGE):$(RELEASE_TAG_RHEL))
+	@make DOCKER_IMAGE=$(IMAGE) \
 		DOCKER_BUILD_TAG=$(IMAGE_VERSION_RHEL) \
 		DOCKER_URI=$(IMAGE_RETAG)
 		docker:tag
 	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
-	@echo "Retagged image as $(REPO_URL):$(RELEASE_TAG_RHEL) and pushed to $(REPO_URL)"
+	@echo "Retagged image as $(IMAGE):$(RELEASE_TAG_RHEL) and pushed to $(REPO_URL)"
 endif
