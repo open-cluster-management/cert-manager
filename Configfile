@@ -30,6 +30,7 @@ ifeq ($(ARCH), x86_64)
 	OPENSHIFT_TAG = -rhel
 	DOCKER_FILE_EXT = .rhel
 endif
+# Path to dockerfiles directory-- check if can use $HOME for it?
 DOCKERFILES := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
 
 # Docker registry settings
