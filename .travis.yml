@@ -16,6 +16,7 @@ branches:
     - /^v[0-9]+\..*$/
     - /^release-[0-9]+\..*$/
     - build-harness
+    - fix-unit-test
 
 matrix:
   fast_finish: true
