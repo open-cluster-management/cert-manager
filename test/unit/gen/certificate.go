@@ -118,3 +118,14 @@ func SetCertificateOrganization(orgs ...string) CertificateModifier {
 		ch.Spec.Organization = orgs
 	}
 }
+
+func SetLabels(labels map[string]string) CertificateModifier {
+	return func(crt *v1alpha1.Certificate) {
+		if crt.ObjectMeta.Labels == nil {
+			crt.ObjectMeta.Labels = make(map[string]string)
+		}
+		for k, v := range labels {
+			crt.ObjectMeta.Labels[k] = v
+		}
+	}
+}

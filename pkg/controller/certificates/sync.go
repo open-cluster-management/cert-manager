@@ -26,6 +26,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -48,6 +49,7 @@ import (
 	"github.com/jetstack/cert-manager/pkg/util/errors"
 	"github.com/jetstack/cert-manager/pkg/util/kube"
 	"github.com/jetstack/cert-manager/pkg/util/pki"
+	"github.com/kr/pretty"
 )
 
 const (
@@ -83,7 +85,7 @@ var (
 func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err error) {
 	crtCopy := crt.DeepCopy()
 	defer func() {
-		if _, saveErr := c.updateCertificateStatus(crt, crtCopy); saveErr != nil {
+		if _, saveErr := c.updateCertificateStatus(ctx, crt, crtCopy); saveErr != nil {
 			err = utilerrors.NewAggregate([]error{saveErr, err})
 		}
 	}()
@@ -177,6 +179,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	// If the Certificate is valid and up to date, we schedule a renewal in
 	// the future.
 	c.scheduleRenewal(crt)
+	c.addCertificateLabel(crt)
 	if crt.ObjectMeta.Labels == nil || crt.ObjectMeta.Labels[issuerNameLabel] != crt.Spec.IssuerRef.Name || crt.ObjectMeta.Labels[issuerKindLabel] != crt.Spec.IssuerRef.Kind {
 		c.addCertificateLabel(crt)
 	}
@@ -219,7 +222,7 @@ func (c *Controller) setCertificateStatus(crt *v1alpha1.Certificate, key crypto.
 	}
 
 	apiutil.SetCertificateCondition(crt, v1alpha1.CertificateConditionReady, ready, reason, message)
-
+	klog.Infof("Set the status of the certificate %s: %v", crt.ObjectMeta.Name, crt.Status)
 	return
 }
 
@@ -598,10 +601,13 @@ func generateLocallySignedTemporaryCertificate(crt *v1alpha1.Certificate, pk []b
 	return b, nil
 }
 
-func (c *Controller) updateCertificateStatus(old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
-	if reflect.DeepEqual(old.Status, new.Status) {
+func (c *Controller) updateCertificateStatus(ctx context.Context, old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
+	oldBytes, _ := json.Marshal(old.Status)
+	newBytes, _ := json.Marshal(new.Status)
+	if reflect.DeepEqual(oldBytes, newBytes) {
 		return nil, nil
 	}
+	klog.Info("updating resource due to change in status", "diff", pretty.Diff(string(oldBytes), string(newBytes)))
 	// TODO: replace Update call with UpdateStatus. This requires a custom API
 	// server with the /status subresource enabled and/or subresource support
 	// for CRDs (https://github.com/kubernetes/kubernetes/issues/38113)
