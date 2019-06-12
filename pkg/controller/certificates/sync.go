@@ -608,6 +608,7 @@ func (c *Controller) updateCertificateStatus(ctx context.Context, old, new *v1al
 		return nil, nil
 	}
 	klog.Info("updating resource due to change in status", "diff", pretty.Diff(string(oldBytes), string(newBytes)))
+	old.Status = new.Status
 	// TODO: replace Update call with UpdateStatus. This requires a custom API
 	// server with the /status subresource enabled and/or subresource support
 	// for CRDs (https://github.com/kubernetes/kubernetes/issues/38113)

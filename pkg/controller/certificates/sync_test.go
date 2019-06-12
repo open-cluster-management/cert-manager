@@ -33,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	coretesting "k8s.io/client-go/testing"
+	"k8s.io/klog"
 	clock "k8s.io/utils/clock/testing"
 
 	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
@@ -151,6 +152,16 @@ func TestSync(t *testing.T) {
 		t.Errorf("Error decoding test cert2 bytes: %v", err)
 		t.FailNow()
 	}
+	updatedCertStatus := gen.CertificateFrom(exampleCert,
+		gen.SetCertificateStatusCondition(cmapi.CertificateCondition{
+			Type:               cmapi.CertificateConditionReady,
+			Status:             cmapi.ConditionTrue,
+			Reason:             "Ready",
+			Message:            "Certificate is up to date and has not expired",
+			LastTransitionTime: nowMetaTime,
+		}),
+		gen.SetCertificateNotAfter(metav1.NewTime(cert1.NotAfter)),
+	)
 
 	localTempCert := generateSelfSignedCert(t, exampleCert, big.NewInt(staticTemporarySerialNumber), pk1, nowTime, nowTime)
 
@@ -566,16 +577,7 @@ func TestSync(t *testing.T) {
 					testpkg.NewAction(coretesting.NewUpdateAction(
 						cmapi.SchemeGroupVersion.WithResource("certificates"),
 						gen.DefaultTestNamespace,
-						gen.CertificateFrom(exampleCert,
-							gen.SetCertificateStatusCondition(cmapi.CertificateCondition{
-								Type:               cmapi.CertificateConditionReady,
-								Status:             cmapi.ConditionTrue,
-								Reason:             "Ready",
-								Message:            "Certificate is up to date and has not expired",
-								LastTransitionTime: nowMetaTime,
-							}),
-							gen.SetCertificateNotAfter(metav1.NewTime(cert1.NotAfter)),
-						),
+						updatedCertStatus,
 					)),
 				},
 			},
@@ -742,9 +744,11 @@ func TestSync(t *testing.T) {
 		//	},
 		//},
 	}
+	n := "should update status of up to date certificate"
+	test := tests[n]
 	//for n, test := range tests {
-	test := tests["should update status of up to date certificate"]
-	t.Run("should update status of up to date certificate", func(t *testing.T) {
+
+	t.Run(n, func(t *testing.T) {
 		if test.Builder == nil {
 			test.Builder = &testpkg.Builder{}
 		}
@@ -752,8 +756,11 @@ func TestSync(t *testing.T) {
 		test.Setup(t)
 
 		crtCopy := test.Certificate.DeepCopy()
-		t.Logf("The certificate status before sync: %v", crtCopy.Status)
+		crtCopy.ObjectMeta.Name = "testing which cert"
+		t.Logf("The certificate location before sync: %v", &crtCopy)
+		t.Logf("The certificate before sync: %v", crtCopy)
 		//t.Logf("The Issuer: %v", test.Issuer)
+		klog.Infof("Before sync")
 		err := test.Controller.Sync(test.Ctx, crtCopy)
 		if err != nil && !test.Err {
 			t.Errorf("Expected function to not error, but got: %v", err)
@@ -761,7 +768,10 @@ func TestSync(t *testing.T) {
 		if err == nil && test.Err {
 			t.Errorf("Expected function to get an error, but got: %v", err)
 		}
-		t.Logf("The certificate status after sync: %v", crtCopy.Status)
+		klog.Infof("After sync")
+
+		t.Logf("The certificate location after sync: %v", &crtCopy)
+		t.Logf("The certificate after sync: %v", crtCopy)
 		test.Finish(t, crtCopy, err)
 	})
 	//}

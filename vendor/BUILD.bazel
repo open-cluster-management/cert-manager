@@ -57,6 +57,7 @@ filegroup(
         "//vendor/github.com/gogo/protobuf/proto:all-srcs",
         "//vendor/github.com/gogo/protobuf/protoc-gen-gogo/descriptor:all-srcs",
         "//vendor/github.com/gogo/protobuf/sortkeys:all-srcs",
+        "//vendor/github.com/golang/glog:all-srcs",
         "//vendor/github.com/golang/groupcache/lru:all-srcs",
         "//vendor/github.com/golang/protobuf/proto:all-srcs",
         "//vendor/github.com/golang/protobuf/ptypes:all-srcs",
