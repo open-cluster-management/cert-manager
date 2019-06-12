@@ -98,7 +98,7 @@ docker-image:
 	@echo "PROJECT: $(PROJECT) and PATH: $(DOCKERFILE_PATH)"
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
 
-	@echo "HOME: $(HOME)"
+	@echo "HOME: $(TRAVIS_BUILD_DIR)"
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILE_PATH)
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILE_PATH)
 	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/packages.yaml $(DOCKERFILE_PATH)
