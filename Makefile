@@ -68,7 +68,6 @@ go-test:
 	go get -u github.com/golang/dep/cmd/dep
 	dep ensure
 	go test -v \
-	    -race \
 		$$(go list ./... | \
 			grep -v '/vendor/' | \
 			grep -v '/test/e2e' | \
