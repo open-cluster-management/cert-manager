@@ -35,5 +35,5 @@ DOCKERFILES := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/bui
 
 # Docker registry settings
 ##########################
-IMAGE_REPO ?= hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com
 NAMESPACE ?= ibmcom
+DOCKER_REGISTRY ?= hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com
