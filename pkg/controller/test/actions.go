@@ -21,7 +21,6 @@ import (
 	"reflect"
 
 	coretesting "k8s.io/client-go/testing"
-	"k8s.io/klog"
 )
 
 type ActionMatchFn func(coretesting.Action, coretesting.Action) error
@@ -71,7 +70,6 @@ func (a *action) Action() coretesting.Action {
 
 func (a *action) Matches(act coretesting.Action) error {
 	matches := reflect.DeepEqual(a.action, act)
-	klog.Infof("A's action: %v\nAct: %v", a.action, act)
 	if matches == true {
 		return nil
 	}
