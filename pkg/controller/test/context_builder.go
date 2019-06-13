@@ -30,7 +30,6 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog"
 
 	cmfake "github.com/jetstack/cert-manager/pkg/client/clientset/versioned/fake"
 	informers "github.com/jetstack/cert-manager/pkg/client/informers/externalversions"
@@ -180,16 +179,10 @@ func (b *Builder) AllActionsExecuted() error {
 				expA.Action().GetVerb() != a.GetVerb() {
 				continue
 			}
-			klog.Infof("BUILDER ACTIONS")
-			klog.Infof("expected: %s\nactual: %s\nresult: %v", expA.Action().GetNamespace(), a.GetNamespace(), expA.Action().GetNamespace() != a.GetNamespace())
-			klog.Infof("expected: %v\nactual: %v\nresult: %v", expA.Action().GetResource(), a.GetResource(), expA.Action().GetResource() != a.GetResource())
-			klog.Infof("expected: %s\nactual: %s\nresult: %v", expA.Action().GetSubresource(), a.GetSubresource(), expA.Action().GetSubresource() != a.GetSubresource())
-			klog.Infof("expected: %s\nactual: %s\nresult: %v", expA.Action().GetVerb(), a.GetVerb(), expA.Action().GetVerb() != a.GetVerb())
 			err = expA.Matches(a)
 			// if this action doesn't match, we record the error and continue
 			// as there may be multiple action matchers for the same resource
 			if err != nil {
-				klog.Infof("Doesn't match %s", err.Error())
 				continue
 			}
 
