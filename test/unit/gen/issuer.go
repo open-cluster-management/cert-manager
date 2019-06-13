@@ -44,8 +44,6 @@ func Issuer(name string, mods ...IssuerModifier) *v1alpha1.Issuer {
 	c := &v1alpha1.Issuer{
 		ObjectMeta: ObjectMeta(name),
 	}
-	c.ObjectMeta.Labels = make(map[string]string)
-	c.ObjectMeta.Labels["certmanager.k8s.io/issuer-name"] = name
 	for _, mod := range mods {
 		mod(c)
 	}
