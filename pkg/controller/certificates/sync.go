@@ -83,6 +83,7 @@ var (
 func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err error) {
 	crtCopy := crt.DeepCopy()
 	defer func() {
+		// ICP - using updateCertificate function instead to see a full update
 		if _, saveErr := c.updateCertificate(crt, crtCopy); saveErr != nil {
 			err = utilerrors.NewAggregate([]error{saveErr, err})
 		}
@@ -221,7 +222,6 @@ func (c *Controller) setCertificateStatus(crt *v1alpha1.Certificate, key crypto.
 	}
 
 	apiutil.SetCertificateCondition(crt, v1alpha1.CertificateConditionReady, ready, reason, message)
-	klog.Infof("Set the status of the certificate %s: %v", crt.ObjectMeta.Name, crt.Status)
 	return
 }
 

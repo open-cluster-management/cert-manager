@@ -27,7 +27,6 @@ import (
 
 	"github.com/jetstack/cert-manager/cmd/controller/app"
 	"github.com/jetstack/cert-manager/cmd/controller/app/options"
-
 	_ "github.com/jetstack/cert-manager/pkg/controller/acmechallenges"
 	_ "github.com/jetstack/cert-manager/pkg/controller/acmeorders"
 	_ "github.com/jetstack/cert-manager/pkg/controller/certificates"
