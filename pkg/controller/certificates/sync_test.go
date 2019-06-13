@@ -737,7 +737,6 @@ func TestSync(t *testing.T) {
 		//	},
 		//},
 	}
-
 	for n, test := range tests {
 		t.Run(n, func(t *testing.T) {
 			if test.Builder == nil {
@@ -746,7 +745,6 @@ func TestSync(t *testing.T) {
 			test.Clock = fixedClock
 			test.Setup(t)
 			crtCopy := test.Certificate.DeepCopy()
-
 			err := test.Controller.Sync(test.Ctx, crtCopy)
 			if err != nil && !test.Err {
 				t.Errorf("Expected function to not error, but got: %v", err)
