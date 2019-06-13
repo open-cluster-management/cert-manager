@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/kr/pretty"
 	coretesting "k8s.io/client-go/testing"
 )
 
@@ -83,5 +84,5 @@ func (a *action) Matches(act coretesting.Action) error {
 		return nil
 	}
 
-	return fmt.Errorf("unexpected difference between actions: \nExpected: %v\nActual: %v", objExp.GetObject(), objAct.GetObject())
+	return fmt.Errorf("unexpected difference between actions: %s", pretty.Diff(objExp.GetObject(), objAct.GetObject()))
 }
