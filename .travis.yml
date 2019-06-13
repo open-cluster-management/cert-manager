@@ -16,7 +16,6 @@ branches:
     - /^v[0-9]+\..*$/
     - /^release-[0-9]+\..*$/
     - build-harness
-    - fix-unit-test
 
 matrix:
   fast_finish: true
@@ -27,6 +26,7 @@ before_install:
 stages:
   - lint
   - test
+  - build
 
 jobs:
   include:
@@ -36,4 +36,113 @@ jobs:
     - stage: test
       os: linux
       script:
+        - make go-fmt
         - make go-test
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push  
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
