@@ -119,13 +119,15 @@ func SetCertificateOrganization(orgs ...string) CertificateModifier {
 	}
 }
 
-func SetLabels(labels map[string]string) CertificateModifier {
+// SetLabels - ICP, the labels required for restarting pods
+func SetLabels() CertificateModifier {
 	return func(crt *v1alpha1.Certificate) {
+		issuerNameLabel := "certmanager.k8s.io/issuer-name"
+		issuerKindLabel := "certmanager.k8s.io/issuer-kind"
 		if crt.ObjectMeta.Labels == nil {
 			crt.ObjectMeta.Labels = make(map[string]string)
 		}
-		for k, v := range labels {
-			crt.ObjectMeta.Labels[k] = v
-		}
+		crt.ObjectMeta.Labels[issuerNameLabel] = crt.Spec.IssuerRef.Name
+		crt.ObjectMeta.Labels[issuerKindLabel] = crt.Spec.IssuerRef.Kind
 	}
 }
