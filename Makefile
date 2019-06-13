@@ -74,7 +74,13 @@ go-test:
 			grep -v '/pkg/client' | \
 			grep -v '/third_party' | \
 			grep -v '/docs/' \
-		)
+		) > results
+	FAILURES = $(shell cat results | grep FAIL:)
+	if [ -n $FAILURES ] ; then
+		@echo "One or more unit tests failed."
+		cat results
+	fi
+	
 
 go-fmt:
 	@set -e; \
