@@ -90,8 +90,6 @@ func (f *controllerFixture) Finish(t *testing.T, args ...interface{}) {
 	// run custom checks
 	if f.CheckFn != nil {
 		f.CheckFn(t, f, args...)
-	} else {
-		t.Logf("CheckFn is nil")
 	}
 
 	// Reset the clock used in apiutil back to the real system clock
