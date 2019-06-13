@@ -28,7 +28,6 @@ import (
 	"github.com/jetstack/cert-manager/cmd/controller/app"
 	"github.com/jetstack/cert-manager/cmd/controller/app/options"
 
-	// How are all the init functions called when they're imported as disregard?
 	_ "github.com/jetstack/cert-manager/pkg/controller/acmechallenges"
 	_ "github.com/jetstack/cert-manager/pkg/controller/acmeorders"
 	_ "github.com/jetstack/cert-manager/pkg/controller/certificates"
