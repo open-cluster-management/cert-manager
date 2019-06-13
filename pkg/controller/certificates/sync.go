@@ -49,7 +49,6 @@ import (
 	"github.com/jetstack/cert-manager/pkg/util/errors"
 	"github.com/jetstack/cert-manager/pkg/util/kube"
 	"github.com/jetstack/cert-manager/pkg/util/pki"
-	"github.com/kr/pretty"
 )
 
 const (
@@ -85,7 +84,7 @@ var (
 func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err error) {
 	crtCopy := crt.DeepCopy()
 	defer func() {
-		if _, saveErr := c.updateCertificateStatus(ctx, crt, crtCopy); saveErr != nil {
+		if _, saveErr := c.updateCertificate(crt, crtCopy); saveErr != nil {
 			err = utilerrors.NewAggregate([]error{saveErr, err})
 		}
 	}()
@@ -179,7 +178,8 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	// If the Certificate is valid and up to date, we schedule a renewal in
 	// the future.
 	c.scheduleRenewal(crt)
-	c.addCertificateLabel(crt)
+
+	// These labels are used for querying certificates within ICP
 	if crt.ObjectMeta.Labels == nil || crt.ObjectMeta.Labels[issuerNameLabel] != crt.Spec.IssuerRef.Name || crt.ObjectMeta.Labels[issuerKindLabel] != crt.Spec.IssuerRef.Kind {
 		c.addCertificateLabel(crt)
 	}
@@ -426,8 +426,9 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		return nil, err
 	}
 
+	// ICP: When it's an updated certificate/secret and pod refresh is enabled, restart
+	// pods associated with the Deployments, Statefulsets, and/or Daemonsets that mount this certificate
 	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
-		// Secret is updated and this is not a brand new certificate, refresh pods
 		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
 		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
 		daemonsetsInterface := c.Client.AppsV1().DaemonSets(namespace)
@@ -438,7 +439,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	return secret, nil
 }
 
-// Restart will run every time a secret is updated for a certificate and when
+// ICP: Restart will run every time a secret is updated for a certificate and when
 // pod refresh is enabled. It will edit the deployments, statefulsets, and daemonsets
 // that use the secret being updated, which will trigger the pod to be restarted.
 func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface v1.StatefulSetInterface, daemonsetsInterface v1.DaemonSetInterface, secret, cert string) {
@@ -601,13 +602,22 @@ func generateLocallySignedTemporaryCertificate(crt *v1alpha1.Certificate, pk []b
 	return b, nil
 }
 
+// ICP: Custom function to update certificate resource within one sync
+func (c *Controller) updateCertificate(old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
+	if reflect.DeepEqual(old, new) {
+		return nil, nil
+	}
+
+	klog.Infof("Updating cert due to inequality\nold: %v\nnew: %v", old, new)
+	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
+}
+
 func (c *Controller) updateCertificateStatus(ctx context.Context, old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
 	oldBytes, _ := json.Marshal(old.Status)
 	newBytes, _ := json.Marshal(new.Status)
 	if reflect.DeepEqual(oldBytes, newBytes) {
 		return nil, nil
 	}
-	klog.Info("updating resource due to change in status", "diff", pretty.Diff(string(oldBytes), string(newBytes)))
 	old.Status = new.Status
 	// TODO: replace Update call with UpdateStatus. This requires a custom API
 	// server with the /status subresource enabled and/or subresource support
@@ -615,6 +625,7 @@ func (c *Controller) updateCertificateStatus(ctx context.Context, old, new *v1al
 	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
 }
 
+// ICP: Adds the issuer name and kind to the certificate's label for querying within ICP
 func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) {
 	if cert.ObjectMeta.Labels == nil {
 		cert.ObjectMeta.Labels = make(map[string]string)
@@ -622,6 +633,4 @@ func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) {
 
 	cert.ObjectMeta.Labels[issuerNameLabel] = cert.Spec.IssuerRef.Name
 	cert.ObjectMeta.Labels[issuerKindLabel] = cert.Spec.IssuerRef.Kind
-
-	c.CMClient.CertmanagerV1alpha1().Certificates(cert.Namespace).Update(cert)
 }
