@@ -68,11 +68,11 @@ go-test:
 	go get -u github.com/golang/dep/cmd/dep
 	dep ensure
 	$(shell go test \
-	 	$$(go list ./... | \
-	 		grep -v '/vendor/' | \
-	 		grep -v '/test/e2e' | \
-	 		grep -v '/pkg/client' | \
-	 		grep -v '/third_party' | \
+		$$(go list ./... | \
+			grep -v '/vendor/' | \
+			grep -v '/test/e2e' | \
+			grep -v '/pkg/client' | \
+			grep -v '/third_party' | \
 			grep -v '/docs/' \
 		) > results.txt)
 	$(eval FAILURES=$(shell cat results.txt | grep "FAIL:"))
