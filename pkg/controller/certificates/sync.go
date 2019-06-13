@@ -26,7 +26,6 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -612,13 +611,10 @@ func (c *Controller) updateCertificate(old, new *v1alpha1.Certificate) (*v1alpha
 	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
 }
 
-func (c *Controller) updateCertificateStatus(ctx context.Context, old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
-	oldBytes, _ := json.Marshal(old.Status)
-	newBytes, _ := json.Marshal(new.Status)
-	if reflect.DeepEqual(oldBytes, newBytes) {
+func (c *Controller) updateCertificateStatus(old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
+	if reflect.DeepEqual(old.Status, new.Status) {
 		return nil, nil
 	}
-	old.Status = new.Status
 	// TODO: replace Update call with UpdateStatus. This requires a custom API
 	// server with the /status subresource enabled and/or subresource support
 	// for CRDs (https://github.com/kubernetes/kubernetes/issues/38113)
