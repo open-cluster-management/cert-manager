@@ -204,7 +204,7 @@ func TestValidateCAA(t *testing.T) {
 
 // ICP - skip test if in travis build.
 func skipTest(t *testing.T) {
-	if os.Getenv("TRAVIS_BUILD") != "" {
+	if os.Getenv("TRAVIS_JOB_ID") != "" {
 		t.Skip("Skipping test in build environment")
 	}
 }
