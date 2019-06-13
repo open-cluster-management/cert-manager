@@ -33,7 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	coretesting "k8s.io/client-go/testing"
-	"k8s.io/klog"
 	clock "k8s.io/utils/clock/testing"
 
 	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
@@ -104,17 +103,11 @@ func TestSync(t *testing.T) {
 	nowMetaTime := metav1.NewTime(nowTime)
 	fixedClock := clock.NewFakeClock(nowTime)
 
-	// During the unit test, the validation checks for these labels on a certificate
-	// Without setting these, an error is thrown because it doesn't add the labels during the test.
-	labels := make(map[string]string)
-	labels["certmanager.k8s.io/issuer-name"] = "test"
-	labels["certmanager.k8s.io/issuer-kind"] = ""
-
 	exampleCert := gen.Certificate("test",
 		gen.SetCertificateDNSNames("example.com"),
 		gen.SetCertificateIssuer(cmapi.ObjectReference{Name: "test"}),
 		gen.SetCertificateSecretName("output"),
-		gen.SetLabels(labels),
+		gen.SetLabels(),
 	)
 	exampleCertNotFoundCondition := gen.CertificateFrom(exampleCert,
 		gen.SetCertificateStatusCondition(cmapi.CertificateCondition{
@@ -744,35 +737,24 @@ func TestSync(t *testing.T) {
 		//	},
 		//},
 	}
-	n := "should update status of up to date certificate"
-	test := tests[n]
-	//for n, test := range tests {
 
-	t.Run(n, func(t *testing.T) {
-		if test.Builder == nil {
-			test.Builder = &testpkg.Builder{}
-		}
-		test.Clock = fixedClock
-		test.Setup(t)
+	for n, test := range tests {
+		t.Run(n, func(t *testing.T) {
+			if test.Builder == nil {
+				test.Builder = &testpkg.Builder{}
+			}
+			test.Clock = fixedClock
+			test.Setup(t)
+			crtCopy := test.Certificate.DeepCopy()
 
-		crtCopy := test.Certificate.DeepCopy()
-		crtCopy.ObjectMeta.Name = "testing which cert"
-		t.Logf("The certificate location before sync: %v", &crtCopy)
-		t.Logf("The certificate before sync: %v", crtCopy)
-		//t.Logf("The Issuer: %v", test.Issuer)
-		klog.Infof("Before sync")
-		err := test.Controller.Sync(test.Ctx, crtCopy)
-		if err != nil && !test.Err {
-			t.Errorf("Expected function to not error, but got: %v", err)
-		}
-		if err == nil && test.Err {
-			t.Errorf("Expected function to get an error, but got: %v", err)
-		}
-		klog.Infof("After sync")
-
-		t.Logf("The certificate location after sync: %v", &crtCopy)
-		t.Logf("The certificate after sync: %v", crtCopy)
-		test.Finish(t, crtCopy, err)
-	})
-	//}
+			err := test.Controller.Sync(test.Ctx, crtCopy)
+			if err != nil && !test.Err {
+				t.Errorf("Expected function to not error, but got: %v", err)
+			}
+			if err == nil && test.Err {
+				t.Errorf("Expected function to get an error, but got: %v", err)
+			}
+			test.Finish(t, crtCopy, err)
+		})
+	}
 }
