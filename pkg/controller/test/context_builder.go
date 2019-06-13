@@ -78,7 +78,7 @@ func (b *Builder) generateNameReactor(action coretesting.Action) (handled bool, 
 	return false, obj.(runtime.Object), nil
 }
 
-// Changed to 1 billion millseconds because 500 million ms is too small
+// ICP: Changed to 1 billion millseconds because 500 million ms is too small
 const informerResyncPeriod = time.Millisecond * 1000
 
 // ToContext will construct a new context for this builder.
@@ -179,6 +179,7 @@ func (b *Builder) AllActionsExecuted() error {
 				expA.Action().GetVerb() != a.GetVerb() {
 				continue
 			}
+
 			err = expA.Matches(a)
 			// if this action doesn't match, we record the error and continue
 			// as there may be multiple action matchers for the same resource
