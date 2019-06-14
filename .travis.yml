@@ -47,6 +47,7 @@ jobs:
         - make build
         - make docker:login
         - make docker-push
+        - make rhel-image
     - stage: build
       os: linux-ppc64le
       env:
@@ -74,6 +75,7 @@ jobs:
         - make build
         - make docker:login
         - make docker-push
+        - make rhel-image
     - stage: build
       os: linux-ppc64le
       env:
@@ -101,6 +103,7 @@ jobs:
         - make build
         - make docker:login
         - make docker-push
+        - make rhel-image
     - stage: build
       os: linux-ppc64le
       env:
@@ -128,6 +131,7 @@ jobs:
         - make build
         - make docker:login
         - make docker-push
+        - make rhel-image
     - stage: build
       os: linux-ppc64le
       env:
