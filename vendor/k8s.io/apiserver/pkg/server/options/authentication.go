@@ -399,5 +399,3 @@ func (s *DelegatingAuthenticationOptions) getClient() (kubernetes.Interface, err
 
 	return kubernetes.NewForConfig(clientConfig)
 }
-
-type ignorableError struct{ error }

@@ -22,10 +22,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/golang/glog"
 	vault "github.com/hashicorp/vault/api"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 )
 
 const vaultToken = "vault-root-token"
@@ -66,7 +66,7 @@ func NewVaultInitializer(container, rootMount, intermediateMount, role, authPath
 	cmd := exec.Command("kubectl", args...)
 	err := cmd.Start()
 	if err != nil {
-		glog.Fatalf("Error starting port-forward: %s", err.Error())
+		klog.Fatalf("Error starting port-forward: %s", err.Error())
 	}
 
 	time.Sleep(3 * time.Second)

@@ -67,14 +67,17 @@ go-binary:
 go-test:
 	go get -u github.com/golang/dep/cmd/dep
 	dep ensure
-	go test -v \
+	$(shell go test -v \
 		$$(go list ./... | \
 			grep -v '/vendor/' | \
 			grep -v '/test/e2e' | \
 			grep -v '/pkg/client' | \
 			grep -v '/third_party' | \
 			grep -v '/docs/' \
-		)
+		) > results.txt)
+	$(eval FAILURES=$(shell cat results.txt | grep "FAIL:"))
+	cat results.txt
+	@$(if $(strip $(FAILURES)), echo "One or more unit tests failed."; exit 1, echo "All unit tests passed successfully."; exit 0)
 
 go-fmt:
 	@set -e; \
