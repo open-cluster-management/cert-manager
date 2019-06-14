@@ -139,7 +139,7 @@ endif
 
 # Retags the image with the rhel tag.
 rhel-image:
-	$(eval IMAGE_NAME := $(APP_NAME)-$(DOCKER_RETAG_CMD))
+	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
 	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
 	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
