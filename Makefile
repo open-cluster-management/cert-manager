@@ -132,10 +132,7 @@ docker-push:
 
 ifneq ($(RETAG),)
 	$(eval DOCKER_URI := $(IMAGE):$(RELEASE_TAG))
-	@make DOCKER_IMAGE=$(IMAGE) \
-		DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
-		DOCKER_URI=$(DOCKER_URI) \
-		docker:tag
+	docker tag $(IMAGE):$(IMAGE_VERSION) $(DOCKER_URI)
 	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Retagged image as $(IMAGE):$(RELEASE_TAG) and pushed to $(IMAGE)"
 endif
@@ -149,19 +146,13 @@ rhel-image:
 	$(eval IMAGE_VERSION_RHEL ?= $(APP_VERSION)-$(GIT_COMMIT)-rhel)
 	$(eval IMAGE_RETAG := $(IMAGE):$(IMAGE_VERSION_RHEL))
 
-	@make DOCKER_IMAGE=$(IMAGE) \
-		DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
-		DOCKER_URI=$(IMAGE_RETAG)
-		docker:tag
+	docker tag $(IMAGE):$(IMAGE_VERSION) $(IMAGE_RETAG)
 	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
 	@echo "Retagged image as $(IMAGE):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
 
 ifneq ($(RETAG),)
 	$(eval IMAGE_RETAG := $(IMAGE):$(RELEASE_TAG_RHEL))
-	@make DOCKER_IMAGE=$(IMAGE) \
-		DOCKER_BUILD_TAG=$(IMAGE_VERSION_RHEL) \
-		DOCKER_URI=$(IMAGE_RETAG)
-		docker:tag
+	docker tag $(IMAGE):$(IMAGE_VERSION_RHEL) $(IMAGE_RETAG)
 	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
 	@echo "Retagged image as $(IMAGE):$(RELEASE_TAG_RHEL) and pushed to $(REPO_URL)"
 endif
