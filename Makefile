@@ -67,7 +67,7 @@ go-binary:
 go-test:
 	go get -u github.com/golang/dep/cmd/dep
 	dep ensure
-	$(shell go test \
+	$(shell go test -v \
 		$$(go list ./... | \
 			grep -v '/vendor/' | \
 			grep -v '/test/e2e' | \
