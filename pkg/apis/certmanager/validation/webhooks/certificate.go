@@ -17,12 +17,13 @@ limitations under the License.
 package webhooks
 
 import (
-	"os"
-	"fmt"
-	"strings"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
+
 	"k8s.io/klog"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -97,6 +98,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		return false
 	}
 	if issuerKind == "ClusterIssuer" {
+		klog.Info("ClusterIssuer")
 		if uid.Fragment != "" {
 			// Check if this user is the default cluster admin
 			if admin, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
@@ -105,6 +107,8 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 					oidcUrl = strings.TrimSpace(oidcUrl)
 					oidcUrl = fmt.Sprintf("%s#%s", oidcUrl, admin)
 					if uid.Fragment == admin && uid.String() == oidcUrl {
+						klog.Info("This is the default cluster admin")
+						klog.Infof("FRAGMENT: %s, STRING: %s", uid.Fragment, uid.String())
 						return true
 					}
 				}
@@ -113,6 +117,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		// If the user is in systems:master group (ClusterAdmin)
 		groups := request.UserInfo.Groups
 		for _, group := range groups {
+			klog.Info("Not cluster admin, checking groups")
 			if group == "system:serviceaccounts:cert-manager" || group == "system:masters" {
 				return true
 			}
