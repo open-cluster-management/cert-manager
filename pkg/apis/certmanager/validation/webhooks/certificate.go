@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"k8s.io/klog"
 
@@ -66,10 +67,13 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 	authorized := allowed(admissionSpec, obj)
 	if !authorized {
+		timeStamp := time.Now()
+		klog.Errorf("[UNAUTHORIZED] %s\nUser: %s (not a cluster administrator) tried to create Certificate %s using a ClusterIssuer.", admissionSpec.UserInfo.Username, timeStamp.String(), obj.ObjectMeta.Name)
+		message := fmt.Sprintf("User is unauthorized to create the Certificate %s using the ClusterIssuer %s.", obj.ObjectMeta.Name, obj.Spec.IssuerRef.Name)
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusUnauthorized, Reason: metav1.StatusReasonUnauthorized,
-			Message: "User is unauthorized to create this certificate with this issuer.",
+			Status: metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
+			Message: message,
 		}
 		return status
 	}
@@ -107,8 +111,6 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 					oidcUrl = strings.TrimSpace(oidcUrl)
 					oidcUrl = fmt.Sprintf("%s#%s", oidcUrl, admin)
 					if uid.Fragment == admin && uid.String() == oidcUrl {
-						klog.Info("This is the default cluster admin")
-						klog.Infof("FRAGMENT: %s, STRING: %s", uid.Fragment, uid.String())
 						return true
 					}
 				}
@@ -117,7 +119,6 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		// If the user is in systems:master group (ClusterAdmin)
 		groups := request.UserInfo.Groups
 		for _, group := range groups {
-			klog.Info("Not cluster admin, checking groups")
 			if group == "system:serviceaccounts:cert-manager" || group == "system:masters" {
 				return true
 			}
