@@ -68,7 +68,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	authorized := allowed(admissionSpec, obj)
 	if !authorized {
 		timeStamp := time.Now()
-		klog.Errorf("[UNAUTHORIZED] %s\nUser: %s (not a cluster administrator) tried to create Certificate %s using a ClusterIssuer.", admissionSpec.UserInfo.Username, timeStamp.String(), obj.ObjectMeta.Name)
+		klog.Errorf("[UNAUTHORIZED] %s\nUser: %s (not a cluster administrator) tried to create Certificate %s using a ClusterIssuer.", timeStamp.String(), admissionSpec.UserInfo.Username, obj.ObjectMeta.Name)
 		message := fmt.Sprintf("User is unauthorized to create the Certificate %s using the ClusterIssuer %s.", obj.ObjectMeta.Name, obj.Spec.IssuerRef.Name)
 		status.Allowed = false
 		status.Result = &metav1.Status{
