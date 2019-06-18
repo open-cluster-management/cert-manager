@@ -1,5 +1,5 @@
 base_os: ubi7-minimal
-repo1: 
+repo1:
   url: "http://registry.access.redhat.com/ubi7/ubi-minimal"
   packages: [
     "shadow-utils",

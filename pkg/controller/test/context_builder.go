@@ -78,7 +78,8 @@ func (b *Builder) generateNameReactor(action coretesting.Action) (handled bool, 
 	return false, obj.(runtime.Object), nil
 }
 
-const informerResyncPeriod = time.Millisecond * 500
+// ICP: Changed to 1 billion millseconds because 500 million ms is too small
+const informerResyncPeriod = time.Millisecond * 1000
 
 // ToContext will construct a new context for this builder.
 // Subsequent calls to ToContext will return the same Context instance.

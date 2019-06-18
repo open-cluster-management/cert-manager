@@ -6,15 +6,12 @@ go_import_path: github.com/jetstack/cert-manager
 go:
   - 1.12
 
-os:
-  - linux
-
 services:
   - docker
 
 branches:
   only:
-    - webhook
+    - master
 
 matrix:
   fast_finish: true
@@ -22,13 +19,130 @@ matrix:
 before_install:
   - source travis-env.sh
 
-install:
-  - docker info
+stages:
+  - lint
+  - test
+  - build
 
-before_script:
-  - make artifactory-login
-  - make lint
-
-script:
-  - make image
-  - make push-images
+jobs:
+  include:
+    - stage: lint
+      script:
+        - make lint
+    - stage: test
+      os: linux
+      script:
+        - make go-fmt
+        - make go-test
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+        - make rhel-image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+        - make rhel-image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push  
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+        - make rhel-image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+        - make rhel-image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push

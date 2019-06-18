@@ -103,9 +103,6 @@ var AllowedModes = []string{
 	ModeBlockingStrict,
 }
 
-// API group version used for serializing audit events.
-var GroupVersion = auditv1beta1.SchemeGroupVersion
-
 type AuditBatchOptions struct {
 	// Should the backend asynchronous batch events to the webhook backend or
 	// should the backend block responses?
