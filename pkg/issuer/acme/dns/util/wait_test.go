@@ -9,6 +9,7 @@ this directory.
 package util
 
 import (
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -179,6 +180,8 @@ func TestResolveConfServers(t *testing.T) {
 }
 
 func TestValidateCAA(t *testing.T) {
+	// ICP - skip this test if in travis build.
+	skipTest(t)
 	// google installs a CAA record at google.com
 	// ask for the www.google.com record to test that
 	// we recurse up the labels
@@ -196,5 +199,12 @@ func TestValidateCAA(t *testing.T) {
 	err = ValidateCAA("www.example.org", []string{"daniel.homebrew.ca"}, false, RecursiveNameservers)
 	if err != nil {
 		t.Fatalf("expected err, got %s", err)
+	}
+}
+
+// ICP - skip test if in travis build.
+func skipTest(t *testing.T) {
+	if os.Getenv("TRAVIS_JOB_ID") != "" {
+		t.Skip("Skipping test in build environment")
 	}
 }

@@ -22,10 +22,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/golang/glog"
 	vault "github.com/hashicorp/vault/api"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 )
 
 const vaultToken = "vault-root-token"
@@ -66,7 +66,7 @@ func NewVaultInitializer(container, rootMount, intermediateMount, role, authPath
 	cmd := exec.Command("kubectl", args...)
 	err := cmd.Start()
 	if err != nil {
-		glog.Fatalf("Error starting port-forward: %s", err.Error())
+		klog.Fatalf("Error starting port-forward: %s", err.Error())
 	}
 
 	time.Sleep(3 * time.Second)
@@ -221,8 +221,8 @@ func (v *VaultInitializer) mountPKI(mount, ttl string) error {
 
 func (v *VaultInitializer) generateRootCert() (string, error) {
 	params := map[string]string{
-		"common_name": "Root CA",
-		"ttl":         "87600h",
+		"common_name":          "Root CA",
+		"ttl":                  "87600h",
 		"exclude_cn_from_sans": "true",
 	}
 	url := path.Join("/v1", v.rootMount, "root", "generate", "internal")
@@ -237,8 +237,8 @@ func (v *VaultInitializer) generateRootCert() (string, error) {
 
 func (v *VaultInitializer) generateIntermediateSigningReq() (string, error) {
 	params := map[string]string{
-		"common_name": "Intermediate CA",
-		"ttl":         "43800h",
+		"common_name":          "Intermediate CA",
+		"ttl":                  "43800h",
 		"exclude_cn_from_sans": "true",
 	}
 	url := path.Join("/v1", v.intermediateMount, "intermediate", "generate", "internal")
@@ -253,10 +253,10 @@ func (v *VaultInitializer) generateIntermediateSigningReq() (string, error) {
 
 func (v *VaultInitializer) signCertificate(csr string) (string, error) {
 	params := map[string]string{
-		"use_csr_values": "true",
-		"ttl":            "43800h",
+		"use_csr_values":       "true",
+		"ttl":                  "43800h",
 		"exclude_cn_from_sans": "true",
-		"csr": csr,
+		"csr":                  csr,
 	}
 	url := path.Join("/v1", v.rootMount, "root", "sign-intermediate")
 

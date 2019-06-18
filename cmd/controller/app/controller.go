@@ -26,9 +26,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"time"
-	"strconv"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -182,7 +182,7 @@ func buildControllerContext(opts *options.ControllerOptions) (*controller.Contex
 	kubeSharedInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(cl, time.Second*30, opts.Namespace, nil)
 
 	enablePodRefresh := opts.EnablePodRefresh
-	if value, ok := os.LookupEnv("POD_RESTART") ; ok {
+	if value, ok := os.LookupEnv("POD_RESTART"); ok {
 		boolValue, err := strconv.ParseBool(value)
 		if err != nil {
 			klog.Infof("An error occurred parsing the POD_RESTART environment variable: %s", err.Error())
@@ -220,8 +220,8 @@ func buildControllerContext(opts *options.ControllerOptions) (*controller.Contex
 			DefaultACMEIssuerDNS01ProviderName: opts.DefaultACMEIssuerDNS01ProviderName,
 		},
 		CertificateOptions: controller.CertificateOptions{
-			EnableOwnerRef: 	opts.EnableCertificateOwnerRef,
-			EnablePodRefresh: 	enablePodRefresh,
+			EnableOwnerRef:   opts.EnableCertificateOwnerRef,
+			EnablePodRefresh: enablePodRefresh,
 		},
 	}, kubeCfg, nil
 }

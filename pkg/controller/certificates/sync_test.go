@@ -107,6 +107,7 @@ func TestSync(t *testing.T) {
 		gen.SetCertificateDNSNames("example.com"),
 		gen.SetCertificateIssuer(cmapi.ObjectReference{Name: "test"}),
 		gen.SetCertificateSecretName("output"),
+		gen.SetLabels(),
 	)
 	exampleCertNotFoundCondition := gen.CertificateFrom(exampleCert,
 		gen.SetCertificateStatusCondition(cmapi.CertificateCondition{
@@ -144,6 +145,16 @@ func TestSync(t *testing.T) {
 		t.Errorf("Error decoding test cert2 bytes: %v", err)
 		t.FailNow()
 	}
+	updatedCertStatus := gen.CertificateFrom(exampleCert,
+		gen.SetCertificateStatusCondition(cmapi.CertificateCondition{
+			Type:               cmapi.CertificateConditionReady,
+			Status:             cmapi.ConditionTrue,
+			Reason:             "Ready",
+			Message:            "Certificate is up to date and has not expired",
+			LastTransitionTime: nowMetaTime,
+		}),
+		gen.SetCertificateNotAfter(metav1.NewTime(cert1.NotAfter)),
+	)
 
 	localTempCert := generateSelfSignedCert(t, exampleCert, big.NewInt(staticTemporarySerialNumber), pk1, nowTime, nowTime)
 
@@ -559,16 +570,7 @@ func TestSync(t *testing.T) {
 					testpkg.NewAction(coretesting.NewUpdateAction(
 						cmapi.SchemeGroupVersion.WithResource("certificates"),
 						gen.DefaultTestNamespace,
-						gen.CertificateFrom(exampleCert,
-							gen.SetCertificateStatusCondition(cmapi.CertificateCondition{
-								Type:               cmapi.CertificateConditionReady,
-								Status:             cmapi.ConditionTrue,
-								Reason:             "Ready",
-								Message:            "Certificate is up to date and has not expired",
-								LastTransitionTime: nowMetaTime,
-							}),
-							gen.SetCertificateNotAfter(metav1.NewTime(cert1.NotAfter)),
-						),
+						updatedCertStatus,
 					)),
 				},
 			},

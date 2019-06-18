@@ -6,11 +6,6 @@ go_import_path: github.com/jetstack/cert-manager
 go:
   - 1.12
 
-os:
-  - linux
-  - linux-ppc64le
-  - linux-s390
-
 services:
   - docker
 
@@ -27,37 +22,130 @@ matrix:
 before_install:
   - source travis-env.sh
 
-install:
-  - docker info
+stages:
+  - lint
+  - test
+  - build
 
-before_script:
-  - make artifactory-login
-  - make lint
-
-script:
-  - make image
-  - |
-      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
-        make go-test
-        echo "testing complete"
-        make go-fmt
-        echo "go fmt complete"
-      fi
-  - make push-images
-  - |
-      if [[ "$(uname -m)" != "ppc64le" && "$(uname -m)" != "s390x" ]]; then
-        make rhel-images
-      fi
-  
-after_success:
-  - |
-      if [[ "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then
-        curl -Lo travis_after_all.py https://raw.github.com/dmakhno/travis_after_all/master/travis_after_all.py
-        python travis_after_all.py https://travis.ibm.com/api
-        export $(cat .to_export_back)
-        if [[ "$BUILD_LEADER" == "YES" ]]; then
-          if [[ "$BUILD_AGGREGATE_STATUS" != "others_succeeded" ]]; then
-            echo "Some jobs failed" && exit 1
-          fi
-        fi
-      fi
+jobs:
+  include:
+    - stage: lint
+      script:
+        - make lint
+    - stage: test
+      os: linux
+      script:
+        - make go-fmt
+        - make go-test
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+        - make rhel-image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=acmesolver
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+        - make rhel-image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=cainjector
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push  
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+        - make rhel-image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=controller
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+        - make rhel-image
+    - stage: build
+      os: linux-ppc64le
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push
+    - stage: build
+      os: linux-s390
+      env:
+        - PROJECT=webhook
+      script:
+        - make init
+        - make build
+        - make docker:login
+        - make docker-push

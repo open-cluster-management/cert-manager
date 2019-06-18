@@ -3,14 +3,15 @@ if [ "$TRAVIS_BRANCH" = "master" ] && ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" 
     RETAG=true
     RELEASE_TAG=latest
     IMAGE_VERSION=0.7.0
-    
-    IMAGE_REPO=hyc-cloud-private-integration-docker-local
+
+    DOCKER_REGISTRY=hyc-cloud-private-integration-docker-local.artifactory.swg-devops.com
     NAMESPACE=ibmcom
+    #IMAGE_REPO=$(DOCKER_REGISTRY).artifactory.swg-devops.com
 
     IMAGE_VERSION_RHEL="${IMAGE_VERSION}-rhel"
     RELEASE_TAG_RHEL="${RELEASE_TAG}-rhel"
 
-    export IMAGE_REPO="$IMAGE_REPO"
+    export DOCKER_REGISTRY="$DOCKER_REGISTRY"
     export NAMESPACE="$NAMESPACE"
     export RELEASE_TAG="$RELEASE_TAG"
     export IMAGE_VERSION="$IMAGE_VERSION"
