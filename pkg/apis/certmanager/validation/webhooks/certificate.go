@@ -96,8 +96,11 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	return status
 }
 func (c *CertificateAdmissionHook) test() {
-	klog.Infof("AUTH CLIENT: %v", c.authClient)
+	klog.Infof("AUTH CLIENT: %v", *c.authClient)
+	klog.Infof("AUTH CLIENT subject access review: %v", c.authClient.SubjectAccessReviews())
 	klog.Infof("Rest client: %v", c.authClient.RESTClient())
+	//client := c.authClient.RESTClient()
+	//klog.Infof("BASE: %v\nVERSIONPATH: %v\nCONFIG: %v\nSERIALIZERS: %v\nCREATEBACKOFF: %v\nTHROTTLE: %v\nCLIENT: %v\n", client.base, client.versionedAPIPath, client.contentConfig, client.serializers, client.createBackoffMgr, client.Throttle, client.Client)
 }
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
