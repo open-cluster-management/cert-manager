@@ -20,9 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-	"os"
-	"strings"
 	"time"
 
 	"k8s.io/klog"
@@ -68,8 +65,8 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 		}
 		return status
 	}
-	c.test(obj, admissionSpec)
-	authorized := allowed(admissionSpec, obj)
+
+	authorized := allowed(admissionSpec, obj, c.authClient)
 	if !authorized {
 		timeStamp := time.Now()
 		klog.Errorf("[UNAUTHORIZED] %s\nUser: %s (not a cluster administrator) tried to create Certificate %s using a ClusterIssuer.", timeStamp.String(), admissionSpec.UserInfo.Username, obj.ObjectMeta.Name)
@@ -96,63 +93,36 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 	return status
 }
-func (c *CertificateAdmissionHook) test(obj *v1alpha1.Certificate, admissionSpec *admissionv1beta1.AdmissionRequest) {
-	klog.Infof("AUTH CLIENT: %v", *c.authClient)
-	klog.Infof("AUTH CLIENT subject access review: %v", c.authClient.SubjectAccessReviews())
-	klog.Infof("Rest client: %v", c.authClient.RESTClient())
-	sar := &authorizationv1.SubjectAccessReview{
-		Spec: authorizationv1.SubjectAccessReviewSpec{
-			ResourceAttributes: &authorizationv1.ResourceAttributes{
-				Namespace: obj.ObjectMeta.Namespace,
-				Verb:      "use",
-				Group:     "certmanager.k8s.io",
-				Resource:  "ClusterIssuer",
-			},
-			User:   admissionSpec.UserInfo.Username,
-			Groups: admissionSpec.UserInfo.Groups,
-			UID:    admissionSpec.UserInfo.UID,
-		},
-	}
-	client := c.authClient.SubjectAccessReviews()
-	res, err := client.Create(sar)
-	if err != nil {
-		klog.Infof("Error occurred using subject access review client to create %v", sar)
-	}
-	klog.Infof("The res %v", res.Status.Allowed)
-	//client := c.authClient.RESTClient()
-	//klog.Infof("BASE: %v\nVERSIONPATH: %v\nCONFIG: %v\nSERIALIZERS: %v\nCREATEBACKOFF: %v\nTHROTTLE: %v\nCLIENT: %v\n", client.base, client.versionedAPIPath, client.contentConfig, client.serializers, client.createBackoffMgr, client.Throttle, client.Client)
-}
-func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
+
+func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate, authClient *authclientv1beta1.AuthorizationV1beta1Client) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	username := request.UserInfo.Username
-	uid, err := url.Parse(username)
-	if err != nil {
-		klog.Infof("An error occurred parsing the username %s to a url: %s", username, err.Error())
-		return false
-	}
+	groups := request.UserInfo.Groups
+	uid := request.UserInfo.UID
+
 	if issuerKind == "ClusterIssuer" {
 		klog.Info("ClusterIssuer")
-		if uid.Fragment != "" {
-			// Check if this user is the default cluster admin
-			if admin, ok := os.LookupEnv("DEFAULT_ADMIN"); ok {
-				if oidcUrl, exists := os.LookupEnv("OIDC_URL"); exists {
-					admin = strings.TrimSpace(admin)
-					oidcUrl = strings.TrimSpace(oidcUrl)
-					oidcUrl = fmt.Sprintf("%s#%s", oidcUrl, admin)
-					if uid.Fragment == admin && uid.String() == oidcUrl {
-						return true
-					}
-				}
-			}
+		// Create Subject Access Review object
+		sar := &authorizationv1.SubjectAccessReview{
+			Spec: authorizationv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authorizationv1.ResourceAttributes{
+					Namespace: crt.ObjectMeta.Namespace,
+					Verb:      "use",
+					Group:     "certmanager.k8s.io",
+					Resource:  "ClusterIssuer",
+				},
+				User:   username,
+				Groups: groups,
+				UID:    uid,
+			},
 		}
-		// If the user is in systems:master group (ClusterAdmin)
-		groups := request.UserInfo.Groups
-		for _, group := range groups {
-			if group == "system:serviceaccounts:cert-manager" || group == "system:masters" {
-				return true
-			}
+		client := authClient.SubjectAccessReviews()
+		res, err := client.Create(sar)
+		if err != nil {
+			klog.Infof("Error occurred using subject access review client to create %v", sar)
 		}
-		return false
+		klog.Info("ALLOWED: ", res.Status.Allowed)
+		return res.Status.Allowed
 	}
 	return true
 }
