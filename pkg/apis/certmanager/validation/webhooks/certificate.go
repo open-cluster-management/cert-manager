@@ -30,6 +30,7 @@ import (
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	authclientv1beta1 "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
 	restclient "k8s.io/client-go/rest"
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
@@ -37,9 +38,11 @@ import (
 )
 
 type CertificateAdmissionHook struct {
+	authClient *authclientv1beta1.AuthorizationV1beta1Client
 }
 
 func (c *CertificateAdmissionHook) Initialize(kubeClientConfig *restclient.Config, stopCh <-chan struct{}) error {
+	c.authClient, _ = authclientv1beta1.NewForConfig(kubeClientConfig)
 	return nil
 }
 
@@ -64,7 +67,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 		}
 		return status
 	}
-
+	c.test()
 	authorized := allowed(admissionSpec, obj)
 	if !authorized {
 		timeStamp := time.Now()
@@ -92,7 +95,10 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 	return status
 }
-
+func (c *CertificateAdmissionHook) test() {
+	klog.Infof("AUTH CLIENT: %v", c.authClient)
+	klog.Infof("Rest client: %v", c.authClient.RESTClient())
+}
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 	username := request.UserInfo.Username
