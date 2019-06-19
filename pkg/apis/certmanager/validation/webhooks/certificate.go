@@ -28,6 +28,7 @@ import (
 	"k8s.io/klog"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	authorizationv1 "k8s.io/api/authorization/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	authclientv1beta1 "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
@@ -67,7 +68,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 		}
 		return status
 	}
-	c.test()
+	c.test(obj, admissionSpec)
 	authorized := allowed(admissionSpec, obj)
 	if !authorized {
 		timeStamp := time.Now()
@@ -95,10 +96,29 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 	return status
 }
-func (c *CertificateAdmissionHook) test() {
+func (c *CertificateAdmissionHook) test(obj *v1alpha1.Certificate, admissionSpec *admissionv1beta1.AdmissionRequest) {
 	klog.Infof("AUTH CLIENT: %v", *c.authClient)
 	klog.Infof("AUTH CLIENT subject access review: %v", c.authClient.SubjectAccessReviews())
 	klog.Infof("Rest client: %v", c.authClient.RESTClient())
+	sar := &authorizationv1.SubjectAccessReview{
+		Spec: authorizationv1.SubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Namespace: obj.ObjectMeta.Namespace,
+				Verb:      "use",
+				Group:     "certmanager.k8s.io",
+				Resource:  "ClusterIssuer",
+			},
+			User:   admissionSpec.UserInfo.Username,
+			Groups: admissionSpec.UserInfo.Groups,
+			UID:    admissionSpec.UserInfo.UID,
+		},
+	}
+	client := c.authClient.SubjectAccessReviews()
+	res, err := client.Create(sar)
+	if err != nil {
+		klog.Infof("Error occurred using subject access review client to create %v", sar)
+	}
+	klog.Infof("The res %v", res)
 	//client := c.authClient.RESTClient()
 	//klog.Infof("BASE: %v\nVERSIONPATH: %v\nCONFIG: %v\nSERIALIZERS: %v\nCREATEBACKOFF: %v\nTHROTTLE: %v\nCLIENT: %v\n", client.base, client.versionedAPIPath, client.contentConfig, client.serializers, client.createBackoffMgr, client.Throttle, client.Client)
 }
