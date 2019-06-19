@@ -118,7 +118,7 @@ func (c *CertificateAdmissionHook) test(obj *v1alpha1.Certificate, admissionSpec
 	if err != nil {
 		klog.Infof("Error occurred using subject access review client to create %v", sar)
 	}
-	klog.Infof("The res %v", res)
+	klog.Infof("The res %v", res.Status.Allowed)
 	//client := c.authClient.RESTClient()
 	//klog.Infof("BASE: %v\nVERSIONPATH: %v\nCONFIG: %v\nSERIALIZERS: %v\nCREATEBACKOFF: %v\nTHROTTLE: %v\nCLIENT: %v\n", client.base, client.versionedAPIPath, client.contentConfig, client.serializers, client.createBackoffMgr, client.Throttle, client.Client)
 }
