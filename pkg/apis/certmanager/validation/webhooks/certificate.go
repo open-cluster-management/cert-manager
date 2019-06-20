@@ -69,7 +69,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	authorized := allowed(admissionSpec, obj, c.authClient)
 	if !authorized {
 		timeStamp := time.Now()
-		klog.Errorf("[UNAUTHORIZED] %s\nUser: %s (not a cluster administrator) tried to create Certificate %s using a ClusterIssuer.", timeStamp.String(), admissionSpec.UserInfo.Username, obj.ObjectMeta.Name)
+		klog.Errorf("[UNAUTHORIZED] %s\nUser: %s is not allowed to use the ClusterIssuer %s to sign their Certificate.", timeStamp.String(), admissionSpec.UserInfo.Username, obj.ObjectMeta.Name)
 		message := fmt.Sprintf("User is unauthorized to create the Certificate %s using the ClusterIssuer %s.", obj.ObjectMeta.Name, obj.Spec.IssuerRef.Name)
 		status.Allowed = false
 		status.Result = &metav1.Status{
@@ -106,10 +106,9 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		sar := &authorizationv1.SubjectAccessReview{
 			Spec: authorizationv1.SubjectAccessReviewSpec{
 				ResourceAttributes: &authorizationv1.ResourceAttributes{
-					Namespace: crt.ObjectMeta.Namespace,
-					Verb:      "use",
-					Group:     "certmanager.k8s.io",
-					Resource:  "ClusterIssuer",
+					Verb:     "use",
+					Group:    "certmanager.k8s.io",
+					Resource: "ClusterIssuer",
 				},
 				User:   username,
 				Groups: groups,
