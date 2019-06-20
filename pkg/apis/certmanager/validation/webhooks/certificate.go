@@ -69,7 +69,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	authorized := allowed(admissionSpec, obj, c.authClient)
 	if !authorized {
 		timeStamp := time.Now()
-		klog.Errorf("[UNAUTHORIZED] %s\nUser: %s is not allowed to use the ClusterIssuer %s to sign their Certificate.", timeStamp.String(), admissionSpec.UserInfo.Username, obj.ObjectMeta.Name)
+		klog.Errorf("[UNAUTHORIZED] %s\nUser: %s is not allowed to use the ClusterIssuer %s to sign their Certificate.", timeStamp.String(), admissionSpec.UserInfo.Username, obj.Spec.IssuerRef.Name)
 		message := fmt.Sprintf("User is unauthorized to create the Certificate %s using the ClusterIssuer %s.", obj.ObjectMeta.Name, obj.Spec.IssuerRef.Name)
 		status.Allowed = false
 		status.Result = &metav1.Status{
@@ -96,11 +96,12 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate, authClient *authclientv1beta1.AuthorizationV1beta1Client) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
-	username := request.UserInfo.Username
-	groups := request.UserInfo.Groups
-	uid := request.UserInfo.UID
 
 	if issuerKind == "ClusterIssuer" {
+		username := request.UserInfo.Username
+		groups := request.UserInfo.Groups
+		uid := request.UserInfo.UID
+		klog.Infof("USER: %s\nGROUPS: %v\nUID: %s", username, groups, uid)
 		klog.Info("ClusterIssuer")
 		// Create Subject Access Review object
 		sar := &authorizationv1.SubjectAccessReview{
@@ -120,6 +121,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		if err != nil {
 			klog.Infof("Error occurred using subject access review client to create %v", sar)
 		}
+		klog.Infof("The result: %v", res)
 		klog.Info("ALLOWED: ", res.Status.Allowed)
 		return res.Status.Allowed
 	}
