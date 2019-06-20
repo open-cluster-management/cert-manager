@@ -109,7 +109,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 				ResourceAttributes: &authorizationv1.ResourceAttributes{
 					Verb:     "use",
 					Group:    "certmanager.k8s.io",
-					Resource: "ClusterIssuer",
+					Resource: "clusterissuers",
 				},
 				User:   username,
 				Groups: groups,
