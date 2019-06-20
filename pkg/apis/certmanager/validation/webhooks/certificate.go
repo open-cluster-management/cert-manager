@@ -102,7 +102,7 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 		groups := request.UserInfo.Groups
 		uid := request.UserInfo.UID
 		klog.Infof("USER: %s\nGROUPS: %v\nUID: %s", username, groups, uid)
-		klog.Info("ClusterIssuer")
+		klog.Info("ClusterIssuer access w/o uid")
 		// Create Subject Access Review object
 		sar := &authorizationv1.SubjectAccessReview{
 			Spec: authorizationv1.SubjectAccessReviewSpec{
@@ -113,7 +113,6 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 				},
 				User:   username,
 				Groups: groups,
-				UID:    uid,
 			},
 		}
 		client := authClient.SubjectAccessReviews()
