@@ -6,7 +6,7 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
-RUN apk add --no-cache ca-certificates && \
+RUN apk add --no-cache ca-certificates procps && \
   addgroup -S certmanager && adduser -S -G certmanager certmanager
 
 ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager

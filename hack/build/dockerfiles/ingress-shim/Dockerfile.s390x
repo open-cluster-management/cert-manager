@@ -1,6 +1,6 @@
 FROM s390x/alpine
 
-RUN apk add --no-cache ca-certificates && \
+RUN apk add --no-cache ca-certificates procps && \
   addgroup -S certmanager && adduser -S -G certmanager certmanager
 
 ADD icp-cert-manager-ingress-shim_linux_amd64 /usr/bin/ingress-shim
