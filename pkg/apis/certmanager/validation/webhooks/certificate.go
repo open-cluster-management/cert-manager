@@ -71,6 +71,7 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 		timeStamp := time.Now()
 		message := fmt.Sprintf("User: %s is not allowed to use the ClusterIssuer %s to sign the Certificate %s.", admissionSpec.UserInfo.Username, obj.Spec.IssuerRef.Name, obj.ObjectMeta.Name)
 		klog.Errorf("[UNAUTHORIZED] %s\n%s", timeStamp.String(), message)
+
 		status.Allowed = false
 		status.Result = &metav1.Status{
 			Status: metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
@@ -93,9 +94,12 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	return status
 }
 
+// Checks if the user requesting to create this Certificate is allowed to
+// Returns true if they are, returns false otherwise
 func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate, authClient *authclientv1beta1.AuthorizationV1beta1Client) bool {
 	issuerKind := crt.Spec.IssuerRef.Kind
 
+	// Check authorization if the Certificate is to be issued/signed by a ClusterIssuer
 	if issuerKind == "ClusterIssuer" {
 		username := request.UserInfo.Username
 		groups := request.UserInfo.Groups
@@ -112,10 +116,13 @@ func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certifica
 				Groups: groups,
 			},
 		}
+
+		// Authorization check
 		client := authClient.SubjectAccessReviews()
 		res, err := client.Create(sar)
 		if err != nil {
-			klog.Infof("Error occurred using subject access review client to create %v", sar)
+			klog.Infof("Error occurred using subject access review client to create %v\nError: %s", sar, err.Error())
+			return false
 		}
 		return res.Status.Allowed
 	}
