@@ -2,7 +2,7 @@
 if [ "$TRAVIS_BRANCH" = "master" ] && ! [ "$TRAVIS_EVENT_TYPE" = "pull_request" ]; then
     RETAG=true
     RELEASE_TAG=latest
-    IMAGE_VERSION=0.7.0
+    IMAGE_VERSION=0.7.0.1
 
     DOCKER_REGISTRY=hyc-cloud-private-integration-docker-local.artifactory.swg-devops.com
     NAMESPACE=ibmcom

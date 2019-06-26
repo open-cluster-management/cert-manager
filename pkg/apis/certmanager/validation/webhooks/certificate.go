@@ -18,11 +18,17 @@ package webhooks
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
+
+	"k8s.io/klog"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	authorizationv1 "k8s.io/api/authorization/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	authclientv1beta1 "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
 	restclient "k8s.io/client-go/rest"
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
@@ -30,9 +36,11 @@ import (
 )
 
 type CertificateAdmissionHook struct {
+	authClient *authclientv1beta1.AuthorizationV1beta1Client
 }
 
 func (c *CertificateAdmissionHook) Initialize(kubeClientConfig *restclient.Config, stopCh <-chan struct{}) error {
+	c.authClient, _ = authclientv1beta1.NewForConfig(kubeClientConfig)
 	return nil
 }
 
@@ -58,6 +66,20 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 		return status
 	}
 
+	authorized := allowed(admissionSpec, obj, c.authClient)
+	if !authorized {
+		timeStamp := time.Now()
+		message := fmt.Sprintf("User: %s is not allowed to use the ClusterIssuer %s to sign the Certificate %s.", admissionSpec.UserInfo.Username, obj.Spec.IssuerRef.Name, obj.ObjectMeta.Name)
+		klog.Errorf("[UNAUTHORIZED] %s\n%s", timeStamp.String(), message)
+
+		status.Allowed = false
+		status.Result = &metav1.Status{
+			Status: metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
+			Message: message,
+		}
+		return status
+	}
+
 	err = validation.ValidateCertificate(obj).ToAggregate()
 	if err != nil {
 		status.Allowed = false
@@ -69,6 +91,40 @@ func (c *CertificateAdmissionHook) Validate(admissionSpec *admissionv1beta1.Admi
 	}
 
 	status.Allowed = true
-
 	return status
+}
+
+// Checks if the user requesting to create this Certificate is allowed to
+// Returns true if they are, returns false otherwise
+func allowed(request *admissionv1beta1.AdmissionRequest, crt *v1alpha1.Certificate, authClient *authclientv1beta1.AuthorizationV1beta1Client) bool {
+	issuerKind := crt.Spec.IssuerRef.Kind
+
+	// Check authorization if the Certificate is to be issued/signed by a ClusterIssuer
+	if issuerKind == "ClusterIssuer" {
+		username := request.UserInfo.Username
+		groups := request.UserInfo.Groups
+
+		// Create Subject Access Review object
+		sar := &authorizationv1.SubjectAccessReview{
+			Spec: authorizationv1.SubjectAccessReviewSpec{
+				ResourceAttributes: &authorizationv1.ResourceAttributes{
+					Verb:     "use",
+					Group:    "certmanager.k8s.io",
+					Resource: "clusterissuers",
+				},
+				User:   username,
+				Groups: groups,
+			},
+		}
+
+		// Authorization check
+		client := authClient.SubjectAccessReviews()
+		res, err := client.Create(sar)
+		if err != nil {
+			klog.Infof("Error occurred using subject access review client to create %v\nError: %s", sar, err.Error())
+			return false
+		}
+		return res.Status.Allowed
+	}
+	return true
 }
