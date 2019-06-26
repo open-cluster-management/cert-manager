@@ -20,7 +20,7 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
-RUN apk add --no-cache ca-certificates && \
+RUN apk add --no-cache ca-certificates procps && \
   adduser -S -u 100 cainjector
 
 ADD icp-cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
