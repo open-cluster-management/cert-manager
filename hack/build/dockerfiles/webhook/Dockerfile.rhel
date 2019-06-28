@@ -13,17 +13,20 @@ RUN microdnf install shadow-utils ca-certificates && \
     adduser -rm -g webhook -u 100 webhook && \
     microdnf clean all
 
-ADD icp-cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
+WORKDIR /home/webhook
 
-RUN mkdir /licenses
+RUN mkdir bin
+ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
 
-COPY LICENSE /licenses
-COPY License.txt /licenses
-COPY packages.yaml /licenses
+RUN mkdir licenses
+
+COPY LICENSE licenses
+COPY License.txt licenses
+COPY packages.yaml licenses
 
 USER 100
 
-ENTRYPOINT ["/usr/bin/webhook"]
+ENTRYPOINT ["bin/webhook"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \
