@@ -22,6 +22,9 @@ COPY LICENSE licenses
 COPY License.txt licenses
 COPY packages.yaml licenses
 
+RUN ls -ld 
+RUN ls -la
+
 USER 100
 
 ENTRYPOINT ["bin/webhook"]
