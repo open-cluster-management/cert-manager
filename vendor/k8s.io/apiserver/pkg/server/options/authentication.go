@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
@@ -306,7 +306,7 @@ func inClusterClientCA(authConfigMap *v1.ConfigMap) (*ClientCertAuthenticationOp
 		// not having a client-ca is fine, return nil
 		return nil, nil
 	}
-
+	klog.Infof("inClusterClientCA")
 	f, err := ioutil.TempFile("", "client-ca-file")
 	if err != nil {
 		return nil, err
