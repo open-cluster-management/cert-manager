@@ -306,7 +306,7 @@ func inClusterClientCA(authConfigMap *v1.ConfigMap) (*ClientCertAuthenticationOp
 		// not having a client-ca is fine, return nil
 		return nil, nil
 	}
-	klog.Infof("inClusterClientCA")
+
 	f, err := ioutil.TempFile("", "client-ca-file")
 	if err != nil {
 		return nil, err
