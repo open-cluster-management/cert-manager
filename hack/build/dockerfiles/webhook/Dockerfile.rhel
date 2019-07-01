@@ -14,6 +14,7 @@ RUN microdnf install shadow-utils ca-certificates && \
     microdnf clean all
 
 WORKDIR /home/webhook
+USER webhook
 
 RUN mkdir bin licenses tmp
 ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
@@ -25,7 +26,6 @@ COPY packages.yaml licenses
 RUN ls -ld 
 RUN ls -la
 
-USER webhook
 
 ENTRYPOINT ["bin/webhook"]
 
