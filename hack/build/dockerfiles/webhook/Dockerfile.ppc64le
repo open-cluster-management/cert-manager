@@ -7,7 +7,7 @@ ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
 RUN apk add --no-cache ca-certificates procps && \
-  addgroup -S webhook && adduser -S -m 100 -G webhook webhook
+  addgroup -S webhook && adduser -S -u 100 -G webhook webhook
 
 WORKDIR /home/webhook
 USER 100
