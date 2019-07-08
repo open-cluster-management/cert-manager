@@ -7,13 +7,15 @@ ARG IMAGE_DESCRIPTION
 ARG GOARCH
 
 RUN apk add --no-cache ca-certificates procps && \
-  addgroup -S webhook && adduser -S -G webhook webhook
+  addgroup -S webhook && adduser -S -u 100 -G webhook webhook
 
-ADD icp-cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
-
+WORKDIR /home/webhook
 USER 100
 
-ENTRYPOINT ["/usr/bin/webhook"]
+RUN mkdir bin tmp
+ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
+
+ENTRYPOINT ["bin/webhook"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \

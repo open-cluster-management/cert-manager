@@ -23,10 +23,6 @@ COPY LICENSE licenses
 COPY License.txt licenses
 COPY packages.yaml licenses
 
-RUN ls -ld 
-RUN ls -la
-
-
 ENTRYPOINT ["bin/webhook"]
 
 # http://label-schema.org/rc1/
