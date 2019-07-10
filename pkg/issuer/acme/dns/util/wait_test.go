@@ -1,6 +1,12 @@
 // +skip_license_check
 
 /*
+IBM Confidential
+OCO Source Materials
+5737-E67
+(C) Copyright IBM Corporation 2016, 2019 All Rights Reserved
+The source code for this program is not published or otherwise divested of its trade secrets, irrespective of what has been deposited with the U.S. Copyright Office.
+
 This file contains portions of code directly taken from the 'xenolf/lego' project.
 A copy of the license for this code can be found in the file named LICENSE in
 this directory.
