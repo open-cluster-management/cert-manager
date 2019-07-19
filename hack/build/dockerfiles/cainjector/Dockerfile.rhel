@@ -9,7 +9,7 @@ ARG GOARCH
 ARG HOME
 
 RUN microdnf install shadow-utils ca-certificates procps && \
-    adduser -r -u 100 cainjector && \
+    adduser -r -u 10000 cainjector && \
     microdnf clean all
 
 ADD icp-cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
@@ -20,7 +20,7 @@ COPY LICENSE /licenses
 COPY License.txt /licenses
 COPY packages.yaml /licenses
 
-USER 100
+USER 10000
 
 ENTRYPOINT ["/usr/bin/cainjector"]
 
