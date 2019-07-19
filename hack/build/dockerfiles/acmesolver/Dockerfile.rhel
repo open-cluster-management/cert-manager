@@ -9,7 +9,7 @@ ARG GOARCH
 ARG HOME
 
 RUN microdnf install shadow-utils ca-certificates procps && \
-    adduser -r -u 100 acmesolver && \
+    adduser -r -u 10000 acmesolver && \
     microdnf clean all
 
 ADD icp-cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
@@ -22,7 +22,7 @@ COPY LICENSE /licenses
 COPY License.txt /licenses
 COPY packages.yaml /licenses
 
-USER 100
+USER 10000
 
 ENTRYPOINT ["/usr/bin/acmesolver"]
 

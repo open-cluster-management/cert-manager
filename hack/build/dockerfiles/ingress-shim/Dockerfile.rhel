@@ -9,7 +9,7 @@ ARG GOARCH
 ARG HOME
 
 RUN microdnf install shadow-utils ca-certificates procps && \
-    adduser -r -u 100 certmanager && \
+    adduser -r -u 10000 certmanager && \
     microdnf clean all
 
 ADD icp-cert-manager-ingress-shim_linux_$GOARCH /usr/bin/ingress-shim
@@ -20,7 +20,7 @@ COPY LICENSE /licenses
 COPY License.txt /licenses
 COPY packages.yaml /licenses
 
-USER certmanager
+USER 10000
 
 ENTRYPOINT ["/usr/bin/ingress-shim"]
 

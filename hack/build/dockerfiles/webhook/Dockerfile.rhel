@@ -10,11 +10,11 @@ ARG HOME
 
 RUN microdnf install shadow-utils ca-certificates procps && \
     groupadd -r webhook && \
-    adduser -rm -g webhook -u 100 webhook && \
+    adduser -rm -g webhook -u 10000 webhook && \
     microdnf clean all
 
 WORKDIR /home/webhook
-USER 100
+USER 10000
 
 RUN mkdir bin licenses tmp
 ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
