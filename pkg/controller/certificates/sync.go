@@ -607,7 +607,7 @@ func (c *Controller) updateCertificate(old, new *v1alpha1.Certificate) (*v1alpha
 		return nil, nil
 	}
 
-	klog.Infof("Updating cert due to inequality\nold: %v\nnew: %v", old, new)
+	klog.V(6).Infof("Updating cert due to inequality\nold: %v\nnew: %v", old, new)
 	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
 }
 
