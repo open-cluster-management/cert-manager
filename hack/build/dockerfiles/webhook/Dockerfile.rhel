@@ -8,7 +8,8 @@ ARG SUMMARY
 ARG GOARCH
 ARG HOME
 
-RUN microdnf install shadow-utils ca-certificates procps && \
+RUN microdnf update && \
+    microdnf install shadow-utils ca-certificates procps && \
     groupadd -r webhook && \
     adduser -rm -g webhook -u 10000 webhook && \
     microdnf clean all
