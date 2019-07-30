@@ -8,7 +8,8 @@ ARG SUMMARY
 ARG GOARCH
 ARG HOME
 
-RUN microdnf install shadow-utils ca-certificates procps && \
+RUN microdnf update && \
+    microdnf install shadow-utils ca-certificates procps && \
     adduser -r -u 10000 certmanager && \
     microdnf clean all
 
