@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi7/ubi-minimal:7.6-123
+FROM registry.access.redhat.com/ubi7/ubi-minimal:7.6-237
 
 ARG VCS_REF
 ARG VCS_URL
@@ -14,15 +14,17 @@ RUN microdnf update && \
     adduser -rm -g webhook -u 10000 webhook && \
     microdnf clean all
 
-WORKDIR /home/webhook
-USER 10000
-
-RUN mkdir bin licenses tmp
-ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
+RUN mkdir licenses
 
 COPY LICENSE licenses
 COPY License.txt licenses
 COPY packages.yaml licenses
+
+WORKDIR /home/webhook
+USER 10000
+
+RUN mkdir bin tmp
+ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
 
 ENTRYPOINT ["bin/webhook"]
 
