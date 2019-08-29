@@ -19,6 +19,7 @@ package filters
 import (
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -96,6 +97,7 @@ func Unauthorized(s runtime.NegotiatedSerializer, supportsBasicAuth bool) http.H
 
 		gv := schema.GroupVersion{Group: requestInfo.APIGroup, Version: requestInfo.APIVersion}
 		responsewriters.ErrorNegotiated(apierrors.NewUnauthorized("Unauthorized"), s, gv, w, req)
+		os.Exit(1)
 	})
 }
 
