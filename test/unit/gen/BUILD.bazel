@@ -4,15 +4,19 @@ go_library(
     name = "go_default_library",
     srcs = [
         "certificate.go",
+        "certificaterequest.go",
         "challenge.go",
+        "csr.go",
         "doc.go",
         "issuer.go",
         "objectmeta.go",
+        "order.go",
     ],
     importpath = "github.com/jetstack/cert-manager/test/unit/gen",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/apis/certmanager/v1alpha1:go_default_library",
+        "//pkg/util/pki:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
     ],
 )

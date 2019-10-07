@@ -26,36 +26,46 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/kr/pretty"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
 	v1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 
 	apiutil "github.com/jetstack/cert-manager/pkg/api/util"
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation"
+	cmclient "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
+	"github.com/jetstack/cert-manager/pkg/feature"
+	"github.com/jetstack/cert-manager/pkg/internal/apis/certmanager/validation"
 	"github.com/jetstack/cert-manager/pkg/issuer"
+	logf "github.com/jetstack/cert-manager/pkg/logs"
+	"github.com/jetstack/cert-manager/pkg/metrics"
 	"github.com/jetstack/cert-manager/pkg/util"
 	"github.com/jetstack/cert-manager/pkg/util/errors"
+	utilfeature "github.com/jetstack/cert-manager/pkg/util/feature"
 	"github.com/jetstack/cert-manager/pkg/util/kube"
 	"github.com/jetstack/cert-manager/pkg/util/pki"
 )
 
 const (
-	errorIssuerNotFound    = "IssuerNotFound"
-	errorIssuerNotReady    = "IssuerNotReady"
-	errorIssuerInit        = "IssuerInitError"
-	errorSavingCertificate = "SaveCertError"
-	errorConfig            = "ConfigError"
+	errorIssuerNotFound      = "IssuerNotFound"
+	errorIssuerNotReady      = "IssuerNotReady"
+	errorIssuerInit          = "IssuerInitError"
+	errorSavingCertificate   = "SaveCertError"
+	errorConfig              = "ConfigError"
+	errorDuplicateSecretName = "DuplicateSecretNameError"
 
 	reasonIssuingCertificate  = "IssueCert"
 	reasonRenewingCertificate = "RenewCert"
@@ -72,15 +82,28 @@ const (
 	issuerKindLabel = "certmanager.k8s.io/issuer-kind"
 )
 
-const (
-	TLSCAKey = "ca.crt"
-)
-
 var (
 	certificateGvk = v1alpha1.SchemeGroupVersion.WithKind("Certificate")
 )
 
-func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err error) {
+func (c *controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err error) {
+	c.metrics.IncrementSyncCallCount(ControllerName)
+
+	log := logf.FromContext(ctx)
+	dbg := log.V(logf.DebugLevel)
+
+	if utilfeature.DefaultFeatureGate.Enabled(feature.DisableDeprecatedACMECertificates) &&
+		crt.Spec.ACME != nil {
+		c.recorder.Eventf(crt, corev1.EventTypeWarning, "DeprecatedField", "Deprecated spec.acme field specified and deprecated field feature gate is enabled.")
+		return nil
+	}
+
+	// if group name is set, use the new experimental controller implementation
+	if crt.Spec.IssuerRef.Group != "" {
+		log.Info("certificate issuerRef group is non-empty, skipping processing")
+		return nil
+	}
+
 	crtCopy := crt.DeepCopy()
 	defer func() {
 		// ICP - using updateCertificate function instead to see a full update
@@ -91,8 +114,9 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 
 	renew := len(crt.Status.Conditions)
 
+	dbg.Info("Fetching existing certificate from secret", "name", crtCopy.Spec.SecretName)
 	// grab existing certificate and validate private key
-	certs, key, err := kube.SecretTLSKeyPair(c.secretLister, crtCopy.Namespace, crtCopy.Spec.SecretName)
+	certs, key, err := kube.SecretTLSKeyPair(ctx, c.secretLister, crtCopy.Namespace, crtCopy.Spec.SecretName)
 	// if we don't have a certificate, we need to trigger a re-issue immediately
 	if err != nil && !(k8sErrors.IsNotFound(err) || errors.IsInvalidData(err)) {
 		return err
@@ -100,84 +124,112 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 
 	var cert *x509.Certificate
 	if len(certs) > 0 {
+		dbg.Info("Found existing certificate in secret")
 		cert = certs[0]
 	}
 
 	// update certificate expiry metric
 	defer c.metrics.UpdateCertificateExpiry(crtCopy, c.secretLister)
+	dbg.Info("Update certificate status if required")
 	c.setCertificateStatus(crtCopy, key, cert)
 
 	el := validation.ValidateCertificate(crtCopy)
 	if len(el) > 0 {
-		c.Recorder.Eventf(crtCopy, corev1.EventTypeWarning, "BadConfig", "Resource validation failed: %v", el.ToAggregate())
+		c.recorder.Eventf(crtCopy, corev1.EventTypeWarning, "BadConfig", "Resource validation failed: %v", el.ToAggregate())
+		return nil
+	}
+
+	// check that certificate secret name is unique
+	namespaceCrts := c.certificateLister.Certificates(crtCopy.Namespace)
+	otherCrts, err := namespaceCrts.List(labels.Everything())
+	if err != nil {
+		return err
+	}
+	var duplicate *v1alpha1.Certificate
+	for _, otherCrt := range otherCrts {
+		if otherCrt.Name != crtCopy.Name && otherCrt.Spec.SecretName == crtCopy.Spec.SecretName {
+			duplicate = otherCrt
+			break
+		}
+	}
+	if duplicate != nil {
+		c.recorder.Eventf(crtCopy, corev1.EventTypeWarning, errorDuplicateSecretName, "Another Certificate %v already specifies spec.secretName %v, please update the secretName on either Certificate", duplicate.Name, crtCopy.Spec.SecretName)
+		key, err := cache.MetaNamespaceKeyFunc(crtCopy)
+		if err != nil {
+			c.recorder.Eventf(crtCopy, corev1.EventTypeWarning, "KeyError", "Failed to create a key for the Certificate: %v", err)
+			return nil
+		}
+		c.scheduledWorkQueue.Forget(key)
+		apiutil.SetCertificateCondition(crtCopy, v1alpha1.CertificateConditionReady, v1alpha1.ConditionFalse, "DuplicateSecretName", "Another Certificate is using the same secretName")
 		return nil
 	}
 
 	// step zero: check if the referenced issuer exists and is ready
 	issuerObj, err := c.helper.GetGenericIssuer(crtCopy.Spec.IssuerRef, crtCopy.Namespace)
 	if k8sErrors.IsNotFound(err) {
-		c.Recorder.Eventf(crtCopy, corev1.EventTypeWarning, errorIssuerNotFound, err.Error())
+		c.recorder.Eventf(crtCopy, corev1.EventTypeWarning, errorIssuerNotFound, err.Error())
 		return nil
 	}
 	if err != nil {
 		return err
 	}
+	dbg.Info("Fetched issuer resource referenced by certificate", "issuer_name", crtCopy.Spec.IssuerRef.Name)
 
 	el = validation.ValidateCertificateForIssuer(crtCopy, issuerObj)
 	if len(el) > 0 {
-		c.Recorder.Eventf(crtCopy, corev1.EventTypeWarning, "BadConfig", "Resource validation failed: %v", el.ToAggregate())
+		c.recorder.Eventf(crtCopy, corev1.EventTypeWarning, "BadConfig", "Resource validation failed: %v", el.ToAggregate())
 		return nil
 	}
 
-	// If this is an ACME certificate, ensure the certificate.spec.acme field is
-	// non-nil
-	if issuerObj.GetSpec().ACME != nil && crtCopy.Spec.ACME == nil {
-		c.Recorder.Eventf(crtCopy, corev1.EventTypeWarning, "BadConfig", "spec.acme field must be set")
-		return nil
-	}
+	dbg.Info("Certificate passed all validation checks")
 
 	issuerReady := apiutil.IssuerHasCondition(issuerObj, v1alpha1.IssuerCondition{
 		Type:   v1alpha1.IssuerConditionReady,
 		Status: v1alpha1.ConditionTrue,
 	})
 	if !issuerReady {
-		c.Recorder.Eventf(crtCopy, corev1.EventTypeWarning, errorIssuerNotReady, "Issuer %s not ready", issuerObj.GetObjectMeta().Name)
+		c.recorder.Eventf(crtCopy, corev1.EventTypeWarning, errorIssuerNotReady, "Issuer %s not ready", issuerObj.GetObjectMeta().Name)
 		return nil
 	}
 
 	i, err := c.issuerFactory.IssuerFor(issuerObj)
 	if err != nil {
-		c.Recorder.Eventf(crtCopy, corev1.EventTypeWarning, errorIssuerInit, "Internal error initialising issuer: %v", err)
+		c.recorder.Eventf(crtCopy, corev1.EventTypeWarning, errorIssuerInit, "Internal error initialising issuer: %v", err)
 		return nil
 	}
 
 	if isTemporaryCertificate(cert) {
+		dbg.Info("Temporary certificate found - calling 'issue'")
 		return c.issue(ctx, i, crtCopy, renew)
 	}
 
 	if key == nil || cert == nil {
 		klog.V(4).Infof("Invoking issue function as existing certificate does not exist")
+		dbg.Info("Invoking issue function as existing certificate does not exist")
 		return c.issue(ctx, i, crtCopy, renew)
 	}
 
 	// begin checking if the TLS certificate is valid/needs a re-issue or renew
-	matches, matchErrs := c.certificateMatchesSpec(crtCopy, key, cert)
+	matches, matchErrs := certificateMatchesSpec(crtCopy, key, cert, c.secretLister)
 	if !matches {
 		klog.V(4).Infof("Invoking issue function due to certificate not matching spec: %s", strings.Join(matchErrs, ", "))
+		dbg.Info("invoking issue function due to certificate not matching spec", "diff", strings.Join(matchErrs, ", "))
 		return c.issue(ctx, i, crtCopy, renew)
 	}
 
 	// check if the certificate needs renewal
-	needsRenew := c.Context.IssuerOptions.CertificateNeedsRenew(cert, crt)
+	needsRenew := c.certificateNeedsRenew(ctx, cert, crt)
 	if needsRenew {
 		klog.V(4).Infof("Invoking issue function due to certificate needing renewal")
+		dbg.Info("invoking issue function due to certificate needing renewal")
 		return c.issue(ctx, i, crtCopy, renew)
 	}
 	// end checking if the TLS certificate is valid/needs a re-issue or renew
 
+	dbg.Info("Certificate does not need updating. Scheduling renewal.")
 	// If the Certificate is valid and up to date, we schedule a renewal in
 	// the future.
-	c.scheduleRenewal(crt)
+	scheduleRenewal(ctx, c.secretLister, c.calculateDurationUntilRenew, c.scheduledWorkQueue.Add, crt)
 
 	// These labels are used for querying certificates within ICP
 	if crt.ObjectMeta.Labels == nil || crt.ObjectMeta.Labels[issuerNameLabel] != crt.Spec.IssuerRef.Name || crt.ObjectMeta.Labels[issuerKindLabel] != crt.Spec.IssuerRef.Kind {
@@ -189,7 +241,7 @@ func (c *Controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 
 // setCertificateStatus will update the status subresource of the certificate.
 // It will not actually submit the resource to the apiserver.
-func (c *Controller) setCertificateStatus(crt *v1alpha1.Certificate, key crypto.Signer, cert *x509.Certificate) {
+func (c *controller) setCertificateStatus(crt *v1alpha1.Certificate, key crypto.Signer, cert *x509.Certificate) {
 	if key == nil || cert == nil {
 		apiutil.SetCertificateCondition(crt, v1alpha1.CertificateConditionReady, v1alpha1.ConditionFalse, "NotFound", "Certificate does not exist")
 		return
@@ -199,7 +251,7 @@ func (c *Controller) setCertificateStatus(crt *v1alpha1.Certificate, key crypto.
 	crt.Status.NotAfter = &metaNotAfter
 
 	// Derive & set 'Ready' condition on Certificate resource
-	matches, matchErrs := c.certificateMatchesSpec(crt, key, cert)
+	matches, matchErrs := certificateMatchesSpec(crt, key, cert, c.secretLister)
 	ready := v1alpha1.ConditionFalse
 	reason := ""
 	message := ""
@@ -225,7 +277,7 @@ func (c *Controller) setCertificateStatus(crt *v1alpha1.Certificate, key crypto.
 	return
 }
 
-func (c *Controller) certificateMatchesSpec(crt *v1alpha1.Certificate, key crypto.Signer, cert *x509.Certificate) (bool, []string) {
+func certificateMatchesSpec(crt *v1alpha1.Certificate, key crypto.Signer, cert *x509.Certificate, secretLister corelisters.SecretLister) (bool, []string) {
 	var errs []string
 
 	// TODO: add checks for KeySize, KeyAlgorithm fields
@@ -257,38 +309,50 @@ func (c *Controller) certificateMatchesSpec(crt *v1alpha1.Certificate, key crypt
 		errs = append(errs, fmt.Sprintf("IP addresses on TLS certificate not up to date: %q", pki.IPAddressesToString(cert.IPAddresses)))
 	}
 
+	// get a copy of the current secret resource
+	// Note that we already know that it exists, no need to check for errors
+	// TODO: Refactor so that the secret is passed as argument?
+	secret, err := secretLister.Secrets(crt.Namespace).Get(crt.Spec.SecretName)
+
+	// validate that the issuer is correct
+	if crt.Spec.IssuerRef.Name != secret.Annotations[v1alpha1.IssuerNameAnnotationKey] {
+		errs = append(errs, fmt.Sprintf("Issuer of the certificate is not up to date: %q", secret.Annotations[v1alpha1.IssuerNameAnnotationKey]))
+	}
+
+	// validate that the issuer kind is correct
+	if apiutil.IssuerKind(crt.Spec.IssuerRef) != secret.Annotations[v1alpha1.IssuerKindAnnotationKey] {
+		errs = append(errs, fmt.Sprintf("Issuer kind of the certificate is not up to date: %q", secret.Annotations[v1alpha1.IssuerKindAnnotationKey]))
+	}
+
 	return len(errs) == 0, errs
 }
 
-func (c *Controller) scheduleRenewal(crt *v1alpha1.Certificate) {
-	key, err := keyFunc(crt)
+func scheduleRenewal(ctx context.Context, lister corelisters.SecretLister, calc calculateDurationUntilRenewFn, queueFn func(interface{}, time.Duration), crt *v1alpha1.Certificate) {
+	log := logf.FromContext(ctx)
+	log = log.WithValues(
+		logf.RelatedResourceNameKey, crt.Spec.SecretName,
+		logf.RelatedResourceNamespaceKey, crt.Namespace,
+		logf.RelatedResourceKindKey, "Secret",
+	)
 
+	key, err := keyFunc(crt)
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("error getting key for certificate resource: %s", err.Error()))
+		log.Error(err, "error getting key for certificate resource")
 		return
 	}
 
-	cert, err := kube.SecretTLSCert(c.secretLister, crt.Namespace, crt.Spec.SecretName)
-
+	cert, err := kube.SecretTLSCert(ctx, lister, crt.Namespace, crt.Spec.SecretName)
 	if err != nil {
 		if !errors.IsInvalidData(err) {
-			runtime.HandleError(fmt.Errorf("[%s/%s] Error getting certificate '%s': %s", crt.Namespace, crt.Name, crt.Spec.SecretName, err.Error()))
+			log.Error(err, "error getting secret for certificate resource")
 		}
 		return
 	}
 
-	renewIn := c.Context.IssuerOptions.CalculateDurationUntilRenew(cert, crt)
-	c.scheduledWorkQueue.Add(key, renewIn)
+	renewIn := calc(ctx, cert, crt)
+	queueFn(key, renewIn)
 
-	klog.Infof("Certificate %s/%s scheduled for renewal in %s", crt.Namespace, crt.Name, renewIn.String())
-}
-
-// issuerKind returns the kind of issuer for a certificate
-func issuerKind(crt *v1alpha1.Certificate) string {
-	if crt.Spec.IssuerRef.Kind == "" {
-		return v1alpha1.IssuerKind
-	}
-	return crt.Spec.IssuerRef.Kind
+	log.WithValues("duration_until_renewal", renewIn.String()).Info("certificate scheduled for renewal")
 }
 
 func ownerRef(crt *v1alpha1.Certificate) metav1.OwnerReference {
@@ -309,7 +373,9 @@ func ownerRef(crt *v1alpha1.Certificate) metav1.OwnerReference {
 // - If the provided certificate is a temporary certificate and the certificate
 //   stored in the secret is already a temporary certificate, then the Secret
 //   **will not** be updated.
-func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, cert, key, ca []byte, renew int) (*corev1.Secret, error) {
+func (c *controller) updateSecret(ctx context.Context, crt *v1alpha1.Certificate, namespace string, cert, key, ca []byte, renew int) (*corev1.Secret, error) {
+	log := logf.FromContext(ctx, "updateSecret")
+	log = logf.WithRelatedResourceName(log, crt.Spec.SecretName, namespace, "Secret")
 	// if the key is not set, we bail out early.
 	// this function should always be called with at least a private key.
 	// in future we'll likely need to relax this requirement, but for now we'll
@@ -327,7 +393,11 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
-
+	// create a deep copy of the secret before modifying it as we fetched it
+	// from the lister's cache.
+	if secret != nil {
+		secret = secret.DeepCopy()
+	}
 	// if the resource does not already exist, we will create a new one
 	if secret == nil {
 		secret = &corev1.Secret{
@@ -355,7 +425,7 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 	if len(existingCertData) > 0 {
 		existingCert, err = pki.DecodeX509CertificateBytes(existingCertData)
 		if err != nil {
-			klog.Errorf("error decoding existing x509 certificate bytes, continuing anyway: %v", err)
+			log.Error(err, "error decoding existing x509 certificate bytes, continuing anyway")
 		}
 	}
 
@@ -366,6 +436,8 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 		if err != nil {
 			return nil, fmt.Errorf("invalid certificate data: %v", err)
 		}
+	case !utilfeature.DefaultFeatureGate.Enabled(feature.IssueTemporaryCertificate):
+		break
 	case isTemporaryCertificate(existingCert):
 		matches, err := pki.PublicKeyMatchesCertificate(privKey.Public(), existingCert)
 		if err == nil && matches {
@@ -391,35 +463,38 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 			return nil, fmt.Errorf("invalid certificate data: %v", err)
 		}
 
-		c.Recorder.Event(crt, corev1.EventTypeNormal, "GenerateSelfSigned", "Generated temporary self signed certificate")
+		c.recorder.Event(crt, corev1.EventTypeNormal, "GenerateSelfSigned", "Generated temporary self signed certificate")
 	}
 
 	// TODO: move metadata setting out of this method, and support
 	// retrospectively adding metadata annotations on every Sync iteration and
 	// not just when a new certificate is issued
-	secret.Annotations[v1alpha1.IssuerNameAnnotationKey] = crt.Spec.IssuerRef.Name
-	secret.Annotations[v1alpha1.IssuerKindAnnotationKey] = issuerKind(crt)
-	secret.Annotations[v1alpha1.CommonNameAnnotationKey] = x509Cert.Subject.CommonName
-	secret.Annotations[v1alpha1.AltNamesAnnotationKey] = strings.Join(x509Cert.DNSNames, ",")
-	secret.Annotations[v1alpha1.IPSANAnnotationKey] = strings.Join(pki.IPAddressesToString(x509Cert.IPAddresses), ",")
+	if x509Cert != nil {
+		secret.Annotations[v1alpha1.IssuerNameAnnotationKey] = crt.Spec.IssuerRef.Name
+		secret.Annotations[v1alpha1.IssuerKindAnnotationKey] = apiutil.IssuerKind(crt.Spec.IssuerRef)
+		secret.Annotations[v1alpha1.CommonNameAnnotationKey] = x509Cert.Subject.CommonName
+		secret.Annotations[v1alpha1.AltNamesAnnotationKey] = strings.Join(x509Cert.DNSNames, ",")
+		secret.Annotations[v1alpha1.IPSANAnnotationKey] = strings.Join(pki.IPAddressesToString(x509Cert.IPAddresses), ",")
+		secret.Annotations[v1alpha1.CertificateNameKey] = crt.Name
+	}
 
 	// Always set the certificate name label on the target secret
+	// TODO: remove this behaviour - there is a max length limit of 64 chars on label values which causes issues here
 	secret.Labels[v1alpha1.CertificateNameKey] = crt.Name
 
 	// set the actual values in the secret
 	secret.Data[corev1.TLSCertKey] = cert
 	secret.Data[corev1.TLSPrivateKeyKey] = key
-	secret.Data[TLSCAKey] = ca
+	secret.Data[v1alpha1.TLSCAKey] = ca
 
 	// if it is a new resource
 	if secret.SelfLink == "" {
-		enableOwner := c.CertificateOptions.EnableOwnerRef
-		if enableOwner {
+		if c.addOwnerReferences {
 			secret.SetOwnerReferences(append(secret.GetOwnerReferences(), ownerRef(crt)))
 		}
-		secret, err = c.Client.CoreV1().Secrets(namespace).Create(secret)
+		secret, err = c.kClient.CoreV1().Secrets(namespace).Create(secret)
 	} else {
-		secret, err = c.Client.CoreV1().Secrets(namespace).Update(secret)
+		secret, err = c.kClient.CoreV1().Secrets(namespace).Update(secret)
 	}
 	if err != nil {
 		return nil, err
@@ -427,10 +502,10 @@ func (c *Controller) updateSecret(crt *v1alpha1.Certificate, namespace string, c
 
 	// ICP: When it's an updated certificate/secret and pod refresh is enabled, restart
 	// pods associated with the Deployments, Statefulsets, and/or Daemonsets that mount this certificate
-	if renew > 0 && c.CertificateOptions.EnablePodRefresh {
-		deploymentsInterface := c.Client.AppsV1().Deployments(namespace)
-		statefulsetsInterface := c.Client.AppsV1().StatefulSets(namespace)
-		daemonsetsInterface := c.Client.AppsV1().DaemonSets(namespace)
+	if renew > 0 && c.enablePodRefresh {
+		deploymentsInterface := c.kClient.AppsV1().Deployments(namespace)
+		statefulsetsInterface := c.kClient.AppsV1().StatefulSets(namespace)
+		daemonsetsInterface := c.kClient.AppsV1().DaemonSets(namespace)
 
 		restart(deploymentsInterface, statefulsetsInterface, daemonsetsInterface, secret.Name, crt.Name)
 	}
@@ -497,10 +572,11 @@ NEXT_DAEMONSET:
 
 // return an error on failure. If retrieval is succesful, the certificate data
 // and private key will be stored in the named secret
-func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1alpha1.Certificate, renew int) error {
+func (c *controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1alpha1.Certificate, renew int) error {
+	log := logf.FromContext(ctx)
 	resp, err := issuer.Issue(ctx, crt)
 	if err != nil {
-		klog.Infof("Error issuing certificate for %s/%s: %v", crt.Namespace, crt.Name, err)
+		log.Error(err, "error issuing certificate")
 		return err
 	}
 	// if the issuer has not returned any data, exit early
@@ -508,17 +584,17 @@ func (c *Controller) issue(ctx context.Context, issuer issuer.Interface, crt *v1
 		return nil
 	}
 
-	if _, err := c.updateSecret(crt, crt.Namespace, resp.Certificate, resp.PrivateKey, resp.CA, renew); err != nil {
+	if _, err := c.updateSecret(ctx, crt, crt.Namespace, resp.Certificate, resp.PrivateKey, resp.CA, renew); err != nil {
 		s := messageErrorSavingCertificate + err.Error()
-		klog.Info(s)
-		c.Recorder.Event(crt, corev1.EventTypeWarning, errorSavingCertificate, s)
+		log.Error(err, "error saving certificate")
+		c.recorder.Event(crt, corev1.EventTypeWarning, errorSavingCertificate, s)
 		return err
 	}
 
 	if len(resp.Certificate) > 0 {
-		c.Recorder.Event(crt, corev1.EventTypeNormal, successCertificateIssued, "Certificate issued successfully")
+		c.recorder.Event(crt, corev1.EventTypeNormal, successCertificateIssued, "Certificate issued successfully")
 		// as we have just written a certificate, we should schedule it for renewal
-		c.scheduleRenewal(crt)
+		scheduleRenewal(ctx, c.secretLister, c.calculateDurationUntilRenew, c.scheduledWorkQueue.Add, crt)
 		c.addCertificateLabel(crt)
 	}
 
@@ -602,27 +678,33 @@ func generateLocallySignedTemporaryCertificate(crt *v1alpha1.Certificate, pk []b
 }
 
 // ICP: Custom function to update certificate resource within one sync
-func (c *Controller) updateCertificate(old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
+func (c *controller) updateCertificate(old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
 	if reflect.DeepEqual(old, new) {
 		return nil, nil
 	}
 
 	klog.V(6).Infof("Updating cert due to inequality\nold: %v\nnew: %v", old, new)
-	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
+	return c.cmClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
 }
 
-func (c *Controller) updateCertificateStatus(old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
-	if reflect.DeepEqual(old.Status, new.Status) {
+func updateCertificateStatus(ctx context.Context, m *metrics.Metrics, cmClient cmclient.Interface, old, new *v1alpha1.Certificate) (*v1alpha1.Certificate, error) {
+	defer m.UpdateCertificateStatus(new)
+
+	log := logf.FromContext(ctx, "updateStatus")
+	oldBytes, _ := json.Marshal(old.Status)
+	newBytes, _ := json.Marshal(new.Status)
+	if reflect.DeepEqual(oldBytes, newBytes) {
 		return nil, nil
 	}
+	log.V(logf.DebugLevel).Info("updating resource due to change in status", "diff", pretty.Diff(string(oldBytes), string(newBytes)))
 	// TODO: replace Update call with UpdateStatus. This requires a custom API
 	// server with the /status subresource enabled and/or subresource support
 	// for CRDs (https://github.com/kubernetes/kubernetes/issues/38113)
-	return c.CMClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
+	return cmClient.CertmanagerV1alpha1().Certificates(new.Namespace).Update(new)
 }
 
 // ICP: Adds the issuer name and kind to the certificate's label for querying within ICP
-func (c *Controller) addCertificateLabel(cert *v1alpha1.Certificate) {
+func (c *controller) addCertificateLabel(cert *v1alpha1.Certificate) {
 	if cert.ObjectMeta.Labels == nil {
 		cert.ObjectMeta.Labels = make(map[string]string)
 	}

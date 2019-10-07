@@ -30,7 +30,6 @@ import (
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/azuredns"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/clouddns"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/cloudflare"
-	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/rfc2136"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/route53"
 	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/util"
 )
@@ -107,13 +106,13 @@ func (s *solverFixture) Finish(t *testing.T, args ...interface{}) {
 }
 
 func buildFakeSolver(b *test.Builder, dnsProviders dnsProviderConstructors) *Solver {
-	b.Start()
+	b.Init()
 	s := &Solver{
 		Context:                 b.Context,
 		secretLister:            b.Context.KubeSharedInformerFactory.Core().V1().Secrets().Lister(),
 		dnsProviderConstructors: dnsProviders,
 	}
-	b.Sync()
+	b.Start()
 	return s
 }
 
@@ -151,20 +150,16 @@ func newFakeDNSProviders() *fakeDNSProviders {
 			}
 			return nil, nil
 		},
-		route53: func(accessKey, secretKey, hostedZoneID, region string, ambient bool, dns01Nameservers []string) (*route53.DNSProvider, error) {
-			f.call("route53", accessKey, secretKey, hostedZoneID, region, ambient, util.RecursiveNameservers)
+		route53: func(accessKey, secretKey, hostedZoneID, region, role string, ambient bool, dns01Nameservers []string) (*route53.DNSProvider, error) {
+			f.call("route53", accessKey, secretKey, hostedZoneID, region, role, ambient, util.RecursiveNameservers)
 			return nil, nil
 		},
-		azureDNS: func(clientID, clientSecret, subscriptionID, tenentID, resourceGroupName, hostedZoneName string, dns01Nameservers []string) (*azuredns.DNSProvider, error) {
+		azureDNS: func(environment, clientID, clientSecret, subscriptionID, tenentID, resourceGroupName, hostedZoneName string, dns01Nameservers []string) (*azuredns.DNSProvider, error) {
 			f.call("azuredns", clientID, clientSecret, subscriptionID, tenentID, resourceGroupName, hostedZoneName, util.RecursiveNameservers)
 			return nil, nil
 		},
 		acmeDNS: func(host string, accountJson []byte, dns01Nameservers []string) (*acmedns.DNSProvider, error) {
 			f.call("acmedns", host, accountJson, dns01Nameservers)
-			return nil, nil
-		},
-		rfc2136: func(nameserver, tsigAlgorithm, tsigKeyName, tsigSecret string, dns01Nameservers []string) (*rfc2136.DNSProvider, error) {
-			f.call("rfc2136", nameserver, tsigAlgorithm, tsigKeyName, tsigSecret, util.RecursiveNameservers)
 			return nil, nil
 		},
 		digitalOcean: func(token string, dns01Nameservers []string) (*digitalocean.DNSProvider, error) {

@@ -1,3 +1,11 @@
+<p align="center"><img src="./logo/logo.png" width="250x" /></p>
+<p align="center"><a href="https://prow.build-infra.jetstack.net/?job=ci-cert-manager-bazel">
+<!-- prow build badge, godoc, and go report card-->
+<img alt="Build Status" src="https://prow.build-infra.jetstack.net/badge.svg?jobs=ci-cert-manager-bazel">
+</a>
+<a href="https://godoc.org/github.com/jetstack/cert-manager"><img src="https://godoc.org/github.com/jetstack/cert-manager?status.svg"></a>
+<a href="https://goreportcard.com/report/github.com/jetstack/cert-manager"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/jetstack/cert-manager" /></a></p>
+
 # cert-manager
 
 cert-manager is a Kubernetes add-on to automate the management and issuance of
@@ -10,7 +18,7 @@ It is loosely based upon the work of [kube-lego](https://github.com/jetstack/kub
 and has borrowed some wisdom from other similar projects e.g.
 [kube-cert-manager](https://github.com/PalmStoneGames/kube-cert-manager).
 
-![cert-manager high level overview diagram](/docs/images/high-level-overview.png)
+![cert-manager high level overview diagram](./docs/images/high-level-overview.svg)
 
 ## Current status
 
@@ -90,3 +98,5 @@ Developer documentation is available in the [official documentation](https://doc
 
 The [list of releases](https://github.com/jetstack/cert-manager/releases)
 is the best place to look for information on changes between releases.
+
+<sub><sup>Logo design by [Zoe Paterson](https://zoepatersonmedia.com)</sup></sub>

@@ -17,32 +17,31 @@ limitations under the License.
 package scheduler
 
 import (
+	"context"
 	"sort"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/klog"
 
 	"github.com/jetstack/cert-manager/pkg/acme"
 	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	cmlisters "github.com/jetstack/cert-manager/pkg/client/listers/certmanager/v1alpha1"
-)
-
-const (
-	// MaxConcurrentChallenges is the total maximum number of challenges that
-	// can be scheduled as 'processing' at once.
-	MaxConcurrentChallenges = 60
+	"github.com/jetstack/cert-manager/pkg/logs"
 )
 
 // Scheduler implements an ACME challenge scheduler that applies heuristics
 // to challenge resources in order to determine which challenges should be
 // processing at a given time.
 type Scheduler struct {
-	challengeLister cmlisters.ChallengeLister
+	log                     logr.Logger
+	challengeLister         cmlisters.ChallengeLister
+	maxConcurrentChallenges int
 }
 
 // New will construct a new instance of a scheduler
-func New(l cmlisters.ChallengeLister) *Scheduler {
-	return &Scheduler{challengeLister: l}
+func New(ctx context.Context, l cmlisters.ChallengeLister, maxConcurrentChallenges int) *Scheduler {
+	log := logs.FromContext(ctx, "challenge-scheduler")
+	return &Scheduler{log: log, challengeLister: l, maxConcurrentChallenges: maxConcurrentChallenges}
 }
 
 // ScheduleN will return a maximum of N challenge resources that should be
@@ -69,7 +68,7 @@ func (s *Scheduler) scheduleN(n int, allChallenges []*cmapi.Challenge) ([]*cmapi
 	}
 
 	numberToSelect := n
-	remainingNumberAllowedChallenges := MaxConcurrentChallenges - inProgressChallengeCount
+	remainingNumberAllowedChallenges := s.maxConcurrentChallenges - inProgressChallengeCount
 	if numberToSelect > remainingNumberAllowedChallenges {
 		numberToSelect = remainingNumberAllowedChallenges
 	}
@@ -107,8 +106,8 @@ func (s *Scheduler) determineChallengeCandidates(allChallenges []*cmapi.Challeng
 	// Ensure we only run a max of MaxConcurrentChallenges at a time
 	// We perform this check here to avoid extra processing if we've already
 	// hit the maximum number of challenges.
-	if inProgressChallengeCount >= MaxConcurrentChallenges {
-		klog.V(4).Infof("There are currently %d running challenges, with a maximum configured of %d. Refusing to schedule more challenges.", len(inProgress), MaxConcurrentChallenges)
+	if inProgressChallengeCount >= s.maxConcurrentChallenges {
+		s.log.V(logs.DebugLevel).Info("hit maximum concurrent challenge limit. refusing to schedule more challenges.", "in_progress", len(inProgress), "max_concurrent", s.maxConcurrentChallenges)
 		return []*cmapi.Challenge{}, inProgressChallengeCount, nil
 	}
 
@@ -127,7 +126,7 @@ func (s *Scheduler) determineChallengeCandidates(allChallenges []*cmapi.Challeng
 	candidates := filterChallenges(dedupedCandidates, func(ch *cmapi.Challenge) bool {
 		for _, inPCh := range inProgress {
 			if compareChallenges(ch, inPCh) == 0 {
-				klog.V(6).Infof("There is already a challenge processing for domain %q (type %q)", ch.Spec.DNSName, ch.Spec.Type)
+				s.log.V(logs.DebugLevel).Info("there is already a challenge processing with this domain", "domain", ch.Spec.DNSName, "type", ch.Spec.Type)
 				return false
 			}
 		}

@@ -17,10 +17,12 @@ limitations under the License.
 package http
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	coretesting "k8s.io/client-go/testing"
@@ -37,7 +39,7 @@ func TestEnsurePod(t *testing.T) {
 					DNSName: "example.com",
 					Token:   "token",
 					Key:     "key",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -78,7 +80,7 @@ func TestEnsurePod(t *testing.T) {
 					DNSName: "example.com",
 					Token:   "token",
 					Key:     "key",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -128,7 +130,7 @@ func TestEnsurePod(t *testing.T) {
 					DNSName: "example.com",
 					Token:   "token",
 					Key:     "key",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -162,7 +164,7 @@ func TestEnsurePod(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			test.Setup(t)
-			resp, err := test.Solver.ensurePod(test.Challenge)
+			resp, err := test.Solver.ensurePod(context.TODO(), test.Challenge)
 			if err != nil && !test.Err {
 				t.Errorf("Expected function to not error, but got: %v", err)
 			}
@@ -181,7 +183,7 @@ func TestGetPodsForCertificate(t *testing.T) {
 			Challenge: &v1alpha1.Challenge{
 				Spec: v1alpha1.ChallengeSpec{
 					DNSName: "example.com",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -212,7 +214,7 @@ func TestGetPodsForCertificate(t *testing.T) {
 			Challenge: &v1alpha1.Challenge{
 				Spec: v1alpha1.ChallengeSpec{
 					DNSName: "example.com",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -240,7 +242,7 @@ func TestGetPodsForCertificate(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			test.Setup(t)
-			resp, err := test.Solver.getPodsForChallenge(test.Challenge)
+			resp, err := test.Solver.getPodsForChallenge(context.TODO(), test.Challenge)
 			if err != nil && !test.Err {
 				t.Errorf("Expected function to not error, but got: %v", err)
 			}
@@ -248,6 +250,153 @@ func TestGetPodsForCertificate(t *testing.T) {
 				t.Errorf("Expected function to get an error, but got: %v", err)
 			}
 			test.Finish(t, resp, err)
+		})
+	}
+}
+
+func TestMergePodObjectMetaWithPodTemplate(t *testing.T) {
+	const createdPodKey = "createdPod"
+	tests := map[string]solverFixture{
+		"should use labels and annotations from template": {
+			Challenge: &v1alpha1.Challenge{
+				Spec: v1alpha1.ChallengeSpec{
+					DNSName: "example.com",
+					Config: &v1alpha1.SolverConfig{
+						HTTP01: &v1alpha1.HTTP01SolverConfig{},
+					},
+					Solver: &v1alpha1.ACMEChallengeSolver{
+						HTTP01: &v1alpha1.ACMEChallengeSolverHTTP01{
+							Ingress: &v1alpha1.ACMEChallengeSolverHTTP01Ingress{
+								PodTemplate: &v1alpha1.ACMEChallengeSolverHTTP01IngressPodTemplate{
+									ObjectMeta: metav1.ObjectMeta{
+										Labels: map[string]string{
+											"this is a":                           "label",
+											"certmanager.k8s.io/acme-http-domain": "44655555555",
+										},
+										Annotations: map[string]string{
+											"sidecar.istio.io/inject": "true",
+											"foo":                     "bar",
+										},
+									},
+									Spec: v1alpha1.ACMEChallengeSolverHTTP01IngressPodSpec{
+										NodeSelector: map[string]string{
+											"node": "selector",
+										},
+										Tolerations: []v1.Toleration{
+											{
+												Key:      "key",
+												Operator: "Exists",
+												Effect:   "NoSchedule",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			PreFn: func(t *testing.T, s *solverFixture) {
+				resultingPod := s.Solver.buildDefaultPod(s.Challenge)
+				resultingPod.Labels = map[string]string{
+					"this is a":                             "label",
+					"certmanager.k8s.io/acme-http-domain":   "44655555555",
+					"certmanager.k8s.io/acme-http-token":    "1",
+					"certmanager.k8s.io/acme-http01-solver": "true",
+				}
+				resultingPod.Annotations = map[string]string{
+					"sidecar.istio.io/inject": "true",
+					"foo":                     "bar",
+				}
+				resultingPod.Spec.NodeSelector = map[string]string{
+					"node": "selector",
+				}
+				resultingPod.Spec.Tolerations = []v1.Toleration{
+					{
+						Key:      "key",
+						Operator: "Exists",
+						Effect:   "NoSchedule",
+					},
+				}
+				s.testResources[createdPodKey] = resultingPod
+
+				s.Builder.Sync()
+			},
+			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				resultingPod := s.testResources[createdPodKey].(*v1.Pod)
+
+				resp, ok := args[0].(*v1.Pod)
+				if !ok {
+					t.Errorf("expected pod to be returned, but got %v", args[0])
+					t.Fail()
+					return
+				}
+
+				// ignore pointer differences here
+				resultingPod.OwnerReferences = resp.OwnerReferences
+
+				if resp.String() != resultingPod.String() {
+					t.Errorf("unexpected pod generated from merge\nexp=%s\ngot=%s",
+						resultingPod, resp)
+					t.Fail()
+				}
+			},
+		},
+		"should use default if nothing has changed in template": {
+			Challenge: &v1alpha1.Challenge{
+				Spec: v1alpha1.ChallengeSpec{
+					DNSName: "example.com",
+					Config: &v1alpha1.SolverConfig{
+						HTTP01: &v1alpha1.HTTP01SolverConfig{},
+					},
+				},
+			},
+			PreFn: func(t *testing.T, s *solverFixture) {
+				resultingPod := s.Solver.buildDefaultPod(s.Challenge)
+				s.testResources[createdPodKey] = resultingPod
+
+				s.Builder.Sync()
+			},
+			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				resultingPod := s.testResources[createdPodKey].(*v1.Pod)
+
+				resp, ok := args[0].(*v1.Pod)
+				if !ok {
+					t.Errorf("expected pod to be returned, but got %v", args[0])
+					t.Fail()
+					return
+				}
+
+				// Owner references need to be checked individually
+				if len(resultingPod.OwnerReferences) != len(resp.OwnerReferences) {
+					t.Errorf("mismatch owner references length, exp=%d got=%d",
+						len(resultingPod.OwnerReferences), len(resp.OwnerReferences))
+				} else {
+					for i := range resp.OwnerReferences {
+						if resp.OwnerReferences[i].String() !=
+							resultingPod.OwnerReferences[i].String() {
+							t.Errorf("unexpected pod owner references generated from merge\nexp=%s\ngot=%s",
+								resp.OwnerReferences[i].String(), resultingPod.OwnerReferences[i].String())
+						}
+					}
+				}
+
+				resp.OwnerReferences = resultingPod.OwnerReferences
+
+				if resp.String() != resultingPod.String() {
+					t.Errorf("unexpected pod generated from merge\nexp=%s\ngot=%s",
+						resultingPod, resp)
+					t.Fail()
+				}
+			},
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			test.Setup(t)
+			resp := test.Solver.buildPod(test.Challenge)
+			test.Finish(t, resp, nil)
 		})
 	}
 }

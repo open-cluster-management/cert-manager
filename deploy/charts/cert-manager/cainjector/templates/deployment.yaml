@@ -1,19 +1,22 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "cainjector.fullname" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
     app: {{ include "cainjector.name" . }}
-    chart: {{ include "cainjector.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "cainjector.name" . }}
+    app.kubernetes.io/instance:  {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ include "cainjector.chart" . }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: {{ include "cainjector.name" . }}
-      release: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ include "cainjector.name" . }}
+      app.kubernetes.io/instance:  {{ .Release.Name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
   {{- with .Values.strategy }}
   strategy:
     {{- . | toYaml | nindent 4 }}
@@ -22,7 +25,10 @@ spec:
     metadata:
       labels:
         app: {{ include "cainjector.name" . }}
-        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ include "cainjector.name" . }}
+        app.kubernetes.io/instance:  {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        helm.sh/chart: {{ include "cainjector.chart" . }}
       annotations:
       {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
@@ -34,9 +40,12 @@ spec:
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
+          {{- if .Values.global.logLevel }}
+          - --v={{ .Values.global.logLevel }}
+          {{- end }}
           {{- if .Values.global.leaderElection.namespace }}
           - --leader-election-namespace={{ .Values.global.leaderElection.namespace }}
           {{- else }}

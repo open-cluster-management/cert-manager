@@ -23,12 +23,15 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/clock"
 
 	clientset "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
 	informers "github.com/jetstack/cert-manager/pkg/client/informers/externalversions"
@@ -39,6 +42,14 @@ import (
 // a reference to a SharedInformerFactory so that controllers can choose
 // themselves which listers are required.
 type Context struct {
+	// RootContext is the root context for the controller
+	RootContext context.Context
+
+	// StopCh is a channel that will be closed when the controller is signalled
+	// to exit
+	StopCh <-chan struct{}
+	// RESTConfig is the loaded Kubernetes apiserver rest client configuration
+	RESTConfig *rest.Config
 	// Client is a Kubernetes clientset
 	Client kubernetes.Interface
 	// CMClient is a cert-manager clientset
@@ -57,10 +68,16 @@ type Context struct {
 	// If unset, operates on all namespaces
 	Namespace string
 
+	// Clock should be used to access the current time instead of relying on
+	// time.Now, to make it easier to test controllers that utilise time
+	Clock clock.Clock
+
 	IssuerOptions
 	ACMEOptions
 	IngressShimOptions
 	CertificateOptions
+	SchedulerOptions
+	WebhookBootstrapOptions
 }
 
 type IssuerOptions struct {
@@ -125,4 +142,27 @@ type CertificateOptions struct {
 	// EnablePodRefresh controls whether renewing this certificate will cause all the pods that
 	// mount its secret to be refreshed by cert-manager.
 	EnablePodRefresh bool
+}
+
+type SchedulerOptions struct {
+	// MaxConcurrentChallenges determines the maximum number of challenges that can be
+	// scheduled as 'processing' at once.
+	MaxConcurrentChallenges int
+}
+
+type WebhookBootstrapOptions struct {
+	// Namespace is the namespace the webhook CA and serving secret will be
+	// created in.
+	// If not specified, it will default to the same namespace as cert-manager.
+	Namespace string
+
+	// CASecretName is the name of the secret containing the webhook's root CA
+	CASecretName string
+
+	// ServingSecretName is the name of the secret containing the webhook's
+	// serving certificate
+	ServingSecretName string
+
+	// DNSNames are the dns names that should be set on the serving certificate
+	DNSNames []string
 }

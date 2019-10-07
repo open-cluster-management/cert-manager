@@ -68,11 +68,21 @@ The Certificate will be issued using the issuer named ``ca-issuer`` in the
    :doc:`webhook </getting-started/webhook>` component can prevent cert-manager
    from functioning correctly (`#1269`_).
 
+.. note::
+   Take care when setting the ``renewBefore`` field to be very close to the
+   ``duration`` as this can lead to a renewal loop, where the Certificate is
+   always in the renewal period. Some Issuers set the ``notBefore`` field on
+   their issued X.509 certificate before the issue time to fix clock-skew
+   issues, leading to the working duration of a certificate to be less than
+   the full duration of the certificate. For example, Let's Encrypt sets it
+   to be one hour before issue time, so the actual *working duration* of the
+   certificate is 89 days, 23 hours (the *full duration* remains 90 days).
+
 A full list of the fields supported on the Certificate resource can be found in
 the `API reference documentation`_.
 
 .. _`#1269`: https://github.com/jetstack/cert-manager/issues/1269
-.. _`API reference documentation`: https://docs.cert-manager.io/en/release-0.7/reference/api-docs/index.html#certificatespec-v1alpha1
+.. _`API reference documentation`: https://docs.cert-manager.io/en/release-0.10/reference/api-docs/index.html#certificatespec-v1alpha1
 
 Temporary certificates whilst issuing
 =====================================
@@ -91,15 +101,8 @@ After the real, valid certificate has been obtained, cert-manager will replace
 the temporary self signed certificate with the valid one, **but will retain the
 same private key**.
 
-Special fields on Certificate resources for ACME Issuers
-========================================================
-
-When creating Certificate resources that reference ACME Issuers, you must
-set an additional ``certificate.spec.acme`` stanza on the resource to configure
-what challenge mechanism to use for each DNS name specified on the certificate.
-
-More information on setting these fields can be found in the
-:doc:`../acme/issuing-certificates` guide.
+You can disable issuing temporary certificate by setting feature gate flag
+``--feature-gates=IssueTemporaryCertificate=false``
 
 .. toctree::
    :maxdepth: 2

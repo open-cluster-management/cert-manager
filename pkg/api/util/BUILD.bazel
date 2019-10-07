@@ -4,7 +4,9 @@ go_library(
     name = "go_default_library",
     srcs = [
         "conditions.go",
+        "duration.go",
         "issuers.go",
+        "usages.go",
     ],
     importpath = "github.com/jetstack/cert-manager/pkg/api/util",
     visibility = ["//visibility:public"],

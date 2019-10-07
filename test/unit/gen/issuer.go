@@ -51,6 +51,7 @@ func Issuer(name string, mods ...IssuerModifier) *v1alpha1.Issuer {
 }
 
 func IssuerFrom(iss *v1alpha1.Issuer, mods ...IssuerModifier) *v1alpha1.Issuer {
+	iss = iss.DeepCopy()
 	for _, mod := range mods {
 		mod(iss)
 	}
@@ -69,9 +70,21 @@ func SetIssuerCA(a v1alpha1.CAIssuer) IssuerModifier {
 	}
 }
 
+func SetIssuerVault(v v1alpha1.VaultIssuer) IssuerModifier {
+	return func(iss v1alpha1.GenericIssuer) {
+		iss.GetSpec().Vault = &v
+	}
+}
+
 func SetIssuerSelfSigned(a v1alpha1.SelfSignedIssuer) IssuerModifier {
 	return func(iss v1alpha1.GenericIssuer) {
 		iss.GetSpec().SelfSigned = &a
+	}
+}
+
+func SetIssuerVenafi(a v1alpha1.VenafiIssuer) IssuerModifier {
+	return func(iss v1alpha1.GenericIssuer) {
+		iss.GetSpec().Venafi = &a
 	}
 }
 

@@ -17,6 +17,7 @@ limitations under the License.
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -31,6 +32,8 @@ import (
 	"github.com/jetstack/cert-manager/pkg/util"
 	"github.com/jetstack/cert-manager/test/unit/gen"
 )
+
+const maxConcurrentChallenges = 60
 
 func randomChallenge(rand int) *cmapi.Challenge {
 	if rand == 0 {
@@ -134,9 +137,9 @@ func TestScheduleN(t *testing.T) {
 		},
 		{
 			name:       "schedule a maximum of MaxConcurrentChallenges",
-			n:          MaxConcurrentChallenges * 2,
-			challenges: ascendingChallengeN(MaxConcurrentChallenges * 2),
-			expected:   ascendingChallengeN(MaxConcurrentChallenges),
+			n:          maxConcurrentChallenges * 2,
+			challenges: ascendingChallengeN(maxConcurrentChallenges * 2),
+			expected:   ascendingChallengeN(maxConcurrentChallenges),
 		},
 		{
 			name: "schedule duplicate challenge if second challenge is in a final state",
@@ -258,7 +261,7 @@ func TestScheduleN(t *testing.T) {
 			name: "don't schedule when total number of scheduled challenges exceeds global maximum",
 			n:    5,
 			challenges: append(
-				ascendingChallengeN(MaxConcurrentChallenges, gen.SetChallengeProcessing(true)),
+				ascendingChallengeN(maxConcurrentChallenges, gen.SetChallengeProcessing(true)),
 				randomChallengeN(5, 0)...,
 			),
 		},
@@ -305,7 +308,7 @@ func TestScheduleN(t *testing.T) {
 				challengesInformer.Informer().GetIndexer().Add(ch)
 			}
 
-			s := New(challengesInformer.Lister())
+			s := New(context.Background(), challengesInformer.Lister(), maxConcurrentChallenges)
 
 			if test.expected == nil {
 				test.expected = []*cmapi.Challenge{}

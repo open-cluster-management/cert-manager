@@ -23,6 +23,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"reflect"
@@ -35,16 +36,20 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/clock"
+	fakeclock "k8s.io/utils/clock/testing"
 
+	apiutil "github.com/jetstack/cert-manager/pkg/api/util"
 	cmfake "github.com/jetstack/cert-manager/pkg/client/clientset/versioned/fake"
 	informers "github.com/jetstack/cert-manager/pkg/client/informers/externalversions"
 	"github.com/jetstack/cert-manager/pkg/controller"
 	"github.com/jetstack/cert-manager/pkg/logs"
+	"github.com/jetstack/cert-manager/pkg/util"
 )
 
 func init() {
-	logs.InitLogs()
+	logs.InitLogs(nil)
 	flag.Set("alsologtostderr", fmt.Sprintf("%t", true))
 	flag.Lookup("v").Value.Set("4")
 }
@@ -59,11 +64,24 @@ type Builder struct {
 	KubeObjects        []runtime.Object
 	CertManagerObjects []runtime.Object
 	ExpectedActions    []Action
+	ExpectedEvents     []string
 	StringGenerator    StringGenerator
 
-	stopCh           chan struct{}
-	events           []string
-	requiredReactors map[string]bool
+	// Clock will be the Clock set on the controller context.
+	// If not specified, the RealClock will be used.
+	Clock *fakeclock.FakeClock
+
+	// CheckFn is a custom check function that will be executed when the
+	// CheckAndFinish method is called on the builder, after all other checks.
+	// It will be passed a reference to the Builder in order to access state,
+	// as well as a list of all the arguments passed to the CheckAndFinish
+	// function (typically the list of return arguments from the function under
+	// test).
+	CheckFn func(*Builder, ...interface{})
+
+	stopCh              chan struct{}
+	requiredReactors    map[string]bool
+	additionalSyncFuncs []cache.InformerSynced
 
 	*controller.Context
 }
@@ -87,11 +105,13 @@ func (b *Builder) generateNameReactor(action coretesting.Action) (handled bool, 
 // ICP: Changed to 1 billion millseconds because 500 million ms is too small
 const informerResyncPeriod = time.Millisecond * 1000
 
-// ToContext will construct a new context for this builder.
-// Subsequent calls to ToContext will return the same Context instance.
-func (b *Builder) Start() {
+// Init will construct a new context for this builder and set default values
+// for any unset fields.
+func (b *Builder) Init() {
 	if b.Context == nil {
-		b.Context = &controller.Context{}
+		b.Context = &controller.Context{
+			RootContext: context.Background(),
+		}
 	}
 	if b.StringGenerator == nil {
 		b.StringGenerator = RandStringBytes
@@ -99,30 +119,23 @@ func (b *Builder) Start() {
 	b.requiredReactors = make(map[string]bool)
 	b.Client = kubefake.NewSimpleClientset(b.KubeObjects...)
 	b.CMClient = cmfake.NewSimpleClientset(b.CertManagerObjects...)
-	// create a fake recorder with a buffer of 5.
-	// this may need to be increased in future to acomodate tests that
-	// produce more than 5 events
-	b.Recorder = record.NewFakeRecorder(5)
-	// read all events out of the recorder and just log for now
-	// TODO: validate logged events
-	go func() {
-		r, ok := b.Recorder.(*record.FakeRecorder)
-		if !ok {
-			return
-		}
-
-		// exits when r.Events is closed in Finish
-		for e := range r.Events {
-			b.logf("Event logged: %v", e)
-		}
-	}()
+	b.Recorder = new(FakeRecorder)
 
 	b.FakeKubeClient().PrependReactor("create", "*", b.generateNameReactor)
 	b.FakeCMClient().PrependReactor("create", "*", b.generateNameReactor)
 	b.KubeSharedInformerFactory = kubeinformers.NewSharedInformerFactory(b.Client, informerResyncPeriod)
 	b.SharedInformerFactory = informers.NewSharedInformerFactory(b.CMClient, informerResyncPeriod)
 	b.stopCh = make(chan struct{})
-	go b.readEvents()
+
+	// set the Clock on the context
+	if b.Clock == nil {
+		b.Context.Clock = clock.RealClock{}
+	} else {
+		b.Context.Clock = b.Clock
+	}
+	// Fix the clock used in apiutil so that calls to set status conditions
+	// can be predictably tested
+	apiutil.Clock = b.Context.Clock
 }
 
 func (b *Builder) FakeKubeClient() *kubefake.Clientset {
@@ -153,6 +166,29 @@ func (b *Builder) EnsureReactorCalled(testName string, fn coretesting.ReactionFu
 	}
 }
 
+// CheckAndFinish will run ensure: all reactors are called, all actions are
+// expected, and all events are as expected.
+// It will then call the Builder's CheckFn, if defined.
+func (b *Builder) CheckAndFinish(args ...interface{}) {
+	defer b.Stop()
+	if err := b.AllReactorsCalled(); err != nil {
+		b.T.Errorf("Not all expected reactors were called: %v", err)
+	}
+	if err := b.AllActionsExecuted(); err != nil {
+		b.T.Errorf(err.Error())
+	}
+	if err := b.AllEventsCalled(); err != nil {
+		b.T.Errorf(err.Error())
+	}
+
+	// resync listers before running checks
+	b.Sync()
+	// run custom checks
+	if b.CheckFn != nil {
+		b.CheckFn(b, args...)
+	}
+}
+
 func (b *Builder) AllReactorsCalled() error {
 	var errs []error
 	for n, reactorCalled := range b.requiredReactors {
@@ -160,6 +196,16 @@ func (b *Builder) AllReactorsCalled() error {
 			errs = append(errs, fmt.Errorf("reactor not called: %s", n))
 		}
 	}
+	return utilerrors.NewAggregate(errs)
+}
+
+func (b *Builder) AllEventsCalled() error {
+	var errs []error
+	if !util.EqualSorted(b.ExpectedEvents, b.Events()) {
+		errs = append(errs, fmt.Errorf("got unexpected events, exp='%s' got='%s'",
+			b.ExpectedEvents, b.Events()))
+	}
+
 	return utilerrors.NewAggregate(errs)
 }
 
@@ -226,48 +272,48 @@ func (b *Builder) Stop() {
 	}
 
 	close(b.stopCh)
-
-	if r, ok := b.Recorder.(*record.FakeRecorder); ok {
-		close(r.Events)
-	}
+	b.stopCh = nil
+	// Reset the clock back to the RealClock in apiutil
+	apiutil.Clock = clock.RealClock{}
 }
 
-// WaitForResync will wait for the informer factory informer duration by
-// calling time.Sleep. This will ensure that all informer Stores are up to date
-// with current information from the fake clients.
-func (b *Builder) WaitForResync() {
-	// add 100ms here to try and cut down on flakes
-	time.Sleep(informerResyncPeriod + time.Millisecond*100)
+func (b *Builder) Start(additional ...controller.RunFunc) {
+	b.KubeSharedInformerFactory.Start(b.stopCh)
+	b.SharedInformerFactory.Start(b.stopCh)
+	for _, fn := range additional {
+		go fn(b.stopCh)
+	}
+	// wait for caches to sync
+	b.Sync()
 }
 
 func (b *Builder) Sync() {
-	b.KubeSharedInformerFactory.Start(b.stopCh)
-	b.SharedInformerFactory.Start(b.stopCh)
 	if err := mustAllSync(b.KubeSharedInformerFactory.WaitForCacheSync(b.stopCh)); err != nil {
 		panic("Error waiting for kubeSharedInformerFactory to sync: " + err.Error())
 	}
 	if err := mustAllSync(b.SharedInformerFactory.WaitForCacheSync(b.stopCh)); err != nil {
 		panic("Error waiting for SharedInformerFactory to sync: " + err.Error())
 	}
+	if b.additionalSyncFuncs != nil {
+		cache.WaitForCacheSync(b.stopCh, b.additionalSyncFuncs...)
+	}
 }
 
-func (b *Builder) FakeEventRecorder() *record.FakeRecorder {
-	return b.Recorder.(*record.FakeRecorder)
+// RegisterAdditionalSyncFuncs registers an additional InformerSynced function
+// with the builder.
+// When the Sync method is called, the builder will also wait for the given
+// listers to be synced as well as the listers that were registered with the
+// informer factories that the builder provides.
+func (b *Builder) RegisterAdditionalSyncFuncs(fns ...cache.InformerSynced) {
+	b.additionalSyncFuncs = append(b.additionalSyncFuncs, fns...)
 }
 
 func (b *Builder) Events() []string {
-	return b.events
-}
-
-func (b *Builder) readEvents() {
-	for {
-		select {
-		case e := <-b.FakeEventRecorder().Events:
-			b.events = append(b.events, e)
-		case <-b.stopCh:
-			return
-		}
+	if e, ok := b.Recorder.(*FakeRecorder); ok {
+		return e.Events
 	}
+
+	return nil
 }
 
 func mustAllSync(in map[reflect.Type]bool) error {

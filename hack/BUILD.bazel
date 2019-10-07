@@ -50,24 +50,17 @@ sh_test(
 )
 
 # Dep/vendor rules
-
+# These have been deprecated in favour of directly calling the shell scripts.
 sh_binary(
     name = "update-deps",
-    srcs = ["update-deps.sh"],
-    data = [
-        ":update-bazel",
-        "//hack/bin:dep",
-    ],
+    srcs = ["deprecated.sh"],
+    args = ["hack/update-vendor.sh"],
 )
 
 sh_test(
     name = "verify-deps",
-    timeout = "long",
-    srcs = ["verify-deps.sh"],
-    data = [
-        ":update-deps",
-        "//:all-srcs",
-    ],
+    srcs = ["deprecated.sh"],
+    args = ["hack/verify-vendor.sh"],
     tags = ["manual"],
 )
 
@@ -80,7 +73,7 @@ sh_binary(
         "//hack:update-bazel",
         "//hack/boilerplate:all-srcs",
         "//third_party/k8s.io/code-generator:generate-groups",
-        "//third_party/k8s.io/code-generator:openapi-gen",
+        "//third_party/k8s.io/code-generator:generate-groups-internal",
     ],
 )
 
@@ -90,25 +83,6 @@ sh_test(
     data = [
         ":update-codegen",
         "//:all-srcs",
-    ],
-)
-
-# Static deployment manifests rules
-
-sh_binary(
-    name = "update-deploy-gen",
-    srcs = ["update-deploy-gen.sh"],
-    data = [
-        "//hack/bin:helm",
-    ],
-)
-
-sh_test(
-    name = "verify-deploy-gen",
-    srcs = ["verify-deploy-gen.sh"],
-    data = [
-        ":update-deploy-gen",
-        "//deploy:all-srcs",
     ],
 )
 
@@ -154,12 +128,17 @@ sh_binary(
     name = "update-crds",
     srcs = ["update-crds.sh"],
     data = [
-        ":update-deploy-gen",
-        "//hack/bin:gencrd",
+        "//hack/bin:controller-gen",
         "//pkg/apis:all-srcs",
-        "//vendor/k8s.io/api/core/v1:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:all-srcs",
-        "//vendor/k8s.io/apimachinery/pkg/runtime:all-srcs",
+        # Include all of pkg/util in case the pkg/apis package depends on it.
+        # Technically this shouldn't happen and should be avoided. Whilst we
+        # still have some cases of it however, this helps us overcome problems.
+        # These two are generally required due to the validation package being
+        # built by the controller-gen tool.
+        "//pkg/util:all-srcs",
+        "//pkg/api/util:all-srcs",
+        "//vendor:all-srcs",
+        "@go_sdk//:files",
     ],
 )
 
@@ -169,8 +148,6 @@ sh_test(
     data = [
         ":update-crds",
         "//deploy:all-srcs",
-        "//hack/bin:gencrd",
-        "//pkg/apis:all-srcs",
     ],
 )
 
@@ -187,6 +164,7 @@ filegroup(
         ":package-srcs",
         "//hack/bin:all-srcs",
         "//hack/boilerplate:all-srcs",
+        "//hack/release:all-srcs",
     ],
     tags = ["automanaged"],
     visibility = ["//visibility:public"],

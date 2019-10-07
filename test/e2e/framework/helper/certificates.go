@@ -21,6 +21,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
+	"math/bits"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -162,13 +163,34 @@ func (h *Helper) ValidateIssuedCertificate(certificate *v1alpha1.Certificate, ro
 		return nil, fmt.Errorf("Expected certificate expiry date to be %v, but got %v", certificate.Status.NotAfter, cert.NotAfter)
 	}
 
-	label, ok := secret.Labels[v1alpha1.CertificateNameKey]
+	label, ok := secret.Annotations[v1alpha1.CertificateNameKey]
 	if !ok {
 		return nil, fmt.Errorf("Expected secret to have certificate-name label, but had none")
 	}
 
 	if label != certificate.Name {
 		return nil, fmt.Errorf("Expected secret to have certificate-name label with a value of %q, but got %q", certificate.Name, label)
+	}
+
+	usages := make(map[v1alpha1.KeyUsage]bool)
+	for _, u := range certificate.Spec.Usages {
+		usages[u] = true
+	}
+	if certificate.Spec.IsCA {
+		if !cert.IsCA {
+			return nil, fmt.Errorf("Expected secret to have IsCA set to true, but was false")
+		}
+		if cert.KeyUsage&x509.KeyUsageCertSign == 0 {
+			return nil, fmt.Errorf("Expected secret to have x509.KeyUsageCertSign bit set but was not")
+		}
+		usages[v1alpha1.UsageCertSign] = true
+	}
+
+	if len(certificate.Spec.Usages) > 0 {
+		sumFoundUsages := bits.OnesCount(uint(cert.KeyUsage)) + len(cert.ExtKeyUsage)
+		if len(usages) != sumFoundUsages {
+			return nil, fmt.Errorf("Expected secret to have the same sum of KeyUsages and ExtKeyUsages [%d] as the number of Usages [%d] in Certificate", sumFoundUsages, len(usages))
+		}
 	}
 
 	// TODO: move this verification step out of this function
@@ -200,6 +222,7 @@ func (h *Helper) WaitCertificateIssuedValidTLS(ns, name string, timeout time.Dur
 	if err != nil {
 		log.Logf("Error waiting for Certificate to become Ready: %v", err)
 		h.Kubectl(ns).DescribeResource("certificate", name)
+		h.Kubectl(ns).Describe("order", "challenge")
 		return err
 	}
 
@@ -207,6 +230,7 @@ func (h *Helper) WaitCertificateIssuedValidTLS(ns, name string, timeout time.Dur
 	if err != nil {
 		log.Logf("Error validating issued certificate: %v", err)
 		h.Kubectl(ns).DescribeResource("certificate", name)
+		h.Kubectl(ns).Describe("order", "challenge")
 		return err
 	}
 

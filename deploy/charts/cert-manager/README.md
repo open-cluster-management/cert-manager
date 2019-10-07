@@ -21,14 +21,22 @@ To install the chart with the release name `my-release`:
 ## IMPORTANT: you MUST install the cert-manager CRDs **before** installing the
 ## cert-manager Helm chart
 $ kubectl apply \
-    -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/deploy/manifests/00-crds.yaml
+    -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/deploy/manifests/00-crds.yaml
+
+## If you are installing on openshift :
+$ oc create \
+    -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/deploy/manifests/00-crds.yaml
 
 ## IMPORTANT: if the cert-manager namespace **already exists**, you MUST ensure
 ## it has an additional label on it in order for the deployment to succeed
 $ kubectl label namespace cert-manager certmanager.k8s.io/disable-validation="true"
 
+## For openshift:
+$ oc label namespace cert-manager certmanager.k8s.io/disable-validation=true
+
 ## Add the Jetstack Helm repository
 $ helm repo add jetstack https://charts.jetstack.io
+
 
 ## Install the cert-manager helm chart
 $ helm install --name my-release --namespace cert-manager jetstack/cert-manager
@@ -75,7 +83,7 @@ The following table lists the configurable parameters of the cert-manager chart 
 | `global.imagePullSecrets` | Reference to one or more secrets to be used when pulling images | `[]` |
 | `global.rbac.create` | If `true`, create and use RBAC resources (includes sub-charts) | `true` |
 | `image.repository` | Image repository | `quay.io/jetstack/cert-manager-controller` |
-| `image.tag` | Image tag | `v0.7.0` |
+| `image.tag` | Image tag | `v0.10.0` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `replicaCount`  | Number of cert-manager replicas  | `1` |
 | `clusterResourceNamespace` | Override the namespace used to store DNS provider credentials etc. for ClusterIssuer resources | Same namespace as cert-manager pod
@@ -95,6 +103,15 @@ The following table lists the configurable parameters of the cert-manager chart 
 | `ingressShim.defaultIssuerKind` | Optional default issuer kind to use for ingress resources |  |
 | `ingressShim.defaultACMEChallengeType` | Optional default challenge type to use for ingresses using ACME issuers |  |
 | `ingressShim.defaultACMEDNS01ChallengeProvider` | Optional default DNS01 challenge provider to use for ingresses using ACME issuers with DNS01 |  |
+| `prometheus.enabled` | Enable Prometheus monitoring | `true` |
+| `prometheus.servicemonitor.enabled` | Enable Prometheus Operator ServiceMonitor monitoring | `false`
+| `prometheus.servicemonitor.namespace` | Define namespace where to deploy the ServiceMonitor resource | (namespace where you are deploying) |
+| `prometheus.servicemonitor.prometheusInstance` | Prometheus Instance definition | `default` |
+| `prometheus.servicemonitor.targetPort` | Prometheus scrape port | `9402` |
+| `prometheus.servicemonitor.path` | Prometheus scrape path | `/metrics` |
+| `prometheus.servicemonitor.interval` | Prometheus scrape interval | `60s` |
+| `prometheus.servicemonitor.labels` | Add custom labels to ServiceMonitor | |
+| `prometheus.servicemonitor.scrapeTimeout` | Prometheus scrape timeout | `30s` |
 | `podAnnotations` | Annotations to add to the cert-manager pod | `{}` |
 | `podDnsPolicy` | Optional cert-manager pod [DNS policy](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pods-dns-policy) |  |
 | `podDnsConfig` | Optional cert-manager pod [DNS configurations](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pods-dns-config) |  |
@@ -108,8 +125,9 @@ The following table lists the configurable parameters of the cert-manager chart 
 | `webhook.podAnnotations` | Annotations to add to the webhook pods | `{}` |
 | `webhook.extraArgs` | Optional flags for cert-manager webhook component | `[]` |
 | `webhook.resources` | CPU/memory resource requests/limits for the webhook pods | |
+| `webhook.nodeSelector` | Node labels for webhook pod assignment | `{}` |
 | `webhook.image.repository` | Webhook image repository | `quay.io/jetstack/cert-manager-webhook` |
-| `webhook.image.tag` | Webhook image tag | `v0.7.0` |
+| `webhook.image.tag` | Webhook image tag | `v0.10.0` |
 | `webhook.image.pullPolicy` | Webhook image pull policy | `IfNotPresent` |
 | `webhook.injectAPIServerCA` | if true, the apiserver's CABundle will be automatically injected into the ValidatingWebhookConfiguration resource | `true` |
 | `cainjector.enabled` | Toggles whether the cainjector component should be installed (required for the webhook component to work) | `true` |
@@ -117,8 +135,9 @@ The following table lists the configurable parameters of the cert-manager chart 
 | `cainjector.podAnnotations` | Annotations to add to the cainjector pods | `{}` |
 | `cainjector.extraArgs` | Optional flags for cert-manager cainjector component | `[]` |
 | `cainjector.resources` | CPU/memory resource requests/limits for the cainjector pods | |
+| `cainjector.nodeSelector` | Node labels for cainjector pod assignment | `{}` |
 | `cainjector.image.repository` | cainjector image repository | `quay.io/jetstack/cert-manager-cainjector` |
-| `cainjector.image.tag` | cainjector image tag | `v0.7.0` |
+| `cainjector.image.tag` | cainjector image tag | `v0.10.0` |
 | `cainjector.image.pullPolicy` | cainjector image pull policy | `IfNotPresent` |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`.

@@ -42,7 +42,7 @@ type Options struct {
 // Work typically is reads and writes Kubernetes objects to make the system state match the state specified
 // in the object Spec.
 type Controller interface {
-	// Reconciler is called to Reconciler an object by Namespace/Name
+	// Reconciler is called to reconcile an object by Namespace/Name
 	reconcile.Reconciler
 
 	// Watch takes events provided by a Source and uses the EventHandler to
@@ -50,7 +50,7 @@ type Controller interface {
 	//
 	// Watch may be provided one or more Predicates to filter events before
 	// they are given to the EventHandler.  Events will be passed to the
-	// EventHandler iff all provided Predicates evaluate to true.
+	// EventHandler if all provided Predicates evaluate to true.
 	Watch(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error
 
 	// Start starts the controller.  Start blocks until stop is closed or a

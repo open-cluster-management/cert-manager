@@ -17,8 +17,6 @@
 package cloud
 
 import (
-	"fmt"
-	"github.com/Venafi/vcert/pkg/certificate"
 	"github.com/Venafi/vcert/pkg/endpoint"
 	"time"
 )
@@ -34,41 +32,24 @@ type company struct {
 }
 
 type zone struct {
-	ID                               string              `json:"id,omitempty"`
-	CompanyID                        string              `json:"companyId,omitempty"`
-	Tag                              string              `json:"tag,omitempty"`
-	ZoneType                         string              `json:"zoneType,omitempty"`
-	CertificatePolicyIDs             certificatePolicyID `json:"certificatePolicyIds,omitempty"`
-	DefaultCertificateIdentityPolicy string              `json:"defaultCertificateIdentityPolicyId,omitempty"`
-	DefaultCertificateUsePolicy      string              `json:"defaultCertificateUsePolicyId,omitempty"`
-	SystemGenerated                  bool                `json:"systemGeneratedate,omitempty"`
-	CreationDateString               string              `json:"creationDate,omitempty"`
-	CreationDate                     time.Time           `json:"-"`
+	ID                           string    `json:"id,omitempty"`
+	CompanyID                    string    `json:"companyId,omitempty"`
+	Tag                          string    `json:"tag,omitempty"`
+	ZoneType                     string    `json:"zoneType,omitempty"`
+	SystemGenerated              bool      `json:"systemGenerated,omitempty"`
+	CreationDateString           string    `json:"creationDate,omitempty"`
+	CreationDate                 time.Time `json:"-"`
+	CertificateIssuingTemplateId string    `json:"certificateIssuingTemplateId"`
 }
 
-type certificatePolicyID struct {
-	CertificateIdentity []string `json:"CERTIFICATE_IDENTITY,omitempty"`
-	CertificateUse      []string `json:"CERTIFICATE_USE,omitempty"`
-}
-
-func (z *zone) GetZoneConfiguration(ud *userDetails, policy *certificatePolicy) *endpoint.ZoneConfiguration {
-	zoneConfig := endpoint.ZoneConfiguration{}
-
-	if policy != nil {
-		if policy.KeyTypes != nil {
-			certKeyType := certificate.KeyTypeRSA
-			for _, kt := range policy.KeyTypes {
-				certKeyType.Set(fmt.Sprintf("%s", kt.KeyType))
-				keyConfiguration := endpoint.AllowedKeyConfiguration{}
-				keyConfiguration.KeyType = certKeyType
-				for _, size := range kt.KeyLengths {
-					keyConfiguration.KeySizes = append(keyConfiguration.KeySizes, size)
-				}
-				zoneConfig.AllowedKeyConfigurations = append(zoneConfig.AllowedKeyConfigurations, keyConfiguration)
-			}
-		}
+func (z *zone) getZoneConfiguration(ud *userDetails, policy *certificateTemplate) (zoneConfig *endpoint.ZoneConfiguration) {
+	zoneConfig = endpoint.NewZoneConfiguration()
+	if policy == nil {
+		return
 	}
-	return &zoneConfig
+	zoneConfig.Policy = policy.toPolicy()
+	policy.toZoneConfig(zoneConfig)
+	return
 }
 
 const (

@@ -24,9 +24,32 @@ runfiles="$(pwd)"
 export PATH="${runfiles}/third_party/k8s.io/code-generator:${runfiles}/hack:${runfiles}/hack/bin:${PATH}"
 cd "${REPO_ROOT}"
 
+generate-groups.sh "deepcopy" \
+  github.com/jetstack/cert-manager/pkg/client github.com/jetstack/cert-manager/pkg/acme/webhook/apis \
+  acme:v1alpha1 \
+  --output-base "${GOPATH}/src/" \
+  --go-header-file "${runfiles}/hack/boilerplate/boilerplate.go.txt"
+
 generate-groups.sh "deepcopy,client,informer,lister" \
-  github.com/jetstack/cert-manager/pkg/client github.com/jetstack/cert-manager/pkg/apis \
+  github.com/jetstack/cert-manager/pkg/client \
+  github.com/jetstack/cert-manager/pkg/apis \
   certmanager:v1alpha1 \
+  --output-base "${GOPATH}/src/" \
+  --go-header-file "${runfiles}/hack/boilerplate/boilerplate.go.txt"
+
+generate-groups-internal.sh "deepcopy,defaulter,conversion" \
+  github.com/jetstack/cert-manager/pkg/client \
+  github.com/jetstack/cert-manager/pkg/internal/apis \
+  github.com/jetstack/cert-manager/pkg/internal/apis \
+  certmanager:v1alpha1 \
+  --output-base "${GOPATH}/src/" \
+  --go-header-file "${runfiles}/hack/boilerplate/boilerplate.go.txt"
+
+generate-groups-internal.sh "deepcopy,defaulter,conversion" \
+  github.com/jetstack/cert-manager/pkg/webhook/handlers/testdata/generated \
+  github.com/jetstack/cert-manager/pkg/webhook/handlers/testdata/apis \
+  github.com/jetstack/cert-manager/pkg/webhook/handlers/testdata/apis \
+  testgroup:v1 \
   --output-base "${GOPATH}/src/" \
   --go-header-file "${runfiles}/hack/boilerplate/boilerplate.go.txt"
 

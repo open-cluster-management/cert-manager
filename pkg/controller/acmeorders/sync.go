@@ -33,8 +33,12 @@ import (
 	"github.com/jetstack/cert-manager/pkg/acme"
 	acmecl "github.com/jetstack/cert-manager/pkg/acme/client"
 	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	"github.com/jetstack/cert-manager/pkg/controller/acmeorders/selectors"
+	"github.com/jetstack/cert-manager/pkg/feature"
+	logf "github.com/jetstack/cert-manager/pkg/logs"
+	"github.com/jetstack/cert-manager/pkg/metrics"
+	utilfeature "github.com/jetstack/cert-manager/pkg/util/feature"
 	acmeapi "github.com/jetstack/cert-manager/third_party/crypto/acme"
-	"k8s.io/klog"
 )
 
 var (
@@ -47,19 +51,36 @@ var (
 // - deciding/validated configured challenge mechanisms
 // - create a Challenge resource in order to fulfill required validations
 // - waiting for Challenge resources to enter the 'ready' state
-func (c *Controller) Sync(ctx context.Context, o *cmapi.Order) (err error) {
+func (c *controller) Sync(ctx context.Context, o *cmapi.Order) (err error) {
+	log := logf.WithResource(logf.FromContext(ctx), o)
+	dbg := log.V(logf.DebugLevel)
+	ctx = logf.NewContext(ctx, log)
+
+	metrics.Default.IncrementSyncCallCount(ControllerName)
+
+	if utilfeature.DefaultFeatureGate.Enabled(feature.DisableDeprecatedACMECertificates) &&
+		o.Spec.Config != nil {
+		c.recorder.Eventf(o, corev1.EventTypeWarning, "DeprecatedField", "Deprecated spec.config field specified and deprecated field feature gate is enabled.")
+		return nil
+	}
+
 	oldOrder := o
 	o = o.DeepCopy()
 
 	defer func() {
 		// TODO: replace with more efficient comparison
 		if reflect.DeepEqual(oldOrder.Status, o.Status) {
+			dbg.Info("skipping updating resource as new status == existing status")
 			return
 		}
-		_, updateErr := c.CMClient.CertmanagerV1alpha1().Orders(o.Namespace).Update(o)
+		log.Info("updating Order resource status")
+		_, updateErr := c.cmClient.CertmanagerV1alpha1().Orders(o.Namespace).Update(o)
 		if err != nil {
+			log.Error(err, "failed to update status")
 			err = utilerrors.NewAggregate([]error{err, updateErr})
+			return
 		}
+		dbg.Info("updated Order resource status successfully")
 	}()
 
 	genericIssuer, err := c.helper.GetGenericIssuer(o.Spec.IssuerRef, o.Namespace)
@@ -73,6 +94,7 @@ func (c *Controller) Sync(ctx context.Context, o *cmapi.Order) (err error) {
 	}
 
 	if o.Status.URL == "" {
+		log.Info("creating Order with ACME server as one does not currently exist")
 		err := c.createOrder(ctx, cl, genericIssuer, o)
 
 		if err != nil {
@@ -152,7 +174,7 @@ func (c *Controller) Sync(ctx context.Context, o *cmapi.Order) (err error) {
 
 		// Cleanup challenge resources once a final state has been reached
 		for _, ch := range existingChallenges {
-			err := c.CMClient.CertmanagerV1alpha1().Challenges(ch.Namespace).Delete(ch.Name, nil)
+			err := c.cmClient.CertmanagerV1alpha1().Challenges(ch.Namespace).Delete(ch.Name, nil)
 			if err != nil {
 				return err
 			}
@@ -198,9 +220,25 @@ func (c *Controller) Sync(ctx context.Context, o *cmapi.Order) (err error) {
 	// if the current state is 'ready', we need to generate a CSR and finalize
 	// the order
 	case cmapi.Ready:
+
+		// Due to a bug in the initial release of this controller, we previously
+		// only supported DER encoded CSRs and not PEM encoded as they are intended
+		// to be as part of our API.
+		// To work around this, we first attempt to decode the CSR into DER bytes
+		// by running pem.Decode. If the PEM block is empty, we assume that the CSR
+		// is DER encoded and continue to call FinalizeOrder.
+		var derBytes []byte
+		block, _ := pem.Decode(o.Spec.CSR)
+		if block == nil {
+			log.Info("failed to parse CSR as PEM data, attempting to treat CSR as DER encoded for compatibility reasons")
+			derBytes = o.Spec.CSR
+		} else {
+			derBytes = block.Bytes
+		}
+
 		// TODO: we could retrieve a copy of the certificate resource here and
 		// stored it on the Order resource to prevent extra calls to the API
-		certSlice, err := cl.FinalizeOrder(ctx, o.Status.FinalizeURL, o.Spec.CSR)
+		certSlice, err := cl.FinalizeOrder(ctx, o.Status.FinalizeURL, derBytes)
 
 		// always update the order status after calling Finalize - this allows
 		// us to record the current orders status on this order resource
@@ -271,24 +309,20 @@ func (c *Controller) Sync(ctx context.Context, o *cmapi.Order) (err error) {
 		specsToCreate[i] = s
 	}
 
-	klog.Infof("Need to create %d challenges", len(specsToCreate))
+	log.Info("need to create challenges", "number", len(specsToCreate))
 
 	// create a Challenge resource for each challenge we need to create.
 	var errs []error
 	for i, spec := range specsToCreate {
 		ch := buildChallenge(i, o, spec)
 
-		ch, err = c.CMClient.CertmanagerV1alpha1().Challenges(o.Namespace).Create(ch)
+		ch, err = c.cmClient.CertmanagerV1alpha1().Challenges(o.Namespace).Create(ch)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
 
-		domainName := spec.DNSName
-		if spec.Wildcard {
-			domainName = "*." + domainName
-		}
-		c.Recorder.Eventf(o, corev1.EventTypeNormal, "Created", "Created Challenge resource %q for domain %q", ch.Name, ch.Spec.DNSName)
+		c.recorder.Eventf(o, corev1.EventTypeNormal, "Created", "Created Challenge resource %q for domain %q", ch.Name, ch.Spec.DNSName)
 
 		existingChallenges = append(existingChallenges, ch)
 	}
@@ -320,12 +354,12 @@ func (c *Controller) Sync(ctx context.Context, o *cmapi.Order) (err error) {
 		return nil
 	}
 
-	klog.Infof("Waiting for all challenges for order %q to enter 'valid' state", o.Name)
+	log.Info("waiting for all challenges to enter 'valid' state")
 
 	return nil
 }
 
-func (c *Controller) listChallengesForOrder(o *cmapi.Order) ([]*cmapi.Challenge, error) {
+func (c *controller) listChallengesForOrder(o *cmapi.Order) ([]*cmapi.Challenge, error) {
 	// create a selector that we can use to find all existing Challenges for the order
 	sel, err := challengeSelectorForOrder(o)
 	if err != nil {
@@ -340,36 +374,61 @@ const (
 	orderNameLabelKey = "acme.cert-manager.io/order-name"
 )
 
-func (c *Controller) createOrder(ctx context.Context, cl acmecl.Interface, issuer cmapi.GenericIssuer, o *cmapi.Order) error {
+func (c *controller) createOrder(ctx context.Context, cl acmecl.Interface, issuer cmapi.GenericIssuer, o *cmapi.Order) error {
+	log := logf.FromContext(ctx)
+	dbg := log.V(logf.DebugLevel)
+
 	if o.Status.URL != "" {
 		return fmt.Errorf("refusing to recreate a new order for Order %q. Please create a new Order resource to initiate a new order", o.Name)
 	}
+	log.Info("order URL not set, submitting Order to ACME server")
 
 	identifierSet := sets.NewString(o.Spec.DNSNames...)
 	if o.Spec.CommonName != "" {
 		identifierSet.Insert(o.Spec.CommonName)
 	}
+	log.Info("build set of domains for Order", "domains", identifierSet.List())
+
 	// create a new order with the acme server
 	orderTemplate := acmeapi.NewOrder(identifierSet.List()...)
+	dbg.Info("constructed order template", "template", orderTemplate)
 	acmeOrder, err := cl.CreateOrder(ctx, orderTemplate)
 	if err != nil {
 		return fmt.Errorf("error creating new order: %v", err)
 	}
 
+	log.Info("submitted Order to ACME server")
 	c.setOrderStatus(&o.Status, acmeOrder)
 
+	log.Info("computing Challenge resources to create for this Order")
+	useOldFormat := len(o.Spec.Config) > 0
+	if useOldFormat {
+		log.Info("spec.acme field found on Order resource. Using old style ACME configuration format. For more details, read: https://docs.cert-manager.io/en/latest/tasks/upgrading/upgrading-0.7-0.8.html")
+	}
 	chals := make([]cmapi.ChallengeSpec, len(acmeOrder.Authorizations))
 	// we only set the status.challenges field when we first create the order,
 	// because we only create one order per Order resource.
 	for i, authzURL := range acmeOrder.Authorizations {
+		dbg.Info("querying details for authorization", "url", authzURL)
 		authz, err := cl.GetAuthorization(ctx, authzURL)
 		if err != nil {
 			return err
 		}
 
-		cs, err := c.challengeSpecForAuthorization(ctx, cl, issuer, o, authz)
-		if err != nil {
-			return fmt.Errorf("Error constructing Challenge resource for Authorization: %v", err)
+		log := log.WithValues("url", authzURL, "domain", authz.Identifier.Value, "wildcard", authz.Wildcard)
+		log.Info("determining challenge solver to use for challenge")
+		var cs *cmapi.ChallengeSpec
+		if useOldFormat {
+			cs, err = c.oldFormatChallengeSpecForAuthorization(ctx, cl, issuer, o, authz)
+			if err != nil {
+				return fmt.Errorf("error constructing old format Challenge resource for authorization: %v", err)
+			}
+		} else {
+			cs, err = challengeSpecForAuthorization(ctx, cl, issuer, o, authz)
+			if err != nil {
+				c.recorder.Eventf(o, corev1.EventTypeWarning, "NoMatchingSolver", "Failed to create challenge for domain %q: %v", authz.Identifier.Value, err)
+				return fmt.Errorf("error constructing Challenge resource for authorization: %v", err)
+			}
 		}
 
 		chals[i] = *cs
@@ -379,7 +438,194 @@ func (c *Controller) createOrder(ctx context.Context, cl acmecl.Interface, issue
 	return nil
 }
 
-func (c *Controller) challengeSpecForAuthorization(ctx context.Context, cl acmecl.Interface, issuer cmapi.GenericIssuer, o *cmapi.Order, authz *acmeapi.Authorization) (*cmapi.ChallengeSpec, error) {
+func challengeSpecForAuthorization(ctx context.Context, cl acmecl.Interface, issuer cmapi.GenericIssuer, o *cmapi.Order, authz *acmeapi.Authorization) (*cmapi.ChallengeSpec, error) {
+	log := logf.FromContext(ctx, "challengeSpecForAuthorization")
+	dbg := log.V(logf.DebugLevel)
+
+	// 1. fetch solvers from issuer
+	solvers := issuer.GetSpec().ACME.Solvers
+
+	domainToFind := authz.Identifier.Value
+	if authz.Wildcard {
+		domainToFind = "*." + domainToFind
+	}
+
+	var selectedSolver *cmapi.ACMEChallengeSolver
+	var selectedChallenge *acmeapi.Challenge
+	selectedNumLabelsMatch := 0
+	selectedNumDNSNamesMatch := 0
+	selectedNumDNSZonesMatch := 0
+
+	challengeForSolver := func(solver *cmapi.ACMEChallengeSolver) *acmeapi.Challenge {
+		for _, ch := range authz.Challenges {
+			switch {
+			case ch.Type == "http-01" && solver.HTTP01 != nil:
+				return ch
+			case ch.Type == "dns-01" && solver.DNS01 != nil:
+				return ch
+			}
+		}
+		return nil
+	}
+
+	// 2. filter solvers to only those that matchLabels
+	for _, cfg := range solvers {
+		acmech := challengeForSolver(&cfg)
+		if acmech == nil {
+			dbg.Info("cannot use solver as the ACME authorization does not allow solvers of this type")
+			continue
+		}
+
+		if cfg.Selector == nil {
+			if selectedSolver != nil {
+				dbg.Info("not selecting solver as previously selected solver has a just as or more specific selector")
+				continue
+			}
+			dbg.Info("selecting solver due to match all selector and no previously selected solver")
+			selectedSolver = cfg.DeepCopy()
+			selectedChallenge = acmech
+			continue
+		}
+
+		labelsMatch, numLabelsMatch := selectors.Labels(*cfg.Selector).Matches(o.ObjectMeta, domainToFind)
+		dnsNamesMatch, numDNSNamesMatch := selectors.DNSNames(*cfg.Selector).Matches(o.ObjectMeta, domainToFind)
+		dnsZonesMatch, numDNSZonesMatch := selectors.DNSZones(*cfg.Selector).Matches(o.ObjectMeta, domainToFind)
+
+		if !labelsMatch || !dnsNamesMatch || !dnsZonesMatch {
+			dbg.Info("not selecting solver", "labels_match", labelsMatch, "dnsnames_match", dnsNamesMatch, "dnszones_match", dnsZonesMatch)
+			continue
+		}
+
+		dbg.Info("selector matches")
+
+		selectSolver := func() {
+			selectedSolver = cfg.DeepCopy()
+			selectedChallenge = acmech
+			selectedNumLabelsMatch = numLabelsMatch
+			selectedNumDNSNamesMatch = numDNSNamesMatch
+			selectedNumDNSZonesMatch = numDNSZonesMatch
+		}
+
+		if selectedSolver == nil {
+			dbg.Info("selecting solver as there is no previously selected solver")
+			selectSolver()
+			continue
+		}
+
+		dbg.Info("determining whether this match is more significant than last")
+
+		// because we don't count multiple dnsName matches as extra 'weight'
+		// in the selection process, we normalise the numDNSNamesMatch vars
+		// to be either 1 or 0 (i.e. true or false)
+		selectedHasMatchingDNSNames := selectedNumDNSNamesMatch > 0
+		hasMatchingDNSNames := numDNSNamesMatch > 0
+
+		// dnsName selectors have the highest precedence, so check them first
+		switch {
+		case !selectedHasMatchingDNSNames && hasMatchingDNSNames:
+			dbg.Info("selecting solver as this solver has matching DNS names and the previous one does not")
+			selectSolver()
+			continue
+		case selectedHasMatchingDNSNames && !hasMatchingDNSNames:
+			dbg.Info("not selecting solver as the previous one has matching DNS names and this one does not")
+			continue
+		case !selectedHasMatchingDNSNames && !hasMatchingDNSNames:
+			dbg.Info("solver does not have any matching DNS names, checking dnsZones")
+			// check zones
+		case selectedHasMatchingDNSNames && hasMatchingDNSNames:
+			dbg.Info("both this solver and the previously selected one matches dnsNames, comparing zones")
+			if numDNSZonesMatch > selectedNumDNSZonesMatch {
+				dbg.Info("selecting solver as this one has a more specific dnsZone match than the previously selected one")
+				selectSolver()
+				continue
+			}
+			if selectedNumDNSZonesMatch > numDNSZonesMatch {
+				dbg.Info("not selecting this solver as the previously selected one has a more specific dnsZone match")
+				continue
+			}
+			dbg.Info("both this solver and the previously selected one match dnsZones, comparing labels")
+			// choose the one with the most labels
+			if numLabelsMatch > selectedNumLabelsMatch {
+				dbg.Info("selecting solver as this one has more labels than the previously selected one")
+				selectSolver()
+				continue
+			}
+			dbg.Info("not selecting this solver as previous one has either the same number of or more labels")
+			continue
+		}
+
+		selectedHasMatchingDNSZones := selectedNumDNSZonesMatch > 0
+		hasMatchingDNSZones := numDNSZonesMatch > 0
+
+		switch {
+		case !selectedHasMatchingDNSZones && hasMatchingDNSZones:
+			dbg.Info("selecting solver as this solver has matching DNS zones and the previous one does not")
+			selectSolver()
+			continue
+		case selectedHasMatchingDNSZones && !hasMatchingDNSZones:
+			dbg.Info("not selecting solver as the previous one has matching DNS zones and this one does not")
+			continue
+		case !selectedHasMatchingDNSZones && !hasMatchingDNSZones:
+			dbg.Info("solver does not have any matching DNS zones, checking labels")
+			// check labels
+		case selectedHasMatchingDNSZones && hasMatchingDNSZones:
+			dbg.Info("both this solver and the previously selected one matches dnsZones")
+			dbg.Info("comparing number of matching domain segments")
+			// choose the one with the most matching DNS zone segments
+			if numDNSZonesMatch > selectedNumDNSZonesMatch {
+				dbg.Info("selecting solver because this one has more matching DNS zone segments")
+				selectSolver()
+				continue
+			}
+			if selectedNumDNSZonesMatch > numDNSZonesMatch {
+				dbg.Info("not selecting solver because previous one has more matching DNS zone segments")
+				continue
+			}
+			// choose the one with the most labels
+			if numLabelsMatch > selectedNumLabelsMatch {
+				dbg.Info("selecting solver because this one has more labels than the previous one")
+				selectSolver()
+				continue
+			}
+			dbg.Info("not selecting solver as this one's number of matching labels is equal to or less than the last one")
+			continue
+		}
+
+		if numLabelsMatch > selectedNumLabelsMatch {
+			dbg.Info("selecting solver as this one has more labels than the last one")
+			selectSolver()
+			continue
+		}
+
+		dbg.Info("not selecting solver as this one's number of matching labels is equal to or less than the last one (reached end of loop)")
+		// if we get here, the number of matches is less than or equal so we
+		// fallback to choosing the first in the list
+	}
+
+	if selectedSolver == nil || selectedChallenge == nil {
+		return nil, fmt.Errorf("no configured challenge solvers can be used for this challenge")
+	}
+
+	key, err := keyForChallenge(cl, selectedChallenge)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. construct Challenge resource with spec.solver field set
+	return &cmapi.ChallengeSpec{
+		AuthzURL:  authz.URL,
+		Type:      selectedChallenge.Type,
+		URL:       selectedChallenge.URL,
+		DNSName:   authz.Identifier.Value,
+		Token:     selectedChallenge.Token,
+		Key:       key,
+		Solver:    selectedSolver,
+		Wildcard:  authz.Wildcard,
+		IssuerRef: o.Spec.IssuerRef,
+	}, nil
+}
+
+func (c *controller) oldFormatChallengeSpecForAuthorization(ctx context.Context, cl acmecl.Interface, issuer cmapi.GenericIssuer, o *cmapi.Order, authz *acmeapi.Authorization) (*cmapi.ChallengeSpec, error) {
 	cfg, err := solverConfigurationForAuthorization(o.Spec.Config, authz)
 	if err != nil {
 		return nil, err
@@ -417,7 +663,7 @@ func (c *Controller) challengeSpecForAuthorization(ctx context.Context, cl acmec
 		DNSName:   domain,
 		Token:     challenge.Token,
 		Key:       key,
-		Config:    *cfg,
+		Config:    cfg,
 		Wildcard:  authz.Wildcard,
 		IssuerRef: o.Spec.IssuerRef,
 	}, nil
@@ -455,7 +701,7 @@ func solverConfigurationForAuthorization(cfgs []cmapi.DomainSolverConfig, authz 
 // syncOrderStatus will communicate with the ACME server to retrieve the current
 // state of the Order. It will then update the Order's status block with the new
 // state of the order.
-func (c *Controller) syncOrderStatus(ctx context.Context, cl acmecl.Interface, o *cmapi.Order) error {
+func (c *controller) syncOrderStatus(ctx context.Context, cl acmecl.Interface, o *cmapi.Order) error {
 	if o.Status.URL == "" {
 		return fmt.Errorf("order URL is blank - order has not been created yet")
 	}
@@ -488,7 +734,7 @@ func buildChallenge(i int, o *cmapi.Order, chalSpec cmapi.ChallengeSpec) *cmapi.
 
 // setOrderStatus will populate the given OrderStatus struct with the details from
 // the provided ACME Order.
-func (c *Controller) setOrderStatus(o *cmapi.OrderStatus, acmeOrder *acmeapi.Order) {
+func (c *controller) setOrderStatus(o *cmapi.OrderStatus, acmeOrder *acmeapi.Order) {
 	// TODO: should we validate the State returned by the ACME server here?
 	cmState := cmapi.State(acmeOrder.Status)
 	// be nice to our users and check if there is an error that we
@@ -531,7 +777,7 @@ func challengeSelectorForOrder(o *cmapi.Order) (labels.Selector, error) {
 // setOrderState will set the 'State' field of the given Order to 's'.
 // It will set the Orders failureTime field if the state provided is classed as
 // a failure state.
-func (c *Controller) setOrderState(o *cmapi.OrderStatus, s cmapi.State) {
+func (c *controller) setOrderState(o *cmapi.OrderStatus, s cmapi.State) {
 	o.State = s
 	// if the order is in a failure state, we should set the `failureTime` field
 	if acme.IsFailureState(o.State) {
@@ -540,7 +786,7 @@ func (c *Controller) setOrderState(o *cmapi.OrderStatus, s cmapi.State) {
 	}
 }
 
-func (c *Controller) storeCertificateOnStatus(o *cmapi.Order, certs [][]byte) error {
+func (c *controller) storeCertificateOnStatus(o *cmapi.Order, certs [][]byte) error {
 	// encode the retrieved certificates (including the chain)
 	certBuffer := bytes.NewBuffer([]byte{})
 	for _, cert := range certs {
@@ -552,7 +798,7 @@ func (c *Controller) storeCertificateOnStatus(o *cmapi.Order, certs [][]byte) er
 	}
 
 	o.Status.Certificate = certBuffer.Bytes()
-	c.Recorder.Event(o, corev1.EventTypeNormal, "OrderValid", "Order completed successfully")
+	c.recorder.Event(o, corev1.EventTypeNormal, "OrderValid", "Order completed successfully")
 
 	return nil
 }

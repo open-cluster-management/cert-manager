@@ -18,161 +18,126 @@ package issuers
 
 import (
 	"context"
-	"fmt"
-	"sync"
-	"time"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog"
 
+	cmclient "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
 	cmlisters "github.com/jetstack/cert-manager/pkg/client/listers/certmanager/v1alpha1"
 	controllerpkg "github.com/jetstack/cert-manager/pkg/controller"
 	"github.com/jetstack/cert-manager/pkg/issuer"
-	"github.com/jetstack/cert-manager/pkg/util"
+	logf "github.com/jetstack/cert-manager/pkg/logs"
 )
 
-type Controller struct {
-	*controllerpkg.Context
-	issuerFactory issuer.IssuerFactory
-
-	// To allow injection for testing.
-	syncHandler func(ctx context.Context, key string) error
-
+type controller struct {
 	issuerLister cmlisters.IssuerLister
 	secretLister corelisters.SecretLister
 
-	watchedInformers []cache.InformerSynced
-	queue            workqueue.RateLimitingInterface
+	// maintain a reference to the workqueue for this controller
+	// so the handleOwnedResource method can enqueue resources
+	queue workqueue.RateLimitingInterface
+
+	// logger to be used by this controller
+	log logr.Logger
+
+	// clientset used to update cert-manager API resources
+	cmClient cmclient.Interface
+
+	// used to record Events about resources to the API
+	recorder record.EventRecorder
+
+	// issuerFactory is used to obtain a reference to the Issuer implementation
+	// for each ClusterIssuer resource
+	issuerFactory issuer.Factory
 }
 
-func New(ctx *controllerpkg.Context) *Controller {
-	ctrl := &Controller{
-		Context: ctx,
+// Register registers and constructs the controller using the provided context.
+// It returns the workqueue to be used to enqueue items, a list of
+// InformerSynced functions that must be synced, or an error.
+func (c *controller) Register(ctx *controllerpkg.Context) (workqueue.RateLimitingInterface, []cache.InformerSynced, []controllerpkg.RunFunc, error) {
+	// construct a new named logger to be reused throughout the controller
+	c.log = logf.FromContext(ctx.RootContext, ControllerName)
+
+	// create a queue used to queue up items to be processed
+	c.queue = workqueue.NewNamedRateLimitingQueue(controllerpkg.DefaultItemBasedRateLimiter(), ControllerName)
+
+	// obtain references to all the informers used by this controller
+	issuerInformer := ctx.SharedInformerFactory.Certmanager().V1alpha1().Issuers()
+	secretInformer := ctx.KubeSharedInformerFactory.Core().V1().Secrets()
+	// build a list of InformerSynced functions that will be returned by the Register method.
+	// the controller will only begin processing items once all of these informers have synced.
+	mustSync := []cache.InformerSynced{
+		issuerInformer.Informer().HasSynced,
+		secretInformer.Informer().HasSynced,
 	}
 
-	ctrl.syncHandler = ctrl.processNextWorkItem
-	ctrl.queue = workqueue.NewNamedRateLimitingQueue(controllerpkg.DefaultItemBasedRateLimiter(), "issuers")
+	// set all the references to the listers for used by the Sync function
+	c.issuerLister = issuerInformer.Lister()
+	c.secretLister = secretInformer.Lister()
 
-	issuerInformer := ctrl.SharedInformerFactory.Certmanager().V1alpha1().Issuers()
-	issuerInformer.Informer().AddEventHandler(&controllerpkg.QueuingEventHandler{Queue: ctrl.queue})
-	ctrl.watchedInformers = append(ctrl.watchedInformers, issuerInformer.Informer().HasSynced)
-	ctrl.issuerLister = issuerInformer.Lister()
+	// register handler functions
+	issuerInformer.Informer().AddEventHandler(&controllerpkg.QueuingEventHandler{Queue: c.queue})
+	secretInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: c.secretDeleted})
 
-	secretsInformer := ctrl.KubeSharedInformerFactory.Core().V1().Secrets()
-	secretsInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: ctrl.secretDeleted})
-	ctrl.watchedInformers = append(ctrl.watchedInformers, secretsInformer.Informer().HasSynced)
-	ctrl.secretLister = secretsInformer.Lister()
-	ctrl.issuerFactory = issuer.NewIssuerFactory(ctx)
+	// instantiate additional helpers used by this controller
+	c.issuerFactory = issuer.NewFactory(ctx)
+	c.cmClient = ctx.CMClient
+	c.recorder = ctx.Recorder
 
-	return ctrl
+	return c.queue, mustSync, nil, nil
 }
 
 // TODO: replace with generic handleObjet function (like Navigator)
-func (c *Controller) secretDeleted(obj interface{}) {
+func (c *controller) secretDeleted(obj interface{}) {
+	log := c.log.WithName("secretDeleted")
+
 	var secret *corev1.Secret
 	var ok bool
 	secret, ok = obj.(*corev1.Secret)
 	if !ok {
-		runtime.HandleError(fmt.Errorf("Object was not a Secret object %#v", obj))
+		log.Error(nil, "object was not a secret object")
 		return
 	}
+	log = logf.WithResource(log, secret)
 	issuers, err := c.issuersForSecret(secret)
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("Error looking up issuers observing Secret: %s/%s", secret.Namespace, secret.Name))
+		log.Error(err, "error looking up issuers observing secret")
 		return
 	}
 	for _, iss := range issuers {
 		key, err := keyFunc(iss)
 		if err != nil {
-			runtime.HandleError(err)
+			log.Error(err, "error computing key for resource")
 			continue
 		}
 		c.queue.AddRateLimited(key)
 	}
 }
 
-func (c *Controller) Run(workers int, stopCh <-chan struct{}) error {
-	klog.V(4).Infof("Starting %s control loop", ControllerName)
-	// wait for all the informer caches we depend on are synced
-	if !cache.WaitForCacheSync(stopCh, c.watchedInformers...) {
-		// TODO: replace with Errorf call to glog
-		return fmt.Errorf("error waiting for informer caches to sync")
-	}
-
-	var wg sync.WaitGroup
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		// TODO (@munnerz): make time.Second duration configurable
-		go wait.Until(func() {
-			defer wg.Done()
-			c.worker(stopCh)
-		}, time.Second, stopCh)
-	}
-	<-stopCh
-	klog.V(4).Infof("Shutting down queue as workqueue signaled shutdown")
-	c.queue.ShutDown()
-	klog.V(4).Infof("Waiting for workers to exit...")
-	wg.Wait()
-	klog.V(4).Infof("Workers exited.")
-	return nil
-}
-
-func (c *Controller) worker(stopCh <-chan struct{}) {
-	klog.V(4).Infof("Starting %q worker", ControllerName)
-	for {
-		obj, shutdown := c.queue.Get()
-		if shutdown {
-			break
-		}
-
-		var key string
-		// use an inlined function so we can use defer
-		func() {
-			defer c.queue.Done(obj)
-			var ok bool
-			if key, ok = obj.(string); !ok {
-				return
-			}
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			ctx = util.ContextWithStopCh(ctx, stopCh)
-			klog.Infof("%s controller: syncing item '%s'", ControllerName, key)
-			if err := c.syncHandler(ctx, key); err != nil {
-				klog.Errorf("%s controller: Re-queuing item %q due to error processing: %s", ControllerName, key, err.Error())
-				c.queue.AddRateLimited(obj)
-				return
-			}
-			klog.Infof("%s controller: Finished processing work item %q", ControllerName, key)
-			c.queue.Forget(obj)
-		}()
-	}
-	klog.V(4).Infof("Exiting %q worker loop", ControllerName)
-}
-
-func (c *Controller) processNextWorkItem(ctx context.Context, key string) error {
+func (c *controller) ProcessItem(ctx context.Context, key string) error {
+	log := logf.FromContext(ctx)
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		log.Error(err, "invalid resource key")
 		return nil
 	}
 
 	issuer, err := c.issuerLister.Issuers(namespace).Get(name)
-
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			runtime.HandleError(fmt.Errorf("issuer '%s' in work queue no longer exists", key))
+			log.Error(err, "issuer in work queue no longer exists")
 			return nil
 		}
 
 		return err
 	}
 
+	ctx = logf.NewContext(ctx, logf.WithResource(log, issuer))
 	return c.Sync(ctx, issuer)
 }
 
@@ -183,7 +148,9 @@ const (
 )
 
 func init() {
-	controllerpkg.Register(ControllerName, func(ctx *controllerpkg.Context) controllerpkg.Interface {
-		return New(ctx).Run
+	controllerpkg.Register(ControllerName, func(ctx *controllerpkg.Context) (controllerpkg.Interface, error) {
+		return controllerpkg.NewBuilder(ctx, ControllerName).
+			For(&controller{}).
+			Complete()
 	})
 }

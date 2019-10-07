@@ -63,7 +63,6 @@ func DecodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
 		if err != nil {
 			return nil, errors.NewInvalidData("rsa private key failed validation: %s", err.Error())
 		}
-
 		return key, nil
 	default:
 		return nil, errors.NewInvalidData("unknown private key type: %s", block.Type)
@@ -125,4 +124,19 @@ func DecodeX509CertificateBytes(certBytes []byte) (*x509.Certificate, error) {
 	}
 
 	return certs[0], nil
+}
+
+// DecodeX509CertificateRequestBytes will decode a PEM encoded x509 Certificate Request.
+func DecodeX509CertificateRequestBytes(csrBytes []byte) (*x509.CertificateRequest, error) {
+	block, _ := pem.Decode(csrBytes)
+	if block == nil {
+		return nil, errors.NewInvalidData("error decoding certificate request PEM block")
+	}
+
+	csr, err := x509.ParseCertificateRequest(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return csr, nil
 }

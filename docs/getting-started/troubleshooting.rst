@@ -28,12 +28,13 @@ following command to verify that your cert-manager namespace has the necessary
 label:
 
 .. code-block:: shell
-   :emphasize-lines: 4
 
-   kubectl get namespace
-
+   kubectl describe namespace cert-manager
+   
    Name:         cert-manager
    Labels:       certmanager.k8s.io/disable-validation=true
+   Annotations:  <none>
+   Status:       Active
    ...
 
 If you cannot see the ``certmanager.k8s.io/disable-validation=true`` label on
@@ -72,7 +73,7 @@ resources exist and have been issued correctly:
 
 .. code-block:: shell
 
-   kubectl get issuer,certificate
+   kubectl get issuer,certificate --namespace cert-manager
 
    NAME                                                      AGE
    issuer.certmanager.k8s.io/cert-manager-webhook-ca         22d
@@ -97,8 +98,7 @@ the state of the pods that have been deployed:
 
 .. code-block:: shell
 
-   # Get all pods, including Completed and Errored pods
-   kubectl get pods --show-all --namespace cert-manager
+   kubectl get pods --namespace cert-manager
 
    NAME                                            READY   STATUS      RESTARTS   AGE
    cert-manager-7cbdc48784-rpgnt                   1/1     Running     0          3m
@@ -115,5 +115,5 @@ again.
 .. note::
    Check if the Secret exists by running::
 
-     kubectl get secret cert-manager-webhook-webhook-tls
+     kubectl --namespace cert-manager get secret cert-manager-webhook-webhook-tls
 

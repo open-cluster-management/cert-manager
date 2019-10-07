@@ -17,6 +17,7 @@ limitations under the License.
 package http
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestEnsureService(t *testing.T) {
 			Challenge: &v1alpha1.Challenge{
 				Spec: v1alpha1.ChallengeSpec{
 					DNSName: "example.com",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -74,13 +75,16 @@ func TestEnsureService(t *testing.T) {
 			Challenge: &v1alpha1.Challenge{
 				Spec: v1alpha1.ChallengeSpec{
 					DNSName: "example.com",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
 			},
 			PreFn: func(t *testing.T, s *solverFixture) {
-				expectedService := buildService(s.Issuer, s.Challenge)
+				expectedService, err := buildService(s.Issuer, s.Challenge)
+				if err != nil {
+					t.Errorf("expectedService returned an error whilst building test fixture: %v", err)
+				}
 				// create a reactor that fails the test if a service is created
 				s.Builder.FakeKubeClient().PrependReactor("create", "services", func(action coretesting.Action) (handled bool, ret runtime.Object, err error) {
 					service := action.(coretesting.CreateAction).GetObject().(*v1.Service)
@@ -122,7 +126,7 @@ func TestEnsureService(t *testing.T) {
 			Challenge: &v1alpha1.Challenge{
 				Spec: v1alpha1.ChallengeSpec{
 					DNSName: "example.com",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -156,7 +160,7 @@ func TestEnsureService(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			test.Setup(t)
-			resp, err := test.Solver.ensureService(test.Issuer, test.Challenge)
+			resp, err := test.Solver.ensureService(context.TODO(), test.Issuer, test.Challenge)
 			if err != nil && !test.Err {
 				t.Errorf("Expected function to not error, but got: %v", err)
 			}
@@ -168,14 +172,14 @@ func TestEnsureService(t *testing.T) {
 	}
 }
 
-func TestGetServicesForCertificate(t *testing.T) {
+func TestGetServicesForChallenge(t *testing.T) {
 	const createdServiceKey = "createdService"
 	tests := map[string]solverFixture{
 		"should return one service that matches": {
 			Challenge: &v1alpha1.Challenge{
 				Spec: v1alpha1.ChallengeSpec{
 					DNSName: "example.com",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -206,7 +210,7 @@ func TestGetServicesForCertificate(t *testing.T) {
 			Challenge: &v1alpha1.Challenge{
 				Spec: v1alpha1.ChallengeSpec{
 					DNSName: "example.com",
-					Config: v1alpha1.SolverConfig{
+					Config: &v1alpha1.SolverConfig{
 						HTTP01: &v1alpha1.HTTP01SolverConfig{},
 					},
 				},
@@ -234,7 +238,7 @@ func TestGetServicesForCertificate(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			test.Setup(t)
-			resp, err := test.Solver.getServicesForChallenge(test.Challenge)
+			resp, err := test.Solver.getServicesForChallenge(context.TODO(), test.Challenge)
 			if err != nil && !test.Err {
 				t.Errorf("Expected function to not error, but got: %v", err)
 			}

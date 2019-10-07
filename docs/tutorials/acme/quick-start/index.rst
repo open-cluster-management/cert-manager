@@ -185,7 +185,7 @@ IP address. When it is complete, you can see the external IP address using the
 ``kubectl`` command:
 
 .. code-block:: shell
-    :emphasize-lines: 5
+   :emphasize-lines: 5
 
     $ kubectl get svc
 
@@ -236,8 +236,8 @@ sample deployment and an associated service:
 .. literalinclude:: example/service.yaml
    :language: yaml
 
-.. _`deployment.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/deployment.yaml
-.. _`service.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/service.yaml
+.. _`deployment.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/deployment.yaml
+.. _`service.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/service.yaml
 .. _`kuard`: https://github.com/kubernetes-up-and-running/kuard
 
 You can create download and reference these files locally, or you can
@@ -247,10 +247,10 @@ you may use the commands:
 
 .. code-block:: shell
 
-   $ kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/deployment.yaml
+   $ kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/deployment.yaml
    deployment.extensions "kuard" created
 
-   $ kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/service.yaml
+   $ kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/service.yaml
    service "kuard" created
 
 An `ingress resource`_ is what Kubernetes uses to expose this example service
@@ -265,14 +265,14 @@ A sample ingress you can start with is:
 .. literalinclude:: example/ingress.yaml
    :language: yaml
 
-.. _`ingress.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/ingress.yaml
+.. _`ingress.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/ingress.yaml
 .. _`ingress resource`: https://kubernetes.io/docs/concepts/services-networking/ingress/
 
 You can download the sample manifest from github, edit it, and submit the manifest to Kubernetes with the command:
 
 .. code-block:: shell
 
-   $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/ingress.yaml
+   $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/ingress.yaml
 
    # edit the file in your editor, and once it is saved:
    ingress.extensions "kuard" created
@@ -344,124 +344,11 @@ Step 5 - Deploy Cert Manager
 ============================
 
 We need to install cert-manager to do the work with kubernetes to request a
-certificate and respond to the challenge to validate it. We can use helm to
-install cert-manager. This example installed cert-manager into the
-`kube-system` namespace from the public helm charts.
+certificate and respond to the challenge to validate it. We can use helm or
+plain Kubernetes manifest to install cert-manager.
 
-.. code-block:: shell
-
-    # Install the cert-manager CRDs. We must do this before installing the Helm
-    # chart in the next step for `release-0.7` of cert-manager:
-    $ kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/deploy/manifests/00-crds.yaml
-
-    ## IMPORTANT: you MUST install the cert-manager CRDs **before** installing the
-    ## cert-manager Helm chart
-    $ kubectl apply \
-       -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/deploy/manifests/00-crds.yaml
-
-    ## IMPORTANT: if the cert-manager namespace **already exists**, you MUST ensure
-    ## it has an additional label on it in order for the deployment to succeed
-    $ kubectl label namespace cert-manager certmanager.k8s.io/disable-validation="true"
-
-    ## Add the Jetstack Helm repository
-    $ helm repo add jetstack https://charts.jetstack.io
-    ## Updating the repo just incase it already existed
-    $ helm repo update
-
-    ## Install the cert-manager helm chart
-    $ helm install --name cert-manager --namespace cert-manager jetstack/cert-manager
-   
-    NAME:   cert-manager
-    LAST DEPLOYED: Wed Jan  9 13:36:13 2019
-    NAMESPACE: cert-manager
-    STATUS: DEPLOYED
-
-    RESOURCES:
-    ==> v1beta1/ClusterRoleBinding
-    NAME                                 AGE
-    cert-manager-webhook-ca-sync         2s
-    cert-manager-webhook:auth-delegator  2s
-    cert-manager                         2s
-
-    ==> v1beta1/APIService
-    NAME                                  AGE
-    v1beta1.admission.certmanager.k8s.io  2s
-
-    ==> v1alpha1/Certificate
-    cert-manager-webhook-webhook-tls  1s
-    cert-manager-webhook-ca           1s
-
-    ==> v1beta1/ValidatingWebhookConfiguration
-    cert-manager-webhook  1s
-
-    ==> v1/ServiceAccount
-    NAME                          SECRETS  AGE
-    cert-manager-webhook-ca-sync  1        2s
-    cert-manager-webhook          1        2s
-    cert-manager                  1        2s
-
-    ==> v1beta1/RoleBinding
-    NAME                                                AGE
-    cert-manager-webhook:webhook-authentication-reader  2s
-
-    ==> v1beta1/Deployment
-    NAME                  DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
-    cert-manager-webhook  1        1        1           0          2s
-    cert-manager          1        1        1           0          2s
-
-    ==> v1/Job
-    NAME                          DESIRED  SUCCESSFUL  AGE
-    cert-manager-webhook-ca-sync  1        0           2s
-
-    ==> v1beta1/CronJob
-    NAME                          SCHEDULE      SUSPEND  ACTIVE  LAST SCHEDULE  AGE
-    cert-manager-webhook-ca-sync  * * */24 * *  False    0       <none>         2s
-
-    ==> v1beta1/ClusterRole
-    NAME                          AGE
-    cert-manager-webhook-ca-sync  2s
-    cert-manager                  2s
-
-    ==> v1/ClusterRole
-    cert-manager-webhook:webhook-requester  2s
-    cert-manager-view                       2s
-    cert-manager-edit                       2s
-
-    ==> v1/Service
-    NAME                  TYPE       CLUSTER-IP    EXTERNAL-IP  PORT(S)  AGE
-    cert-manager-webhook  ClusterIP  10.3.244.237  <none>       443/TCP  2s
-
-    ==> v1/ConfigMap
-    NAME                          DATA  AGE
-    cert-manager-webhook-ca-sync  1     2s
-
-    ==> v1alpha1/Issuer
-    NAME                           AGE
-    cert-manager-webhook-ca        1s
-    cert-manager-webhook-selfsign  1s
-
-    ==> v1/Pod(related)
-    NAME                                   READY  STATUS             RESTARTS  AGE
-    cert-manager-webhook-745b49d445-rnxm2  0/1    ContainerCreating  0         2s
-    cert-manager-9cdd9f774-t856z           0/1    ContainerCreating  0         2s
-    cert-manager-webhook-ca-sync-ddf4b     0/1    ContainerCreating  0         2s
-
-    NOTES:
-    cert-manager has been deployed successfully!
-
-    In order to begin issuing certificates, you will need to set up a ClusterIssuer
-    or Issuer resource (for example, by creating a 'letsencrypt-staging' issuer).
-
-    More information on the different types of issuers and how to configure them
-    can be found in our documentation:
-
-    https://docs.cert-manager.io/en/latest/reference/issuers.html
-
-    For information on how to configure cert-manager to automatically provision
-    Certificates for Ingress resources, take a look at the `ingress-shim`
-    documentation:
-
-    https://docs.cert-manager.io/en/latest/reference/ingress-shim.html
+Read the :doc:`getting started guide </getting-started/install>` to install
+cert-manager using your prefered method.
 
 Cert-manager uses two different custom resources, also known as `CRD`_'s,
 to configure and control how it operates, as well as share status of its
@@ -473,6 +360,18 @@ operation. These two resources are:
     certificates. An Issuer is specific to a single namespace in Kubernetes,
     and a ClusterIssuer is meant to be a cluster-wide definition for the same
     purpose.
+    
+    Note that if you're using this document as a guide to configure cert-manager
+    for your own Issuer, you must create the Issuers in the same namespace
+    as your Ingress resouces by adding '-n my-namespace' to your 'kubectl create'
+    commands. Your other option is to replace your Issuers with ClusterIssuers.
+    ClusterIssuer resources apply across all Ingress resources in your cluster
+    and don't have this namespace-matching requirement.
+    
+    More information on the differences between Issuers and ClusterIssuers and
+    when you might choose to use each can be found at:
+    
+    https://docs.cert-manager.io/en/latest/tasks/issuers/index.html#difference-between-issuers-and-clusterissuers
 
 :doc:`Certificate </reference/certificates>`
 
@@ -504,13 +403,13 @@ expirations and updates.
 .. literalinclude:: example/staging-issuer.yaml
    :language: yaml
 
-.. _`staging-issuer.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/staging-issuer.yaml
+.. _`staging-issuer.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/staging-issuer.yaml
 
 Once edited, apply the custom resource:
 
 .. code-block:: shell
 
-    $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/staging-issuer.yaml
+    $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/staging-issuer.yaml
     issuer.certmanager.k8s.io "letsencrypt-staging" created
 
 Also create a production issuer and deploy it. As with the staging issuer, you
@@ -521,21 +420,21 @@ will need to update this example and add in your own email address.
 .. literalinclude:: example/production-issuer.yaml
    :language: yaml
    :emphasize-lines: 10
-   
-.. _`production-issuer.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/production-issuer.yaml
+
+.. _`production-issuer.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/production-issuer.yaml
 
 .. code-block:: shell
 
-    $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/production-issuer.yaml
+    $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/production-issuer.yaml
     issuer.certmanager.k8s.io "letsencrypt-prod" created
 
 Both of these issuers are configured to use the
-:doc:`HTTP01 </tasks/acme/configuring-http01>` challenge provider.
+:doc:`HTTP01 </tasks/issuers/setup-acme/http01/index>` challenge provider.
 
 Check on the status of the issuer after you create it:
 
-.. code-block::shell
-  :emphasize-lines: 28-32
+.. code-block:: shell
+   :emphasize-lines: 28-32
 
     $ kubectl describe issuer letsencrypt-staging
 
@@ -555,11 +454,14 @@ Check on the status of the issuer after you create it:
     Spec:
       Acme:
         Email:  your.email@your-domain.com
-        Http 01:
         Private Key Secret Ref:
           Key:
           Name:  letsencrypt-staging
         Server:  https://acme-staging-v02.api.letsencrypt.org/directory
+        Solvers:
+          Http 01:
+            Ingress:
+              Class:  nginx
     Status:
       Acme:
         Uri:  https://acme-staging-v02.api.letsencrypt.org/acme/acct/7374163
@@ -604,13 +506,13 @@ example:
    :language: yaml
    :emphasize-lines: 6-8
 
-.. _`ingress-tls.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/ingress-tls.yaml
+.. _`ingress-tls.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/ingress-tls.yaml
 
 and apply it:
 
 .. code-block:: shell
 
-   $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/ingress-tls.yaml
+   $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/ingress-tls.yaml
    ingress.extensions "kuard" configured
 
 Cert-manager will read these annotations and use them to create a certificate,
@@ -619,8 +521,8 @@ which you can request and see:
 .. code-block:: shell
 
     $ kubectl get certificate
-    NAME                     AGE
-    quickstart-example-tls   38s
+    NAME                     READY   SECRET                   AGE
+    quickstart-example-tls   True    quickstart-example-tls   16m
 
 Cert-manager reflects the state of the process for every request in the
 certificate object. You can view this information using the
@@ -652,13 +554,6 @@ certificate object. You can view this information using the
       Self Link:               /apis/certmanager.k8s.io/v1alpha1/namespaces/default/certificates/quickstart-example-tls
       UID:                     68d43400-ea92-11e8-82f8-42010a8a00b5
     Spec:
-      Acme:
-        Config:
-          Domains:
-            example.your-domain.com
-          Http 01:
-            Ingress:
-            Ingress Class:  nginx
       Dns Names:
         example.your-domain.com
       Issuer Ref:
@@ -719,12 +614,12 @@ can update the annotations in the ingress to specify the production issuer:
 
 .. literalinclude:: example/ingress-tls-final.yaml
    :language: yaml
-   
-.. _`ingress-tls-final.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/ingress-tls-final.yaml
+
+.. _`ingress-tls-final.yaml`: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/ingress-tls-final.yaml
 
 .. code-block:: shell
 
-   $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/docs/tutorials/acme/quick-start/example/ingress-tls-final.yaml
+   $ kubectl create --edit -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/docs/tutorials/acme/quick-start/example/ingress-tls-final.yaml
 
    ingress.extensions "kuard" configured
 
@@ -768,13 +663,6 @@ certificate.
       Self Link:               /apis/certmanager.k8s.io/v1alpha1/namespaces/default/certificates/quickstart-example-tls
       UID:                     bdd93b32-ea97-11e8-82f8-42010a8a00b5
     Spec:
-      Acme:
-        Config:
-          Domains:
-            example.your-domain.com
-          Http 01:
-            Ingress:
-            Ingress Class:  nginx
       Dns Names:
         example.your-domain.com
       Issuer Ref:
@@ -790,7 +678,7 @@ certificate.
         Type:                  Ready
     Events:
       Type    Reason        Age   From          Message
-      ----    ------        ----  ----          -------
+   kubectl describe certificate quickstart-example-tls   ----    ------        ----  ----          -------
       Normal  Generated     18s   cert-manager  Generated new private key
       Normal  OrderCreated  18s   cert-manager  Created Order resource "quickstart-example-tls-889745041"
 

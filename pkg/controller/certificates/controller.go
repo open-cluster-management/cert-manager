@@ -18,180 +18,211 @@ package certificates
 
 import (
 	"context"
-	"fmt"
-	"sync"
+	"crypto/x509"
 	"time"
 
+	"github.com/go-logr/logr"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog"
 	"k8s.io/utils/clock"
 
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	cmclient "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
 	cmlisters "github.com/jetstack/cert-manager/pkg/client/listers/certmanager/v1alpha1"
 	controllerpkg "github.com/jetstack/cert-manager/pkg/controller"
 	"github.com/jetstack/cert-manager/pkg/issuer"
+	logf "github.com/jetstack/cert-manager/pkg/logs"
 	"github.com/jetstack/cert-manager/pkg/metrics"
 	"github.com/jetstack/cert-manager/pkg/scheduler"
-	"github.com/jetstack/cert-manager/pkg/util"
 )
 
-type Controller struct {
-	*controllerpkg.Context
-
+type controller struct {
 	helper        issuer.Helper
-	issuerFactory issuer.IssuerFactory
+	issuerFactory issuer.Factory
 
-	// To allow injection for testing.
-	syncHandler func(ctx context.Context, key string) error
+	// clientset used to update cert-manager API resources
+	cmClient cmclient.Interface
+	kClient  kubernetes.Interface
 
 	issuerLister        cmlisters.IssuerLister
 	clusterIssuerLister cmlisters.ClusterIssuerLister
 	certificateLister   cmlisters.CertificateLister
 	secretLister        corelisters.SecretLister
 
-	queue              workqueue.RateLimitingInterface
 	scheduledWorkQueue scheduler.ScheduledWorkQueue
-	workerWg           sync.WaitGroup
-	syncedFuncs        []cache.InformerSynced
 	metrics            *metrics.Metrics
 
 	// used for testing
 	clock clock.Clock
 
+	// used to record Events about resources to the API
+	recorder record.EventRecorder
+
+	// maintain a reference to the workqueue for this controller
+	// so the handleOwnedResource method can enqueue resources
+	queue workqueue.RateLimitingInterface
+
+	// logger to be used by this controller
+	log logr.Logger
+
 	// localTemporarySigner signs a certificate that is stored temporarily
 	localTemporarySigner func(crt *v1alpha1.Certificate, pk []byte) ([]byte, error)
+
+	// certificateNeedsRenew is a function that can be used to determine whether
+	// a certificate currently requires renewal.
+	// This is a field on the controller struct to avoid having to maintain a reference
+	// to the controller context, and to make it easier to fake out this call during tests.
+	certificateNeedsRenew func(ctx context.Context, cert *x509.Certificate, crt *v1alpha1.Certificate) bool
+
+	// calculateDurationUntilRenew returns the amount of time before the controller should
+	// begin attempting to renew the certificate, given the provided existing certificate
+	// and certificate spec.
+	// This is a field on the controller struct to avoid having to maintain a reference
+	// to the controller context, and to make it easier to fake out this call during tests.
+	calculateDurationUntilRenew calculateDurationUntilRenewFn
+
+	// if addOwnerReferences is enabled then the controller will add owner references
+	// to the secret resources it creates
+	addOwnerReferences bool
+
+	// if enablePodRefresh is enabled, then the controller will automatically restart all pods
+	// that use cert-manager certificates when the cert-manager certificate is refreshed
+	enablePodRefresh bool
 }
 
-// New returns a new Certificates controller. It sets up the informer handler
-// functions for all the types it watches.
-func New(ctx *controllerpkg.Context) *Controller {
-	ctrl := &Controller{Context: ctx}
-	ctrl.syncHandler = ctrl.processNextWorkItem
-	ctrl.queue = workqueue.NewNamedRateLimitingQueue(controllerpkg.DefaultItemBasedRateLimiter(), "certificates")
+type calculateDurationUntilRenewFn func(context.Context, *x509.Certificate, *v1alpha1.Certificate) time.Duration
+
+// Register registers and constructs the controller using the provided context.
+// It returns the workqueue to be used to enqueue items, a list of
+// InformerSynced functions that must be synced, or an error.
+func (c *controller) Register(ctx *controllerpkg.Context) (workqueue.RateLimitingInterface, []cache.InformerSynced, []controllerpkg.RunFunc, error) {
+	// construct a new named logger to be reused throughout the controller
+	c.log = logf.FromContext(ctx.RootContext, ControllerName)
+
+	// create a queue used to queue up items to be processed
+	c.queue = workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(time.Second*5, time.Minute*30), ControllerName)
+
+	// obtain references to all the informers used by this controller
+	certificateInformer := ctx.SharedInformerFactory.Certmanager().V1alpha1().Certificates()
+	issuerInformer := ctx.SharedInformerFactory.Certmanager().V1alpha1().Issuers()
+	secretsInformer := ctx.KubeSharedInformerFactory.Core().V1().Secrets()
+	ordersInformer := ctx.SharedInformerFactory.Certmanager().V1alpha1().Orders()
+
+	// build a list of InformerSynced functions that will be returned by the Register method.
+	// the controller will only begin processing items once all of these informers have synced.
+	mustSync := []cache.InformerSynced{
+		certificateInformer.Informer().HasSynced,
+		issuerInformer.Informer().HasSynced,
+		secretsInformer.Informer().HasSynced,
+		ordersInformer.Informer().HasSynced,
+	}
+
+	// set all the references to the listers for used by the Sync function
+	c.certificateLister = certificateInformer.Lister()
+	c.issuerLister = issuerInformer.Lister()
+	c.secretLister = secretsInformer.Lister()
+
+	// if scoped to a single namespace
+	// if we are running in non-namespaced mode (i.e. --namespace=""), we also
+	// register event handlers and obtain a lister for clusterissuers.
+	if ctx.Namespace == "" {
+		clusterIssuerInformer := ctx.SharedInformerFactory.Certmanager().V1alpha1().ClusterIssuers()
+		c.clusterIssuerLister = clusterIssuerInformer.Lister()
+		// register handler function for clusterissuer resources
+		clusterIssuerInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: c.handleGenericIssuer})
+		mustSync = append(mustSync, clusterIssuerInformer.Informer().HasSynced)
+	}
+
+	// register handler functions
+	certificateInformer.Informer().AddEventHandler(&controllerpkg.QueuingEventHandler{Queue: c.queue})
+	issuerInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: c.handleGenericIssuer})
+	secretsInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: secretResourceHandler(c.log, c.certificateLister, c.queue)})
+	ordersInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{
+		WorkFunc: controllerpkg.HandleOwnedResourceNamespacedFunc(c.log, c.queue, certificateGvk, certificateGetter(c.certificateLister)),
+	})
 
 	// Create a scheduled work queue that calls the ctrl.queue.Add method for
 	// each object in the queue. This is used to schedule re-checks of
 	// Certificate resources when they get near to expiry
-	ctrl.scheduledWorkQueue = scheduler.NewScheduledWorkQueue(ctrl.queue.AddRateLimited)
+	c.scheduledWorkQueue = scheduler.NewScheduledWorkQueue(c.queue.AddRateLimited)
 
-	certificateInformer := ctrl.SharedInformerFactory.Certmanager().V1alpha1().Certificates()
-	certificateInformer.Informer().AddEventHandler(&controllerpkg.QueuingEventHandler{Queue: ctrl.queue})
-	ctrl.certificateLister = certificateInformer.Lister()
-	ctrl.syncedFuncs = append(ctrl.syncedFuncs, certificateInformer.Informer().HasSynced)
+	// instantiate metrics interface with default metrics implementation
+	c.metrics = metrics.Default
+	// configure the metrics package to use the certificate lister for detecting
+	// 'removed' certificates and cleaning up metrics
+	// TODO: this call should be moved to somewhere more generic/global than this
+	// controller, as the metrics package is used by more than this one controller.
+	c.metrics.SetActiveCertificates(c.certificateLister)
 
-	issuerInformer := ctrl.SharedInformerFactory.Certmanager().V1alpha1().Issuers()
-	issuerInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: ctrl.handleGenericIssuer})
-	ctrl.issuerLister = issuerInformer.Lister()
-	ctrl.syncedFuncs = append(ctrl.syncedFuncs, issuerInformer.Informer().HasSynced)
+	// create an issuer helper for reading generic issuers
+	c.helper = issuer.NewHelper(c.issuerLister, c.clusterIssuerLister)
+	// issuerFactory provides an interface to obtain Issuer implementations from issuer resources
+	c.issuerFactory = issuer.NewFactory(ctx)
+	// clock is used to determine whether certificates need renewal
+	c.clock = ctx.Clock
+	// recorder records events about resources to the Kubernetes api
+	c.recorder = ctx.Recorder
+	// the localTemporarySigner is used to sign 'temporary certificates' during
+	// asynchronous certificate issuance flows
+	c.localTemporarySigner = generateLocallySignedTemporaryCertificate
+	// use the controller context provided versions of these two methods
+	c.certificateNeedsRenew = ctx.IssuerOptions.CertificateNeedsRenew
+	c.calculateDurationUntilRenew = ctx.IssuerOptions.CalculateDurationUntilRenew
+	c.cmClient = ctx.CMClient
+	c.kClient = ctx.Client
+	c.addOwnerReferences = ctx.CertificateOptions.EnableOwnerRef
+	c.enablePodRefresh = ctx.CertificateOptions.EnablePodRefresh
 
-	// if scoped to a single namespace
-	if ctx.Namespace == "" {
-		clusterIssuerInformer := ctrl.SharedInformerFactory.Certmanager().V1alpha1().ClusterIssuers()
-		clusterIssuerInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: ctrl.handleGenericIssuer})
-		ctrl.clusterIssuerLister = clusterIssuerInformer.Lister()
-		ctrl.syncedFuncs = append(ctrl.syncedFuncs, clusterIssuerInformer.Informer().HasSynced)
-	}
-
-	secretsInformer := ctrl.KubeSharedInformerFactory.Core().V1().Secrets()
-	secretsInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: ctrl.handleSecretResource})
-	ctrl.secretLister = secretsInformer.Lister()
-	ctrl.syncedFuncs = append(ctrl.syncedFuncs, secretsInformer.Informer().HasSynced)
-
-	ordersInformer := ctrl.SharedInformerFactory.Certmanager().V1alpha1().Orders()
-	ordersInformer.Informer().AddEventHandler(&controllerpkg.BlockingEventHandler{WorkFunc: ctrl.handleOwnedResource})
-	ctrl.syncedFuncs = append(ctrl.syncedFuncs, ordersInformer.Informer().HasSynced)
-
-	ctrl.helper = issuer.NewHelper(ctrl.issuerLister, ctrl.clusterIssuerLister)
-	ctrl.metrics = metrics.Default
-	ctrl.helper = issuer.NewHelper(ctrl.issuerLister, ctrl.clusterIssuerLister)
-	ctrl.issuerFactory = issuer.NewIssuerFactory(ctx)
-	ctrl.clock = clock.RealClock{}
-	ctrl.localTemporarySigner = generateLocallySignedTemporaryCertificate
-
-	return ctrl
+	return c.queue, mustSync, nil, nil
 }
 
-func (c *Controller) Run(workers int, stopCh <-chan struct{}) error {
-	klog.V(4).Infof("Starting %s control loop", ControllerName)
-	// wait for all the informer caches we depend to sync
-	if !cache.WaitForCacheSync(stopCh, c.syncedFuncs...) {
-		return fmt.Errorf("error waiting for informer caches to sync")
-	}
+func (c *controller) ProcessItem(ctx context.Context, key string) error {
+	ctx = logf.NewContext(ctx, nil, ControllerName)
+	log := logf.FromContext(ctx)
 
-	klog.V(4).Infof("Synced all caches for %s control loop", ControllerName)
-
-	for i := 0; i < workers; i++ {
-		c.workerWg.Add(1)
-		// TODO (@munnerz): make time.Second duration configurable
-		go wait.Until(func() { c.worker(stopCh) }, time.Second, stopCh)
-	}
-	<-stopCh
-	klog.V(4).Infof("Shutting down queue as workqueue signaled shutdown")
-	c.queue.ShutDown()
-	klog.V(4).Infof("Waiting for workers to exit...")
-	c.workerWg.Wait()
-	klog.V(4).Infof("Workers exited.")
-	return nil
-}
-
-func (c *Controller) worker(stopCh <-chan struct{}) {
-	defer c.workerWg.Done()
-	klog.V(4).Infof("Starting %q worker", ControllerName)
-	for {
-		obj, shutdown := c.queue.Get()
-		if shutdown {
-			break
-		}
-
-		var key string
-		// use an inlined function so we can use defer
-		func() {
-			defer c.queue.Done(obj)
-			var ok bool
-			if key, ok = obj.(string); !ok {
-				return
-			}
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			ctx = util.ContextWithStopCh(ctx, stopCh)
-			klog.Infof("%s controller: syncing item '%s'", ControllerName, key)
-			if err := c.syncHandler(ctx, key); err != nil {
-				klog.Errorf("%s controller: Re-queuing item %q due to error processing: %s", ControllerName, key, err.Error())
-				c.queue.AddRateLimited(obj)
-				return
-			}
-			klog.Infof("%s controller: Finished processing work item %q", ControllerName, key)
-			c.queue.Forget(obj)
-		}()
-	}
-	klog.V(4).Infof("Exiting %q worker loop", ControllerName)
-}
-
-func (c *Controller) processNextWorkItem(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		runtime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+	crt, err := getCertificateForKey(ctx, key, c.certificateLister)
+	if k8sErrors.IsNotFound(err) {
+		log.Error(err, "certificate resource not found for key", "key", key)
 		return nil
 	}
-
-	crt, err := c.certificateLister.Certificates(namespace).Get(name)
-
+	if crt == nil {
+		log.Info("certificate resource not found for key", "key", key)
+		return nil
+	}
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			c.scheduledWorkQueue.Forget(key)
-			runtime.HandleError(fmt.Errorf("certificate '%s' in work queue no longer exists", key))
-			return nil
-		}
-
 		return err
 	}
 
 	return c.Sync(ctx, crt)
+}
+
+type syncFn func(context.Context, *v1alpha1.Certificate) error
+
+func getCertificateForKey(ctx context.Context, key string, lister cmlisters.CertificateLister) (*v1alpha1.Certificate, error) {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return nil, nil
+	}
+
+	crt, err := lister.Certificates(namespace).Get(name)
+	if k8sErrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return crt, nil
+}
+
+func certificateGetter(lister cmlisters.CertificateLister) func(namespace, name string) (interface{}, error) {
+	return func(namespace, name string) (interface{}, error) {
+		return lister.Certificates(namespace).Get(name)
+	}
 }
 
 var keyFunc = controllerpkg.KeyFunc
@@ -201,7 +232,9 @@ const (
 )
 
 func init() {
-	controllerpkg.Register(ControllerName, func(ctx *controllerpkg.Context) controllerpkg.Interface {
-		return New(ctx).Run
+	controllerpkg.Register(ControllerName, func(ctx *controllerpkg.Context) (controllerpkg.Interface, error) {
+		return controllerpkg.NewBuilder(ctx, ControllerName).
+			For(&controller{}).
+			Complete()
 	})
 }

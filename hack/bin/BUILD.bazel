@@ -1,3 +1,18 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@io_kubernetes_build//defs:run_in_workspace.bzl", "workspace_binary")
+
+genrule(
+    name = "fetch_jq",
+    srcs = select({
+        ":darwin": ["@jq_osx//file"],
+        ":k8": ["@jq_linux//file"],
+    }),
+    outs = ["jq"],
+    cmd = "cp $(SRCS) $@",
+    visibility = ["//visibility:public"],
+)
+
 genrule(
     name = "fetch_helm",
     srcs = select({
@@ -6,6 +21,112 @@ genrule(
     }),
     outs = ["helm"],
     cmd = "cp $(SRCS) $@",
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_etcd",
+    srcs = select({
+        ":darwin": ["@etcd_v3_3_darwin//:file"],
+        ":k8": ["@etcd_v3_3_linux//:file"],
+    }),
+    outs = ["etcd"],
+    cmd = "cp $(SRCS) $@",
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_kube-apiserver",
+    srcs = select({
+        ":darwin": ["@kube-apiserver_1_14_darwin//file"],
+        ":k8": ["@kube-apiserver_1_14_linux//file"],
+    }),
+    outs = ["kube-apiserver"],
+    cmd = "cp $(SRCS) $@",
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_kubectl_1_11",
+    srcs = select({
+        ":darwin": ["@kubectl_1_11_darwin//file"],
+        ":k8": ["@kubectl_1_11_linux//file"],
+    }),
+    outs = ["kubectl-1.11"],
+    cmd = "cp $(SRCS) $@",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_kubectl_1_12",
+    srcs = select({
+        ":darwin": ["@kubectl_1_12_darwin//file"],
+        ":k8": ["@kubectl_1_12_linux//file"],
+    }),
+    outs = ["kubectl-1.12"],
+    cmd = "cp $(SRCS) $@",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_kubectl_1_13",
+    srcs = select({
+        ":darwin": ["@kubectl_1_13_darwin//file"],
+        ":k8": ["@kubectl_1_13_linux//file"],
+    }),
+    outs = ["kubectl-1.13"],
+    cmd = "cp $(SRCS) $@",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_kubectl_1_14",
+    srcs = select({
+        ":darwin": ["@kubectl_1_14_darwin//file"],
+        ":k8": ["@kubectl_1_14_linux//file"],
+    }),
+    outs = ["kubectl-1.14"],
+    cmd = "cp $(SRCS) $@",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_kubectl_1_15",
+    srcs = select({
+        ":darwin": ["@kubectl_1_15_darwin//file"],
+        ":k8": ["@kubectl_1_15_linux//file"],
+    }),
+    outs = ["kubectl-1.15"],
+    cmd = "cp $(SRCS) $@",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_kubectl_1_16",
+    srcs = select({
+        ":darwin": ["@kubectl_1_16_darwin//file"],
+        ":k8": ["@kubectl_1_16_linux//file"],
+    }),
+    outs = ["kubectl-1.16"],
+    cmd = "cp $(SRCS) $@",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "fetch_kubectl",
+    srcs = select({
+        ":darwin": ["@kubectl_1_13_darwin//file"],
+        ":k8": ["@kubectl_1_13_linux//file"],
+    }),
+    outs = ["kubectl"],
+    cmd = "cp $(SRCS) $@",
+    tags = ["manual"],
     visibility = ["//visibility:public"],
 )
 
@@ -29,17 +150,6 @@ genrule(
 )
 
 genrule(
-    name = "fetch_dep",
-    srcs = select({
-        ":darwin": ["@dep_darwin//file"],
-        ":k8": ["@dep_linux//file"],
-    }),
-    outs = ["dep"],
-    cmd = "cp $(SRCS) $@",
-    visibility = ["//visibility:public"],
-)
-
-genrule(
     name = "fetch_gazelle",
     srcs = ["@bazel_gazelle//cmd/gazelle"],
     outs = ["gazelle"],
@@ -55,18 +165,26 @@ genrule(
     visibility = ["//visibility:public"],
 )
 
+workspace_binary(
+    name = "go",
+    cmd = "@go_sdk//:bin/go",
+)
+
 genrule(
     name = "fetch_kind",
-    srcs = ["@io_kubernetes_sigs_kind//:kind"],
+    srcs = select({
+        ":darwin": ["@kind_darwin//file"],
+        ":k8": ["@kind_linux//file"],
+    }),
     outs = ["kind"],
     cmd = "cp $(SRCS) $@",
     visibility = ["//visibility:public"],
 )
 
 genrule(
-    name = "fetch_gencrd",
-    srcs = ["@io_kubernetes_sigs_controller-tools//cmd/crd"],
-    outs = ["gencrd"],
+    name = "fetch_controller-gen",
+    srcs = ["//vendor/sigs.k8s.io/controller-tools/cmd/controller-gen"],
+    outs = ["controller-gen"],
     cmd = "cp $(SRCS) $@",
     visibility = ["//visibility:public"],
 )

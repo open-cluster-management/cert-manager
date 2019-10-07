@@ -70,13 +70,13 @@ Before upgrading you will need to:
        clusterissuers.certmanager.k8s.io
 
 3. Perform a fresh install (as per the
-   :doc:`installation guide </getting-started/install>`):
+   :doc:`installation guide </getting-started/index>`):
 
 .. code-block:: shell
 
     # Install the cert-manager CRDs
     $ kubectl apply \
-        -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.7/deploy/manifests/00-crds.yaml
+        -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.6/deploy/manifests/00-crds.yaml
 
     # Update helm repository cache
     $ helm repo update

@@ -21,13 +21,14 @@ import (
 	"fmt"
 	"reflect"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/klog"
 
 	apiutil "github.com/jetstack/cert-manager/pkg/api/util"
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	"github.com/jetstack/cert-manager/pkg/apis/certmanager/validation"
+	"github.com/jetstack/cert-manager/pkg/internal/apis/certmanager/validation"
+	logf "github.com/jetstack/cert-manager/pkg/logs"
+	"github.com/jetstack/cert-manager/pkg/metrics"
 )
 
 const (
@@ -37,7 +38,11 @@ const (
 	messageErrorInitIssuer = "Error initializing issuer: "
 )
 
-func (c *Controller) Sync(ctx context.Context, iss *v1alpha1.ClusterIssuer) (err error) {
+func (c *controller) Sync(ctx context.Context, iss *v1alpha1.ClusterIssuer) (err error) {
+	metrics.Default.IncrementSyncCallCount(ControllerName)
+
+	log := logf.FromContext(ctx)
+
 	issuerCopy := iss.DeepCopy()
 	defer func() {
 		if _, saveErr := c.updateIssuerStatus(iss, issuerCopy); saveErr != nil {
@@ -71,20 +76,20 @@ func (c *Controller) Sync(ctx context.Context, iss *v1alpha1.ClusterIssuer) (err
 	err = i.Setup(ctx)
 	if err != nil {
 		s := messageErrorInitIssuer + err.Error()
-		klog.Info(s)
-		c.Recorder.Event(issuerCopy, v1.EventTypeWarning, errorInitIssuer, s)
+		log.Error(err, "error setting up issuer")
+		c.recorder.Event(issuerCopy, v1.EventTypeWarning, errorInitIssuer, s)
 		return err
 	}
 
 	return nil
 }
 
-func (c *Controller) updateIssuerStatus(old, new *v1alpha1.ClusterIssuer) (*v1alpha1.ClusterIssuer, error) {
+func (c *controller) updateIssuerStatus(old, new *v1alpha1.ClusterIssuer) (*v1alpha1.ClusterIssuer, error) {
 	if reflect.DeepEqual(old.Status, new.Status) {
 		return nil, nil
 	}
 	// TODO: replace Update call with UpdateStatus. This requires a custom API
 	// server with the /status subresource enabled and/or subresource support
 	// for CRDs (https://github.com/kubernetes/kubernetes/issues/38113)
-	return c.CMClient.CertmanagerV1alpha1().ClusterIssuers().Update(new)
+	return c.cmClient.CertmanagerV1alpha1().ClusterIssuers().Update(new)
 }

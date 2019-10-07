@@ -23,20 +23,18 @@ package rfc2136
 
 import (
 	"fmt"
-	"net"
-	"os"
-	"reflect"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/jetstack/cert-manager/pkg/issuer/acme/dns/util"
 	"github.com/miekg/dns"
 	"k8s.io/klog"
+
+	"github.com/jetstack/cert-manager/pkg/internal/apis/certmanager/validation/util"
 )
 
 var defaultPort = "53"
 
+// This list must be kept in sync with pkg/apis/certmanager/validation/issuer.go
 var supportedAlgorithms = map[string]string{
 	"HMACMD5":    dns.HmacMD5,
 	"HMACSHA1":   dns.HmacSHA1,
@@ -44,96 +42,25 @@ var supportedAlgorithms = map[string]string{
 	"HMACSHA512": dns.HmacSHA512,
 }
 
-// Returns a slice of all the supported algorithms
-// It should contain all listed in https://tools.ietf.org/html/rfc4635#section-2
-// but miekd/dns supports only supportedAlgorithms(keys)
-func GetSupportedAlgorithms() []string {
-	keys := reflect.ValueOf(supportedAlgorithms).MapKeys()
-	strkeys := make([]string, len(keys))
-	for i := 0; i < len(keys); i++ {
-		strkeys[i] = keys[i].String()
-	}
-	sort.Strings(strkeys)
-	return strkeys
-}
-
-// This function make a valid nameserver as per RFC2136
-func ValidNameserver(nameserver string) (string, error) {
-
-	if nameserver == "" {
-		return "", fmt.Errorf("RFC2136 nameserver missing")
-	}
-
-	// SplitHostPort Behavior
-	// namserver           host                port    err
-	// 8.8.8.8             ""                  ""      missing port in address
-	// 8.8.8.8:            "8.8.8.8"           ""      <nil>
-	// 8.8.8.8.8:53        "8.8.8.8"           53      <nil>
-	// nameserver.com      ""                  ""      missing port in address
-	// nameserver.com:     "nameserver.com"    ""      <nil>
-	// nameserver.com:53   "nameserver.com"    53      <nil>
-	// :53                 ""                  53      <nil>
-	host, port, err := net.SplitHostPort(strings.TrimSpace(nameserver))
-
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			host = nameserver
-		}
-	}
-
-	if port == "" {
-		port = defaultPort
-	}
-
-	if host != "" {
-		if ipaddr := net.ParseIP(host); ipaddr == nil {
-			return "", fmt.Errorf("RFC2136 nameserver must be a valid IP Address, not %v", host)
-		}
-	} else {
-		return "", fmt.Errorf("RFC2136 nameserver has no IP Address defined, %v", nameserver)
-	}
-
-	nameserver = host + ":" + port
-
-	return nameserver, nil
-}
-
 // DNSProvider is an implementation of the acme.ChallengeProvider interface that
 // uses dynamic DNS updates (RFC 2136) to create TXT records on a nameserver.
 type DNSProvider struct {
-	nameserver       string
-	tsigAlgorithm    string
-	tsigKeyName      string
-	tsigSecret       string
-	dns01Nameservers []string
-}
-
-// NewDNSProvider returns a DNSProvider instance configured for rfc2136
-// dynamic update. Configured with environment variables:
-// RFC2136_NAMESERVER: Network address in the form "host" or "host:port".
-// RFC2136_TSIG_ALGORITHM: Defaults to hmac-md5.sig-alg.reg.int. (HMAC-MD5).
-// See https://github.com/miekg/dns/blob/master/tsig.go for supported values.
-// RFC2136_TSIG_KEY: Name of the secret key as defined in DNS server configuration.
-// RFC2136_TSIG_SECRET: Secret key payload.
-// To disable TSIG authentication, leave the RFC2136_TSIG* variables unset.
-func NewDNSProvider(dns01Nameservers []string) (*DNSProvider, error) {
-	nameserver := os.Getenv("RFC2136_NAMESERVER")
-	tsigAlgorithm := os.Getenv("RFC2136_TSIG_ALGORITHM")
-	tsigKeyName := os.Getenv("RFC2136_TSIG_KEY_NAME")
-	tsigSecret := os.Getenv("RFC2136_TSIG_SECRET")
-	return NewDNSProviderCredentials(nameserver, tsigAlgorithm, tsigKeyName, tsigSecret, dns01Nameservers)
+	nameserver    string
+	tsigAlgorithm string
+	tsigKeyName   string
+	tsigSecret    string
 }
 
 // NewDNSProviderCredentials uses the supplied credentials to return a
 // DNSProvider instance configured for rfc2136 dynamic update. To disable TSIG
 // authentication, leave the TSIG parameters as empty strings.
 // nameserver must be a network address in the form "IP" or "IP:port".
-func NewDNSProviderCredentials(nameserver, tsigAlgorithm, tsigKeyName, tsigSecret string, dns01Nameservers []string) (*DNSProvider, error) {
+func NewDNSProviderCredentials(nameserver, tsigAlgorithm, tsigKeyName, tsigSecret string) (*DNSProvider, error) {
 	klog.V(5).Infof("Creating RFC2136 Provider")
 
 	d := &DNSProvider{}
 
-	if validNameserver, err := ValidNameserver(nameserver); err != nil {
+	if validNameserver, err := util.ValidNameserver(nameserver); err != nil {
 		return nil, err
 	} else {
 		d.nameserver = validNameserver
@@ -156,47 +83,31 @@ func NewDNSProviderCredentials(nameserver, tsigAlgorithm, tsigKeyName, tsigSecre
 	}
 	d.tsigAlgorithm = tsigAlgorithm
 
-	d.dns01Nameservers = dns01Nameservers
-
 	klog.V(5).Infof("DNSProvider nameserver:       %s\n", d.nameserver)
 	klog.V(5).Infof("            tsigAlgorithm:    %s\n", d.tsigAlgorithm)
 	klog.V(5).Infof("            tsigKeyName:      %s\n", d.tsigKeyName)
-	if klog.V(5) {
-		keyLen := len(d.tsigSecret)
-		mask := make([]rune, keyLen/2)
-		for i := range mask {
-			mask[i] = '*'
-		}
-		masked := d.tsigSecret[0:keyLen/4] + string(mask) + d.tsigSecret[keyLen/4*3:keyLen]
-		klog.Infof("            tsigSecret:       %s\n", masked)
+	keyLen := len(d.tsigSecret)
+	mask := make([]rune, keyLen/2)
+	for i := range mask {
+		mask[i] = '*'
 	}
-	klog.V(5).Infof("            dns01Nameservers: [%s]", strings.Join(d.dns01Nameservers, ", "))
+	masked := d.tsigSecret[0:keyLen/4] + string(mask) + d.tsigSecret[keyLen/4*3:keyLen]
+	klog.V(5).Infof("            tsigSecret:       %s\n", masked)
+
 	return d, nil
 }
 
-// Timeout returns the timeout and interval to use when checking for DNS
-// propagation. 300s (5m) is usually a default time for TTL in DNS
-func (r *DNSProvider) Timeout() (timeout, interval time.Duration) {
-	return 300 * time.Second, 5 * time.Second
-}
-
 // Present creates a TXT record using the specified parameters
-func (r *DNSProvider) Present(domain, fqdn, value string) error {
-	return r.changeRecord("INSERT", fqdn, value, 60)
+func (r *DNSProvider) Present(_, fqdn, zone, value string) error {
+	return r.changeRecord("INSERT", fqdn, zone, value, 60)
 }
 
 // CleanUp removes the TXT record matching the specified parameters
-func (r *DNSProvider) CleanUp(domain, fqdn, value string) error {
-	return r.changeRecord("REMOVE", fqdn, value, 60)
+func (r *DNSProvider) CleanUp(_, fqdn, zone, value string) error {
+	return r.changeRecord("REMOVE", fqdn, zone, value, 60)
 }
 
-func (r *DNSProvider) changeRecord(action, fqdn, value string, ttl int) error {
-	// Find the zone for the given fqdn
-	zone, err := util.FindZoneByFqdn(fqdn, r.dns01Nameservers)
-	if err != nil {
-		return err
-	}
-
+func (r *DNSProvider) changeRecord(action, fqdn, zone, value string, ttl int) error {
 	// Create RR
 	rr := new(dns.TXT)
 	rr.Hdr = dns.RR_Header{Name: fqdn, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: uint32(ttl)}

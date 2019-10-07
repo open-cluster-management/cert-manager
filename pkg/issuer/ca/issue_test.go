@@ -86,6 +86,33 @@ func allFieldsSetCheck(expectedCA []byte) func(t *testing.T, s *caFixture, args 
 		if resp.PrivateKey == nil {
 			t.Errorf("expected new private key to be generated")
 		}
+
+		certificatesFieldsSetCheck(expectedCA)(t, s, args...)
+	}
+}
+
+func noPrivateKeyFieldsSetCheck(expectedCA []byte) func(t *testing.T, s *caFixture, args ...interface{}) {
+	return func(t *testing.T, s *caFixture, args ...interface{}) {
+		resp := args[1].(*issuer.IssueResponse)
+
+		if resp == nil {
+			t.Errorf("no response given, got=%s", resp)
+			return
+		}
+
+		if len(resp.PrivateKey) > 0 {
+			t.Errorf("expected no new private key to be generated but got: %s",
+				resp.PrivateKey)
+		}
+
+		certificatesFieldsSetCheck(expectedCA)(t, s, args...)
+	}
+}
+
+func certificatesFieldsSetCheck(expectedCA []byte) func(t *testing.T, s *caFixture, args ...interface{}) {
+	return func(t *testing.T, s *caFixture, args ...interface{}) {
+		resp := args[1].(*issuer.IssueResponse)
+
 		if resp.Certificate == nil {
 			t.Errorf("expected new certificate to be issued")
 		}
@@ -118,15 +145,17 @@ func TestIssue(t *testing.T) {
 
 	// Build root ECDSA CA
 	ecdsaPK := generateECDSAPrivateKey(t)
-	ecdsaPKBytes, err := pki.EncodePrivateKey(ecdsaPK)
-	if err != nil {
-		t.Errorf("Error encoding private key: %v", err)
-		t.FailNow()
-	}
 	rootECDSACrt := gen.Certificate("test-root-ca",
 		gen.SetCertificateCommonName("root-ca"),
 		gen.SetCertificateIsCA(true),
 	)
+
+	ecdsaPKBytes, err := pki.EncodePrivateKey(ecdsaPK, rootECDSACrt.Spec.KeyEncoding)
+
+	if err != nil {
+		t.Errorf("Error encoding private key: %v", err)
+		t.FailNow()
+	}
 	// generate a self signed root ca valid for 60d
 	_, ecdsaPEMCert := generateSelfSignedCert(t, rootECDSACrt, ecdsaPK, time.Hour*24*60)
 	rootECDSACASecret := &corev1.Secret{
@@ -208,7 +237,6 @@ func TestIssue(t *testing.T) {
 			if err == nil && test.Err {
 				t.Errorf("Expected function to get an error, but got: %v", err)
 			}
-
 			test.Finish(t, certCopy, resp, err)
 		})
 	}

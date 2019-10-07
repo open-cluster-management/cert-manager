@@ -65,8 +65,6 @@ go-binary:
 		./cmd/$(PROJECT)
 
 go-test:
-	go get -u github.com/golang/dep/cmd/dep
-	dep ensure
 	$(shell go test -v \
 		$$(go list ./... | \
 			grep -v '/vendor/' | \
@@ -77,7 +75,7 @@ go-test:
 		) > results.txt)
 	$(eval FAILURES=$(shell cat results.txt | grep "FAIL:"))
 	cat results.txt
-	@$(if $(strip $(FAILURES)), echo "One or more unit tests failed."; exit 1, echo "All unit tests passed successfully."; exit 0)
+	@$(if $(strip $(FAILURES)), echo "One or more unit tests failed. Failures: $(FAILURES)"; exit 1, echo "All unit tests passed successfully."; exit 0)
 
 go-fmt:
 	@set -e; \

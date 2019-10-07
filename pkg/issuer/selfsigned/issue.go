@@ -32,7 +32,7 @@ import (
 
 func (c *SelfSigned) Issue(ctx context.Context, crt *v1alpha1.Certificate) (*issuer.IssueResponse, error) {
 	// get a copy of the existing/currently issued Certificate's private key
-	signeePrivateKey, err := kube.SecretTLSKey(c.secretsLister, crt.Namespace, crt.Spec.SecretName)
+	signeePrivateKey, err := kube.SecretTLSKey(ctx, c.secretsLister, crt.Namespace, crt.Spec.SecretName)
 	if k8sErrors.IsNotFound(err) || errors.IsInvalidData(err) {
 		// if one does not already exist, generate a new one
 		signeePrivateKey, err = pki.GeneratePrivateKeyForCertificate(crt)
@@ -71,7 +71,7 @@ func (c *SelfSigned) Issue(ctx context.Context, crt *v1alpha1.Certificate) (*iss
 	}
 
 	// Encode output private key
-	keyPem, err := pki.EncodePrivateKey(signeePrivateKey)
+	keyPem, err := pki.EncodePrivateKey(signeePrivateKey, crt.Spec.KeyEncoding)
 	if err != nil {
 		c.Recorder.Eventf(crt, corev1.EventTypeWarning, "ErrorPrivateKey", "Error encoding private key: %v", err)
 		return nil, err

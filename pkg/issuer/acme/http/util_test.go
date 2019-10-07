@@ -64,6 +64,7 @@ func (s *solverFixture) Setup(t *testing.T) {
 		s.Issuer = generate.Issuer(generate.IssuerConfig{
 			Name:      defaultTestIssuerName,
 			Namespace: defaultTestNamespace,
+			HTTP01:    &v1alpha1.ACMEIssuerHTTP01Config{},
 		})
 	}
 	if s.testResources == nil {
@@ -75,7 +76,7 @@ func (s *solverFixture) Setup(t *testing.T) {
 	if s.Builder.T == nil {
 		s.Builder.T = t
 	}
-	s.Builder.Start()
+	s.Builder.Init()
 	s.Solver = buildFakeSolver(s.Builder)
 	if s.PreFn != nil {
 		s.PreFn(t, s)
@@ -94,9 +95,9 @@ func (s *solverFixture) Finish(t *testing.T, args ...interface{}) {
 }
 
 func buildFakeSolver(b *test.Builder) *Solver {
-	b.Start()
+	b.Init()
 	s := NewSolver(b.Context)
-	b.Sync()
+	b.Start()
 	return s
 }
 

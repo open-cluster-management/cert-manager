@@ -27,17 +27,17 @@ source "${SCRIPT_ROOT}/lib.sh"
 
 build_images() {
     # Build cert-manager binaries & docker image
+    # Set --stamp=true when running a build to workaround issues introduced
+    # in bazelbuild/rules_go#2110. For more information, see: https://github.com/bazelbuild/rules_go/pull/2110#issuecomment-508713878
+    # We should be able to remove the `--stamp=true` arg once this has been fixed!
     APP_VERSION="${DOCKER_TAG}" \
     DOCKER_REPO="${DOCKER_REPO}" \
     DOCKER_TAG="${DOCKER_TAG}" \
-    # Build images used during e2e tests
-    bazel run //test/e2e:images
+    bazel run --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 --stamp=true //test/e2e:images
 
-    local TMP_DIR=$(mktemp -d)
-    local BUNDLE_FILE="${TMP_DIR}"/cmbundle.tar.gz
+    echo "All images built"
 
-    # Create an archive of docker images
-    docker save \
+    for IMG in \
         "${DOCKER_REPO}"/cert-manager-controller:"${DOCKER_TAG}" \
         "${DOCKER_REPO}"/cert-manager-cainjector:"${DOCKER_TAG}" \
         "${DOCKER_REPO}"/cert-manager-acmesolver:"${DOCKER_TAG}" \
@@ -45,18 +45,16 @@ build_images() {
         "pebble:bazel" \
         "quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.23.0" \
         "k8s.gcr.io/defaultbackend:bazel" \
+        "sample-webhook:bazel" \
         "vault:bazel" \
         "gcr.io/kubernetes-helm/tiller:bazel" \
-        -o "${BUNDLE_FILE}"
-
-    # Copy docker archive into the kind container
-    docker cp "${BUNDLE_FILE}" "${KIND_CONTAINER_NAME}":/cmbundle.tar.gz
-
-    # Import file into kind docker daemon
-    docker exec "${KIND_CONTAINER_NAME}" docker load -i /cmbundle.tar.gz
-
-    # Cleanup
-    rm -Rf "${TMP_DIR}"
+    ; do
+        echo "Loading image ${IMG} into kind container"
+        "${KIND}" load docker-image --name "${KIND_CLUSTER_NAME}" "${IMG}" &
+    done
+    echo "Waiting for all images to be loaded..."
+    wait
+    echo "All images loaded!"
 }
 
 build_images

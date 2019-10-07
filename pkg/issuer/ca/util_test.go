@@ -33,8 +33,9 @@ type caFixture struct {
 	CA *CA
 	*test.Builder
 
-	Issuer      v1alpha1.GenericIssuer
-	Certificate *v1alpha1.Certificate
+	Issuer             v1alpha1.GenericIssuer
+	Certificate        *v1alpha1.Certificate
+	CertificateRequest *v1alpha1.CertificateRequest
 
 	PreFn   func(*testing.T, *caFixture)
 	CheckFn func(*testing.T, *caFixture, ...interface{})
@@ -92,12 +93,12 @@ func (s *caFixture) Finish(t *testing.T, args ...interface{}) {
 }
 
 func (s *caFixture) buildFakeCA(b *test.Builder, issuer v1alpha1.GenericIssuer) *CA {
-	b.Start()
+	b.Init()
 	a, err := NewCA(b.Context, issuer)
 	if err != nil {
 		panic("error creating fake ca: " + err.Error())
 	}
 	caStruct := a.(*CA)
-	b.Sync()
+	b.Start()
 	return caStruct
 }

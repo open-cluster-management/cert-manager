@@ -108,16 +108,23 @@ func GenerateECPrivateKey(keySize int) (*ecdsa.PrivateKey, error) {
 }
 
 // EncodePrivateKey will encode a given crypto.PrivateKey by first inspecting
-// the type of key provided.
+// the type of key encoding and then inspecting the type of key provided.
 // It only supports encoding RSA or ECDSA keys.
-func EncodePrivateKey(pk crypto.PrivateKey) ([]byte, error) {
-	switch k := pk.(type) {
-	case *rsa.PrivateKey:
-		return EncodePKCS1PrivateKey(k), nil
-	case *ecdsa.PrivateKey:
-		return EncodeECPrivateKey(k)
+func EncodePrivateKey(pk crypto.PrivateKey, keyEncoding v1alpha1.KeyEncoding) ([]byte, error) {
+	switch keyEncoding {
+	case v1alpha1.KeyEncoding(""), v1alpha1.PKCS1:
+		switch k := pk.(type) {
+		case *rsa.PrivateKey:
+			return EncodePKCS1PrivateKey(k), nil
+		case *ecdsa.PrivateKey:
+			return EncodeECPrivateKey(k)
+		default:
+			return nil, fmt.Errorf("error encoding private key: unknown key type: %T", pk)
+		}
+	case v1alpha1.PKCS8:
+		return EncodePKCS8PrivateKey(pk)
 	default:
-		return nil, fmt.Errorf("error encoding private key: unknown key type: %T", pk)
+		return nil, fmt.Errorf("error encoding private key: unknown key encoding: %s", keyEncoding)
 	}
 }
 
@@ -203,9 +210,13 @@ func PublicKeyMatchesCertificate(check crypto.PublicKey, crt *x509.Certificate) 
 // It will return an error if either of the passed parameters are of an
 // unrecognised type (i.e. non RSA/ECDSA)
 func PublicKeyMatchesCSR(check crypto.PublicKey, csr *x509.CertificateRequest) (bool, error) {
-	switch pub := csr.PublicKey.(type) {
+	return PublicKeysEqual(check, csr.PublicKey)
+}
+
+func PublicKeysEqual(a, b crypto.PublicKey) (bool, error) {
+	switch pub := a.(type) {
 	case *rsa.PublicKey:
-		rsaCheck, ok := check.(*rsa.PublicKey)
+		rsaCheck, ok := b.(*rsa.PublicKey)
 		if !ok {
 			return false, nil
 		}
@@ -214,7 +225,7 @@ func PublicKeyMatchesCSR(check crypto.PublicKey, csr *x509.CertificateRequest) (
 		}
 		return true, nil
 	case *ecdsa.PublicKey:
-		ecdsaCheck, ok := check.(*ecdsa.PublicKey)
+		ecdsaCheck, ok := b.(*ecdsa.PublicKey)
 		if !ok {
 			return false, nil
 		}
@@ -223,6 +234,6 @@ func PublicKeyMatchesCSR(check crypto.PublicKey, csr *x509.CertificateRequest) (
 		}
 		return true, nil
 	default:
-		return false, fmt.Errorf("unrecognised Certificate public key type")
+		return false, fmt.Errorf("unrecognised public key type")
 	}
 }

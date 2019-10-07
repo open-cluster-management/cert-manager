@@ -19,12 +19,17 @@ package util
 // TODO: we should break this file apart into separate more sane/reusable parts
 
 import (
+	"crypto"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"net"
+	"net/url"
 	"time"
 
 	intscheme "github.com/jetstack/cert-manager/pkg/client/clientset/versioned/scheme"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -37,6 +42,7 @@ import (
 	"github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	clientset "github.com/jetstack/cert-manager/pkg/client/clientset/versioned/typed/certmanager/v1alpha1"
 	"github.com/jetstack/cert-manager/pkg/util"
+	"github.com/jetstack/cert-manager/pkg/util/pki"
 	"github.com/jetstack/cert-manager/test/e2e/framework/log"
 )
 
@@ -157,7 +163,7 @@ func WaitForCertificateEvent(client kubernetes.Interface, cert *v1alpha1.Certifi
 	return wait.PollImmediate(500*time.Millisecond, timeout,
 		func() (bool, error) {
 			log.Logf("Waiting for Certificate event %v reason %#v", cert.Name, reason)
-			evts, err := client.Core().Events(cert.Namespace).Search(intscheme.Scheme, cert)
+			evts, err := client.CoreV1().Events(cert.Namespace).Search(intscheme.Scheme, cert)
 			if err != nil {
 				return false, fmt.Errorf("error getting Certificate %v: %v", cert.Name, err)
 			}
@@ -249,13 +255,19 @@ func NewCertManagerCAClusterIssuer(name, secretName string) *v1alpha1.ClusterIss
 	}
 }
 
-func NewCertManagerBasicCertificate(name, secretName, issuerName string, issuerKind string, duration, renewBefore *metav1.Duration) *v1alpha1.Certificate {
+// Deprecated: use test/unit/gen/Certificate in future
+func NewCertManagerBasicCertificate(name, secretName, issuerName string, issuerKind string, duration, renewBefore *metav1.Duration, dnsNames ...string) *v1alpha1.Certificate {
+	cn := "test.domain.com"
+	if len(dnsNames) > 0 {
+		cn = dnsNames[0]
+	}
 	return &v1alpha1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: v1alpha1.CertificateSpec{
-			CommonName:   "test.domain.com",
+			CommonName:   cn,
+			DNSNames:     dnsNames,
 			Organization: []string{"test-org"},
 			SecretName:   secretName,
 			Duration:     duration,
@@ -268,7 +280,82 @@ func NewCertManagerBasicCertificate(name, secretName, issuerName string, issuerK
 	}
 }
 
-func NewCertManagerACMECertificate(name, secretName, issuerName string, issuerKind string, duration, renewBefore *metav1.Duration, ingressClass string, cn string, dnsNames ...string) *v1alpha1.Certificate {
+// Deprecated: use test/unit/gen/CertificateRequest in future
+func NewCertManagerBasicCertificateRequest(name, issuerName string, issuerKind string, duration *metav1.Duration,
+	dnsNames []string, ips []net.IP, uris []string, keyAlgorithm x509.PublicKeyAlgorithm) (*v1alpha1.CertificateRequest, crypto.Signer, error) {
+	cn := "test.domain.com"
+	if len(dnsNames) > 0 {
+		cn = dnsNames[0]
+	}
+
+	var parsedURIs []*url.URL
+	for _, uri := range uris {
+		parsed, err := url.Parse(uri)
+		if err != nil {
+			return nil, nil, err
+		}
+		parsedURIs = append(parsedURIs, parsed)
+	}
+
+	var sk crypto.Signer
+	var signatureAlgorithm x509.SignatureAlgorithm
+	var err error
+
+	switch keyAlgorithm {
+	case x509.RSA:
+		sk, err = pki.GenerateRSAPrivateKey(2048)
+		if err != nil {
+			return nil, nil, err
+		}
+		signatureAlgorithm = x509.SHA256WithRSA
+	case x509.ECDSA:
+		sk, err = pki.GenerateECPrivateKey(pki.ECCurve256)
+		if err != nil {
+			return nil, nil, err
+		}
+		signatureAlgorithm = x509.ECDSAWithSHA256
+	default:
+		return nil, nil, fmt.Errorf("unrecognised key algorithm: %s", err)
+	}
+
+	csr := &x509.CertificateRequest{
+		Version:            3,
+		SignatureAlgorithm: signatureAlgorithm,
+		PublicKeyAlgorithm: keyAlgorithm,
+		PublicKey:          sk.Public(),
+		Subject: pkix.Name{
+			CommonName: cn,
+		},
+		DNSNames:    dnsNames,
+		IPAddresses: ips,
+		URIs:        parsedURIs,
+	}
+
+	csrBytes, err := pki.EncodeCSR(csr, sk)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	csrPEM := pem.EncodeToMemory(&pem.Block{
+		Type: "CERTIFICATE REQUEST", Bytes: csrBytes,
+	})
+
+	return &v1alpha1.CertificateRequest{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1alpha1.CertificateRequestSpec{
+			Duration: duration,
+			CSRPEM:   csrPEM,
+			IssuerRef: v1alpha1.ObjectReference{
+				Name: issuerName,
+				Kind: issuerKind,
+			},
+		},
+	}, sk, nil
+}
+
+func NewCertManagerACMECertificateOldFormat(name, secretName, issuerName string, issuerKind string, duration, renewBefore *metav1.Duration, ingressClass string, cn string, dnsNames ...string) *v1alpha1.Certificate {
 	return &v1alpha1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,

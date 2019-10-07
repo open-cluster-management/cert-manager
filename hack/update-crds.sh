@@ -21,22 +21,25 @@ set -o pipefail
 # This script should be run via `bazel run //hack:update-crds`
 REPO_ROOT=${BUILD_WORKSPACE_DIRECTORY:-"$(cd "$(dirname "$0")" && pwd -P)"/..}
 runfiles="$(pwd)"
-export PATH="${runfiles}/hack/bin:${PATH}"
+go_sdk="${runfiles}/external/go_sdk"
+#find "${go_sdk}"
+export GOROOT="${go_sdk}"
+export GOCACHE="$(mktemp -d)"
+export PATH="${go_sdk}/bin:${runfiles}/hack/bin:${PATH}"
 cd "${REPO_ROOT}"
 
 output="$(mktemp -d)"
-gencrd generate \
-    --domain "k8s.io" \
-    --output-dir "${output}"
+controller-gen \
+    paths=./pkg/apis/... \
+    crd:trivialVersions=true \
+    output:crd:dir="${output}"
 
 echo "Copying files to output file"
 out="deploy/manifests/00-crds.yaml"
 rm "$out" > /dev/null 2>&1 || true
 mkdir -p "$(dirname $out)"
 touch "$out"
-for file in ${output}/*; do
+for file in $(find "${output}" -type f | sort -V); do
     cat "$file" >> "$out"
     echo "---" >> "$out"
 done
-
-hack/update-deploy-gen.sh

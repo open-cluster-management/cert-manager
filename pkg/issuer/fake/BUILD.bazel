@@ -2,7 +2,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["fake.go"],
+    srcs = [
+        "factory.go",
+        "helper.go",
+        "issuer.go",
+    ],
     importpath = "github.com/jetstack/cert-manager/pkg/issuer/fake",
     visibility = ["//visibility:public"],
     deps = [
