@@ -17,7 +17,7 @@ HACK_DIR ?= hack
 ################
 PACKAGE_NAME = github.ibm.com/IBMPrivateCloud/ibm-cert-manager
 APP_NAME = icp-cert-manager
-APP_VERSION = 0.7.0.1
+APP_VERSION = 0.10.0
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 
 IMAGE_DESCRIPTION =
