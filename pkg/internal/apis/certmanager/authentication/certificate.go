@@ -20,10 +20,15 @@ type CertificateAuthenticator struct {
 func NewCertificateAuthenticator() *CertificateAuthenticator {
 	return &CertificateAuthenticator{}
 }
+
+// Initialize will get the config for this certificate authenticator.
 func (c *CertificateAuthenticator) Initialize(kubeClientConfig *restclient.Config, stopCh <-chan struct{}) error {
 	c.authClient, _ = authclientv1beta1.NewForConfig(kubeClientConfig)
 	return nil
 }
+
+// Authenticate will check a certificate creation request to see if the user is allowed to create this certificate with the issuer
+// they specify.
 func (c *CertificateAuthenticator) Authenticate(request *admissionv1beta1.AdmissionRequest, obj runtime.Object) (bool, string) {
 	crt := obj.(*v1alpha1.Certificate)
 	issuerKind := crt.Spec.IssuerRef.Kind
@@ -32,7 +37,7 @@ func (c *CertificateAuthenticator) Authenticate(request *admissionv1beta1.Admiss
 		username := request.UserInfo.Username
 		groups := request.UserInfo.Groups
 		allowed := c.allowed(username, groups)
-		klog.Infof("allowed %t", allowed)
+		klog.V(4).Infof("%s/%v is allowed to use ClusterIssuer %s? %t", username, groups, crt.Spec.IssuerRef.Name, allowed)
 		if !allowed {
 			message := fmt.Sprintf("User: %s is not allowed to use the ClusterIssuer %s to sign the Certificate %s.", request.UserInfo.Username, crt.Spec.IssuerRef.Name, crt.ObjectMeta.Name)
 			return allowed, message
@@ -61,9 +66,9 @@ func (c *CertificateAuthenticator) allowed(username string, groups []string) boo
 	// Authorization check
 	client := c.authClient.SubjectAccessReviews()
 	res, err := client.Create(sar)
-	klog.Infof("The res %v", res)
+	klog.V(3).Infof("The resulting subject access review: %v", res)
 	if err != nil {
-		klog.Infof("Error occurred using subject access review client to create %v\nError: %s", sar, err.Error())
+		klog.Errorf("Error occurred using subject access review client to create %v\nError: %s", sar, err.Error())
 		return false
 	}
 	return res.Status.Allowed
