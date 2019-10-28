@@ -133,6 +133,8 @@ ifneq ($(RETAG),)
 	docker tag $(IMAGE):$(IMAGE_VERSION) $(DOCKER_URI)
 	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Retagged image as $(IMAGE):$(RELEASE_TAG) and pushed to $(IMAGE)"
+else
+	@make VASCAN_DOCKER_URI=$(DOCKER_URI) vascan:image
 endif
 
 # Retags the image with the rhel tag.
