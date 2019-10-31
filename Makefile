@@ -89,7 +89,7 @@ go-fmt:
 # Docker targets
 ################
 docker-image:
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_VERSION ?= $(SEMVERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
 	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
@@ -120,39 +120,38 @@ docker-image:
 
 docker-push:
 	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_VERSION ?= $(SEMVERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
 	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
 	$(eval DOCKER_URI := $(IMAGE):$(IMAGE_VERSION))
+ifneq ($(RETAG),)
+	$(eval DOCKER_URI := $(IMAGE):$(SEMVERSION))
+	docker tag $(IMAGE):$(IMAGE_VERSION) $(DOCKER_URI)
+	@make DOCKER_URI=$(DOCKER_URI) docker:push
+	@echo "Retagged image as $(IMAGE):$(SEMVERSION) and pushed to $(IMAGE)"
+else
 	# Pushing docker image.
 	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Pushed $(IMAGE):$(IMAGE_VERSION) to $(IMAGE)"
-
-ifneq ($(RETAG),)
-	$(eval DOCKER_URI := $(IMAGE):$(RELEASE_TAG))
-	docker tag $(IMAGE):$(IMAGE_VERSION) $(DOCKER_URI)
-	@make DOCKER_URI=$(DOCKER_URI) docker:push
-	@echo "Retagged image as $(IMAGE):$(RELEASE_TAG) and pushed to $(IMAGE)"
-else
 	@make VASCAN_DOCKER_URI=$(DOCKER_URI) vascan:image
 endif
 
 # Retags the image with the rhel tag.
 rhel-image:
 	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
-	$(eval IMAGE_VERSION ?= $(APP_VERSION)-$(GIT_COMMIT))
+	$(eval IMAGE_VERSION ?= $(SEMVERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
 	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-	$(eval IMAGE_VERSION_RHEL ?= $(APP_VERSION)-$(GIT_COMMIT)-rhel)
+	$(eval IMAGE_VERSION_RHEL ?= $(IMAGE_VERSION)-rhel)
 	$(eval IMAGE_RETAG := $(IMAGE):$(IMAGE_VERSION_RHEL))
 
+ifneq ($(RETAG),)
+	$(eval IMAGE_RETAG := $(IMAGE):$(SEMVERSION)-rhel)
+	docker tag $(IMAGE):$(IMAGE_VERSION_RHEL) $(IMAGE_RETAG)
+	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
+	@echo "Retagged image as $(IMAGE):$(SEMVERSION) and pushed to $(REPO_URL)"
+else
 	docker tag $(IMAGE):$(IMAGE_VERSION) $(IMAGE_RETAG)
 	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
 	@echo "Retagged image as $(IMAGE):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
-
-ifneq ($(RETAG),)
-	$(eval IMAGE_RETAG := $(IMAGE):$(RELEASE_TAG_RHEL))
-	docker tag $(IMAGE):$(IMAGE_VERSION_RHEL) $(IMAGE_RETAG)
-	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
-	@echo "Retagged image as $(IMAGE):$(RELEASE_TAG_RHEL) and pushed to $(REPO_URL)"
 endif
