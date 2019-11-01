@@ -139,19 +139,15 @@ endif
 # Retags the image with the rhel tag.
 rhel-image:
 	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
-	$(eval IMAGE_VERSION ?= $(SEMVERSION)-$(GIT_COMMIT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
 	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
+ifneq ($(RETAG),)
+	$(eval IMAGE_VERSION ?= $(SEMVERSION))
+else
+	$(eval IMAGE_VERSION ?= $(SEMVERSION)-$(GIT_COMMIT))
+endif
 	$(eval IMAGE_VERSION_RHEL ?= $(IMAGE_VERSION)-rhel)
 	$(eval IMAGE_RETAG := $(IMAGE):$(IMAGE_VERSION_RHEL))
-
-ifneq ($(RETAG),)
-	$(eval IMAGE_RETAG := $(IMAGE):$(SEMVERSION)-rhel)
-	docker tag $(IMAGE):$(IMAGE_VERSION_RHEL) $(IMAGE_RETAG)
-	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
-	@echo "Retagged image as $(IMAGE):$(SEMVERSION) and pushed to $(REPO_URL)"
-else
 	docker tag $(IMAGE):$(IMAGE_VERSION) $(IMAGE_RETAG)
 	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
 	@echo "Retagged image as $(IMAGE):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
-endif
