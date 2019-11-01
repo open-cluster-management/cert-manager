@@ -90,10 +90,11 @@ func (c *funcBackedValidator) Validate(admissionSpec *admissionv1beta1.Admission
 	}
 
 	// ICP - run authentication before validating object
+	klog.V(2).Info("Checking authentication for user %s", admissionSpec.UserInfo.String())
 	authenticate, ok := c.authenticators[*gvk]
 	if ok {
 		allowed, msg := authenticate.Authenticate(admissionSpec, obj)
-		klog.Infof("allowed %t", allowed)
+		klog.V(2).Infof("Allowed %t", allowed)
 		if !allowed {
 			timeStamp := time.Now()
 			klog.Errorf("[UNAUTHORIZED] %s\n%s", timeStamp.String(), msg)
