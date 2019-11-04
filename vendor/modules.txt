@@ -326,7 +326,7 @@ go.opencensus.io/trace/tracestate
 # golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
 golang.org/x/crypto/acme
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20190502183928-7f726cade0ab
+# golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/html
@@ -457,7 +457,7 @@ gopkg.in/ini.v1
 gopkg.in/natefinch/lumberjack.v2
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
-# gopkg.in/yaml.v2 v2.2.2
+# gopkg.in/yaml.v2 v2.2.4
 gopkg.in/yaml.v2
 # k8s.io/api v0.0.0-20190718183219-b59d8169aab5 => k8s.io/api v0.0.0-20190718183219-b59d8169aab5
 k8s.io/api/admission/v1beta1
@@ -503,7 +503,7 @@ k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1
-# k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655 => k8s.io/apimachinery v0.0.0-20190612205821-1799e75a0719
+# k8s.io/apimachinery v0.0.0-20191004115701-31ade1b30762
 k8s.io/apimachinery/pkg/api/apitesting
 k8s.io/apimachinery/pkg/api/apitesting/fuzzer
 k8s.io/apimachinery/pkg/api/apitesting/roundtrip
