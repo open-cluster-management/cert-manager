@@ -83,7 +83,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
 	golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
-	golang.org/x/net v0.0.0-20190502183928-7f726cade0ab
+	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	google.golang.org/api v0.4.0
@@ -94,7 +94,7 @@ require (
 	gopkg.in/ory-am/dockertest.v3 v3.3.4 // indirect
 	k8s.io/api v0.0.0-20190718183219-b59d8169aab5
 	k8s.io/apiextensions-apiserver v0.0.0-20190718185103-d1ef975d28ce
-	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
+	k8s.io/apimachinery v0.0.0-20191004115701-31ade1b30762
 	k8s.io/apiserver v0.0.0-20190718184206-a1aa83af71a7
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/code-generator v0.0.0-20190612205613-18da4a14b22b
@@ -121,8 +121,6 @@ replace github.com/munnerz/goautoneg => github.com/munnerz/goautoneg v0.0.0-2019
 replace k8s.io/api => k8s.io/api v0.0.0-20190718183219-b59d8169aab5
 
 replace k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190718185103-d1ef975d28ce
-
-replace k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190612205821-1799e75a0719
 
 replace k8s.io/apiserver => k8s.io/apiserver v0.0.0-20190718184206-a1aa83af71a7
 
