@@ -6,11 +6,11 @@ GIT_REMOTE_URL = $(shell git config --get remote.origin.url)
 
 # Project settings
 ##################
-GOARCH = $(ARCH)
 # Go build flags
+GOARCH = $(ARCH)
 GOOS := linux
-
 GOPATH ?= $HOME/go
+
 HACK_DIR ?= hack
 
 # Image settings
