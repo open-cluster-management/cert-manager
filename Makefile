@@ -133,7 +133,7 @@ else
 	# Pushing docker image.
 	@make DOCKER_URI=$(DOCKER_URI) docker:push
 	@echo "Pushed $(IMAGE):$(IMAGE_VERSION) to $(IMAGE)"
-	@make VASCAN_DOCKER_URI=$(DOCKER_URI) vascan:image
+#	@make VASCAN_DOCKER_URI=$(DOCKER_URI) vascan:image
 endif
 
 # Retags the image with the rhel tag.

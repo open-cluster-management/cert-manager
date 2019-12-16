@@ -55,22 +55,26 @@ var (
 	}
 )
 
-var validationHook cmd.ValidatingAdmissionHook = handlers.NewFuncBackedValidator(logs.Log, GroupName, webhook.Scheme, validationFuncs, authenticators)
-var mutationHook cmd.MutatingAdmissionHook = handlers.NewSchemeBackedDefaulter(logs.Log, GroupName, webhook.Scheme)
-
 func main() {
-	// Avoid "logging before flag.Parse" errors from glog
-	flag.CommandLine.Parse([]string{})
 
-	// parse the command line flags to pull out the tls-cert-file
-	// argument. This flag will be parsed by code inside cmd.RunAdmissionServer
-	// so no need to pass it through the call stack or have nice errors
-	tlsflagSet := flag.NewFlagSet("tls", flag.ContinueOnError)
-	tlsflagVal := tlsflagSet.String("tls-cert-file", "", "")
-	tlsflagSet.Parse(os.Args[1:])
-	if *tlsflagVal != "" {
-		runfilewatch(*tlsflagVal)
+	var tlsCertFile, tlsKeyFile, tlsSecurePort string
+
+	flag.StringVar(&tlsCertFile, "tls-cert-file", "", "path to the file containing the TLS certificate to serve with")
+	flag.StringVar(&tlsKeyFile, "tls-private-key-file", "", "path to the file containing the TLS private key to serve with")
+	flag.StringVar(&tlsSecurePort, "secure-port", "", "the port to use for the secure connection")
+
+	flag.Set("logtostderr", "true")
+	flag.Parse()
+
+	if tlsCertFile == "" {
+		klog.Info("warning: serving insecurely as tls certificate data not provided")
+	} else {
+		klog.Info("enabling TLS as certificate file flags specified")
+		runfilewatch(tlsCertFile)
 	}
+
+	var validationHook cmd.ValidatingAdmissionHook = handlers.NewFuncBackedValidator(logs.Log, GroupName, webhook.Scheme, validationFuncs, authenticators)
+	var mutationHook cmd.MutatingAdmissionHook = handlers.NewSchemeBackedDefaulter(logs.Log, GroupName, webhook.Scheme)
 
 	cmd.RunAdmissionServer(
 		validationHook,
