@@ -15,26 +15,13 @@ include Configfile
 
 # CICD BUILD HARNESS
 ####################
-GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
+-include $(shell curl -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
+####################
 
 .PHONY: default
-default:: init;
+default::
+        @echo "Build Harness Bootstrapped"
 
-.PHONY: init\:
-init::
-	@mkdir -p variables
-ifndef GITHUB_USER
-	$(info GITHUB_USER not defined)
-	exit -1
-endif
-	$(info Using GITHUB_USER=$(GITHUB_USER))
-ifndef GITHUB_TOKEN
-	$(info GITHUB_TOKEN not defined)
-	exit -1
-endif
-
--include $(shell curl -fso .build-harness -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3.raw" "https://raw.github.ibm.com/ICP-DevOps/build-harness/master/templates/Makefile.build-harness"; echo .build-harness)
-####################
 # Look at what these mean
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
