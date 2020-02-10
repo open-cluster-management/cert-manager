@@ -20,7 +20,7 @@ include Configfile
 
 .PHONY: default
 default::
-        @echo "Build Harness Bootstrapped"
+	@echo "Build Harness Bootstrapped"
 
 # Look at what these mean
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
@@ -73,68 +73,3 @@ go-fmt:
 		exit 1; \
 	fi
 
-# Docker targets
-################
-docker-image:
-	$(eval IMAGE_VERSION ?= $(SEMVERSION)-$(GIT_COMMIT))
-	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
-	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-	$(eval DOCKER_FILE := Dockerfile$(DOCKER_FILE_EXT))
-	$(eval DOCKERFILE_PATH := $(DOCKERFILES)/$(PROJECT))
-	@echo "PROJECT: $(PROJECT) and PATH: $(DOCKERFILE_PATH)"
-	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"
-
-	@echo "HOME: $(TRAVIS_BUILD_DIR)"
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/LICENSE $(DOCKERFILE_PATH)
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/License.txt $(DOCKERFILE_PATH)
-	cp /home/travis/gopath/src/github.com/jetstack/cert-manager/packages.yaml $(DOCKERFILE_PATH)
-
-	$(eval DOCKER_BUILD_OPTS := '--build-arg "VCS_REF=$(GIT_COMMIT)" \
-           --build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
-           --build-arg "IMAGE_NAME=$(IMAGE_NAME_ARCH)" \
-           --build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-		   --build-arg "SUMMARY=$(SUMMARY)" \
-		   --build-arg "GOARCH=$(GOARCH)"')
-
-	# Building docker image.
-	@make DOCKER_BUILD_PATH=$(DOCKERFILE_PATH) \
-			DOCKER_BUILD_OPTS=$(DOCKER_BUILD_OPTS) \
-			DOCKER_IMAGE=$(IMAGE) \
-			DOCKER_BUILD_TAG=$(IMAGE_VERSION) \
-			DOCKER_FILE=$(DOCKER_FILE) docker:build
-	@echo "Built docker image."
-
-docker-push:
-	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
-	$(eval IMAGE_VERSION ?= $(SEMVERSION)-$(GIT_COMMIT))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
-	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-	$(eval DOCKER_URI := $(IMAGE):$(IMAGE_VERSION))
-ifneq ($(RETAG),)
-	$(eval DOCKER_URI := $(IMAGE):$(SEMVERSION))
-	docker tag $(IMAGE):$(IMAGE_VERSION) $(DOCKER_URI)
-	@make DOCKER_URI=$(DOCKER_URI) docker:push
-	@echo "Retagged image as $(IMAGE):$(SEMVERSION) and pushed to $(IMAGE)"
-else
-	# Pushing docker image.
-	@make DOCKER_URI=$(DOCKER_URI) docker:push
-	@echo "Pushed $(IMAGE):$(IMAGE_VERSION) to $(IMAGE)"
-#	@make VASCAN_DOCKER_URI=$(DOCKER_URI) vascan:image
-endif
-
-# Retags the image with the rhel tag.
-rhel-image:
-	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
-	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
-	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-ifneq ($(RETAG),)
-	$(eval IMAGE_VERSION ?= $(SEMVERSION))
-else
-	$(eval IMAGE_VERSION ?= $(SEMVERSION)-$(GIT_COMMIT))
-endif
-	$(eval IMAGE_VERSION_RHEL ?= $(IMAGE_VERSION)-rhel)
-	$(eval IMAGE_RETAG := $(IMAGE):$(IMAGE_VERSION_RHEL))
-	docker tag $(IMAGE):$(IMAGE_VERSION) $(IMAGE_RETAG)
-	@make DOCKER_URI=$(IMAGE_RETAG) docker:push
-	@echo "Retagged image as $(IMAGE):$(IMAGE_VERSION_RHEL) and pushed to $(REPO_URL)"
