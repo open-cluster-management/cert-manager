@@ -21,6 +21,8 @@ IMAGE_DESCRIPTION =Certificate Manager $(PROJECT)
 IMAGE_SUMMARY =$(IMAGE_DESCRIPTION)
 IMAGE_OPENSHIFT_TAGS =Certificate Manager $(PROJECT)
 
+DOCKER_FILE_SUFFIX = rhel
+DOCKER_BUILD_PATH = hack/build/dockerfiles/$(PROJECT)
 DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(SEMVERSION)" \
 	--build-arg "GOARCH=$(GOARCH)" \
 	--build-arg "VCS_URL=$(VCS_URL)" \
