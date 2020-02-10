@@ -24,7 +24,7 @@ WORKDIR /home/webhook
 USER 10000
 
 RUN mkdir bin tmp
-ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
+ADD cert-manager-webhook_linux_$GOARCH bin/webhook
 
 ENTRYPOINT ["bin/webhook"]
 

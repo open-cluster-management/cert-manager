@@ -13,7 +13,7 @@ RUN microdnf update && \
     adduser -r -u 10000 acmesolver && \
     microdnf clean all
 
-ADD icp-cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
+ADD cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
 
 RUN chmod a+x /usr/bin/acmesolver
 

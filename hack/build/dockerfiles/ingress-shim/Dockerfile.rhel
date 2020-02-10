@@ -13,7 +13,7 @@ RUN microdnf update && \
     adduser -r -u 10000 certmanager && \
     microdnf clean all
 
-ADD icp-cert-manager-ingress-shim_linux_$GOARCH /usr/bin/ingress-shim
+ADD cert-manager-ingress-shim_linux_$GOARCH /usr/bin/ingress-shim
 
 RUN mkdir /licenses
 

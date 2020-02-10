@@ -13,7 +13,7 @@ RUN microdnf update && \
     adduser -r -u 10000 cainjector && \
     microdnf clean all
 
-ADD icp-cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
+ADD cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
 
 RUN mkdir /licenses
 

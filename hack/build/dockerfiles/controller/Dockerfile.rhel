@@ -14,7 +14,7 @@ RUN microdnf update && \
     adduser -r -g certmanager -u 10000 certmanager && \
     microdnf clean all
 
-ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
+ADD cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
 
 RUN chmod a+x /usr/bin/cert-manager
 
