@@ -93,7 +93,7 @@ docker-image:
 	$(eval IMAGE_NAME := $(APP_NAME)-$(PROJECT))
 	$(eval IMAGE_NAME_ARCH := $(IMAGE_NAME)-$(ARCH))
 	$(eval IMAGE := $(DOCKER_REGISTRY)/$(NAMESPACE)/$(IMAGE_NAME_ARCH))
-	$(eval DOCKER_FILE := Dockerfile$(DOCKER_FILE_EXT))
+	$(eval DOCKER_FILE := Dockerfile)
 	$(eval DOCKERFILE_PATH := $(DOCKERFILES)/$(PROJECT))
 	@echo "PROJECT: $(PROJECT) and PATH: $(DOCKERFILE_PATH)"
 	@echo "App: $(IMAGE_NAME_ARCH):$(IMAGE_VERSION)"

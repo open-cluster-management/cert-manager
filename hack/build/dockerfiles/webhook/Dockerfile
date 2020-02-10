@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0-213
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 ARG VCS_REF
 ARG VCS_URL
@@ -10,20 +10,23 @@ ARG HOME
 
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
-    adduser -r -u 10000 certmanager && \
+    groupadd -r webhook && \
+    adduser -rm -g webhook -u 10000 webhook && \
     microdnf clean all
 
-ADD icp-cert-manager-ingress-shim_linux_$GOARCH /usr/bin/ingress-shim
+RUN mkdir licenses
 
-RUN mkdir /licenses
+COPY LICENSE licenses
+COPY License.txt licenses
+COPY packages.yaml licenses
 
-COPY LICENSE /licenses
-COPY License.txt /licenses
-COPY packages.yaml /licenses
-
+WORKDIR /home/webhook
 USER 10000
 
-ENTRYPOINT ["/usr/bin/ingress-shim"]
+RUN mkdir bin tmp
+ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
+
+ENTRYPOINT ["bin/webhook"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \

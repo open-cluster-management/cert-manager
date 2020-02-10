@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0-213
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 ARG VCS_REF
 ARG VCS_URL
@@ -10,12 +10,13 @@ ARG HOME
 
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
-    adduser -r -u 10000 acmesolver && \
+    groupadd -r certmanager && \
+    adduser -r -g certmanager -u 10000 certmanager && \
     microdnf clean all
 
-ADD icp-cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
+ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
 
-RUN chmod a+x /usr/bin/acmesolver
+RUN chmod a+x /usr/bin/cert-manager
 
 RUN mkdir /licenses
 
@@ -25,7 +26,7 @@ COPY packages.yaml /licenses
 
 USER 10000
 
-ENTRYPOINT ["/usr/bin/acmesolver"]
+ENTRYPOINT ["/usr/bin/cert-manager"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \

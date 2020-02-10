@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0-213
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 ARG VCS_REF
 ARG VCS_URL
@@ -10,23 +10,22 @@ ARG HOME
 
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
-    groupadd -r webhook && \
-    adduser -rm -g webhook -u 10000 webhook && \
+    adduser -r -u 10000 acmesolver && \
     microdnf clean all
 
-RUN mkdir licenses
+ADD icp-cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
 
-COPY LICENSE licenses
-COPY License.txt licenses
-COPY packages.yaml licenses
+RUN chmod a+x /usr/bin/acmesolver
 
-WORKDIR /home/webhook
+RUN mkdir /licenses
+
+COPY LICENSE /licenses
+COPY License.txt /licenses
+COPY packages.yaml /licenses
+
 USER 10000
 
-RUN mkdir bin tmp
-ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
-
-ENTRYPOINT ["bin/webhook"]
+ENTRYPOINT ["/usr/bin/acmesolver"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \

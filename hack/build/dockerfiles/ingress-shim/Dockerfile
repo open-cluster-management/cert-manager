@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0-213
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 ARG VCS_REF
 ARG VCS_URL
@@ -10,10 +10,10 @@ ARG HOME
 
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
-    adduser -r -u 10000 cainjector && \
+    adduser -r -u 10000 certmanager && \
     microdnf clean all
 
-ADD icp-cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
+ADD icp-cert-manager-ingress-shim_linux_$GOARCH /usr/bin/ingress-shim
 
 RUN mkdir /licenses
 
@@ -23,7 +23,7 @@ COPY packages.yaml /licenses
 
 USER 10000
 
-ENTRYPOINT ["/usr/bin/cainjector"]
+ENTRYPOINT ["/usr/bin/ingress-shim"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="IBM" \

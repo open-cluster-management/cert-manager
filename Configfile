@@ -4,6 +4,10 @@ ARCH = $(shell uname -m)
 OS ?= $(shell cat /etc/os-release | grep ^ID= | sed -e 's/ID=//' -e 's/\"//g')
 GIT_REMOTE_URL = $(shell git config --get remote.origin.url)
 
+ifeq ($(ARCH), x86_64)
+	ARCH = amd64
+endif
+
 # Project settings
 ##################
 # Go build flags
@@ -23,12 +27,6 @@ GIT_COMMIT = $(shell git rev-parse --short HEAD)
 IMAGE_DESCRIPTION =
 SUMMARY = Certificate Management
 
-DOCKER_FILE_EXT = .rhel
-ifeq ($(ARCH), x86_64)
-	ARCH = amd64
-	GOARCH = amd64
-	OPENSHIFT_TAG = -rhel
-endif
 # Path to dockerfiles directory-- check if can use $HOME for it?
 DOCKERFILES := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
 
