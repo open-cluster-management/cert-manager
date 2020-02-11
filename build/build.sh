@@ -4,7 +4,7 @@ set -e
 export DOCKER_IMAGE_AND_TAG=${1}
 export GOARCH=$(go env GOARCH)
 
-for PROJECT in `ls hack/build/dockerfiles`; do
+for PROJECT in `ls cmd`; do
 	export PROJECT
 	echo "Begin building $PROJECT"
 	make go-binary
