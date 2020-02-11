@@ -2,7 +2,7 @@
 set -e
 
 export GOARCH=$(go env GOARCH)
-
+echo "Building certificate manager starting : $(date)"
 make docker/login
 for PROJECT in `ls cmd`; do
 	export PROJECT
@@ -18,3 +18,4 @@ for PROJECT in `ls cmd`; do
 	make docker/push
 	echo "Done building $PROJECT"
 done
+echo "Building certificate manager completed : $(date)"
