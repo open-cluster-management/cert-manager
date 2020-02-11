@@ -3,8 +3,6 @@ set -e
 
 export GOARCH=$(go env GOARCH)
 echo "Building certificate manager starting : $(date)"
-export DOCKER_REGISTRY=quay.io/open-cluster-management
-make docker/login
 for PROJECT in `ls cmd`; do
 	export PROJECT
 	echo "Begin building $PROJECT"
@@ -16,7 +14,9 @@ for PROJECT in `ls cmd`; do
 	export DOCKER_IMAGE=cert-manager-$PROJECT
 	echo "Docker dir: $(ls hack/build/dockerfiles/$PROJECT)"
 	make docker/build
-	make docker/push
+	export COMPONENT_NAME=$(cat COMPONENT_NAME)-$PROJECT
+	make component/push
+	export COMPONENT_NAME=$(cat COMPONENT_NAME)
 	echo "Done building $PROJECT"
 done
 echo "Building certificate manager completed : $(date)"
