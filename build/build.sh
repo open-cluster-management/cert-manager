@@ -3,6 +3,7 @@ set -e
 
 export GOARCH=$(go env GOARCH)
 echo "Building certificate manager starting : $(date)"
+export DOCKER_REGISTRY=quay.io/open-cluster-management
 make docker/login
 for PROJECT in `ls cmd`; do
 	export PROJECT
