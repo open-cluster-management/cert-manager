@@ -51,7 +51,6 @@ jobs:
         - |
           make init
           make component/build
-          make component/push
     - stage: unit-test
       name: "Build and run unit tests"
       os: linux

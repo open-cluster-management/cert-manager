@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-export DOCKER_IMAGE_AND_TAG=${1}
 export GOARCH=$(go env GOARCH)
 
+make docker/login
 for PROJECT in `ls cmd`; do
 	export PROJECT
 	echo "Begin building $PROJECT"
@@ -15,5 +15,6 @@ for PROJECT in `ls cmd`; do
 	export DOCKER_IMAGE=cert-manager-$PROJECT
 	echo "Docker dir: $(ls hack/build/dockerfiles/$PROJECT)"
 	make docker/build
+	make docker/push
 	echo "Done building $PROJECT"
 done
