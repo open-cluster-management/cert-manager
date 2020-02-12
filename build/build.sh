@@ -13,7 +13,9 @@ for PROJECT in `ls cmd`; do
 	cp -v packages.yaml hack/build/dockerfiles/$PROJECT
 	export DOCKER_IMAGE=cert-manager-$PROJECT
 	echo "Docker dir: $(ls hack/build/dockerfiles/$PROJECT)"
-	export COMPONENT_NAME=$(cat COMPONENT_NAME)-$PROJECT
+	export COMPONENT_NAME=$(cat COMPONENT_NAME 2> /dev/null)-$PROJECT
+	export COMPONENT_VERSION=$(cat COMPONENT_VERSION 2> /dev/null)
+	export COMPONENT_DOCKER_REPO="quay.io/open-cluster-management"
 	export DOCKER_IMAGE_AND_TAG=${COMPONENT_DOCKER_REPO}/${COMPONENT_NAME}:${COMPONENT_VERSION}${COMPONENT_TAG_EXTENSION}
 	make docker/build
 	make component/push
