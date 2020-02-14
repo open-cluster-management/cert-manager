@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0-213
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 ARG VCS_REF
 ARG VCS_URL
@@ -24,7 +24,7 @@ WORKDIR /home/webhook
 USER 10000
 
 RUN mkdir bin tmp
-ADD icp-cert-manager-webhook_linux_$GOARCH bin/webhook
+ADD cert-manager-webhook_linux_$GOARCH bin/webhook
 
 ENTRYPOINT ["bin/webhook"]
 

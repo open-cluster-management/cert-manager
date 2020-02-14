@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0-213
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 ARG VCS_REF
 ARG VCS_URL
@@ -13,7 +13,7 @@ RUN microdnf update && \
     adduser -r -u 10000 cainjector && \
     microdnf clean all
 
-ADD icp-cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
+ADD cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
 
 RUN mkdir /licenses
 

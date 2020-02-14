@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0-213
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 ARG VCS_REF
 ARG VCS_URL
@@ -14,7 +14,7 @@ RUN microdnf update && \
     adduser -r -g certmanager -u 10000 certmanager && \
     microdnf clean all
 
-ADD icp-cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
+ADD cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
 
 RUN chmod a+x /usr/bin/cert-manager
 

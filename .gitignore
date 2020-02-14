@@ -9,3 +9,6 @@
 bazel-*
 /.settings/
 /.project
+build-harness-extensions/
+build-harness/
+.build-harness-bootstrap
