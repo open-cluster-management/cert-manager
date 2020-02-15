@@ -72,5 +72,5 @@ jobs:
       script:
         - |
           make init
-          make pipeline-manifest/update PIPELINE_MANIFEST_COMPONENT_SHA256=${TRAVIS_COMMIT} PIPELINE_MANIFEST_COMPONENT_REPO=${TRAVIS_REPO_SLUG} PIPELINE_MANIFEST_BRANCH=${TRAVIS_BRANCH}
+          ${TRAVIS_BUILD_DIR}/build/pipeline.sh
 
