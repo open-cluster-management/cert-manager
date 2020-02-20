@@ -165,6 +165,7 @@ func (c *controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 	}
 
 	// step zero: check if the referenced issuer exists and is ready
+
 	issuerObj, err := c.helper.GetGenericIssuer(crtCopy.Spec.IssuerRef, crtCopy.Namespace)
 	if k8sErrors.IsNotFound(err) {
 		c.recorder.Eventf(crtCopy, corev1.EventTypeWarning, errorIssuerNotFound, err.Error())
@@ -217,13 +218,15 @@ func (c *controller) Sync(ctx context.Context, crt *v1alpha1.Certificate) (err e
 		return c.issue(ctx, i, crtCopy, renew)
 	}
 
+	klog.V(4).Infof("Issuer creation timestamp: %v\nCert not before timestamp: %v", issuerObj.GetObjectMeta().GetCreationTimestamp().Time, cert.NotBefore)
 	// check if the certificate needs renewal
-	needsRenew := c.certificateNeedsRenew(ctx, cert, crt)
+	needsRenew := c.certificateNeedsRenew(ctx, cert, crt, issuerObj.GetObjectMeta().GetCreationTimestamp().Time)
 	if needsRenew {
 		klog.V(4).Infof("Invoking issue function due to certificate needing renewal")
 		dbg.Info("invoking issue function due to certificate needing renewal")
 		return c.issue(ctx, i, crtCopy, renew)
 	}
+
 	// end checking if the TLS certificate is valid/needs a re-issue or renew
 
 	dbg.Info("Certificate does not need updating. Scheduling renewal.")
