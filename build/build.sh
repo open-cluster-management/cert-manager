@@ -18,7 +18,10 @@ for PROJECT in `ls cmd`; do
 	export COMPONENT_DOCKER_REPO="quay.io/open-cluster-management"
 	export DOCKER_IMAGE_AND_TAG=${COMPONENT_DOCKER_REPO}/${COMPONENT_NAME}:${COMPONENT_VERSION}${COMPONENT_TAG_EXTENSION}
 	make docker/build
-	make component/push
+	if [ `go env GOOS` == "linux" ]; then
+		make component/push
+	fi
+        make security/scans
 	export COMPONENT_NAME=$(cat COMPONENT_NAME)
 	echo "Done building $PROJECT"
 done

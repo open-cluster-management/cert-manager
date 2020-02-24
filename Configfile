@@ -38,5 +38,5 @@ DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(SEMVERSION)" \
 
 
 # Path to dockerfiles directory-- check if can use $HOME for it?
-DOCKERFILES := /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
+DOCKERFILES ?= /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
 
