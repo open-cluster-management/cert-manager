@@ -11,7 +11,7 @@ ARG HOME
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
     groupadd -r certmanager && \
-    adduser -r -g certmanager -u 10000 certmanager && \
+    adduser -r -g certmanager -u 1001010000 certmanager && \
     microdnf clean all
 
 ADD cert-manager-controller_linux_$GOARCH /usr/bin/cert-manager
@@ -24,7 +24,7 @@ COPY LICENSE /licenses
 COPY License.txt /licenses
 COPY packages.yaml /licenses
 
-USER 10000
+USER 1001010000
 
 ENTRYPOINT ["/usr/bin/cert-manager"]
 

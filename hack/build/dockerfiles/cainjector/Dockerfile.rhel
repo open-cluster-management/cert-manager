@@ -10,7 +10,7 @@ ARG HOME
 
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
-    adduser -r -u 10000 cainjector && \
+    adduser -r -u 1001010000 cainjector && \
     microdnf clean all
 
 ADD cert-manager-cainjector_linux_$GOARCH /usr/bin/cainjector
@@ -21,7 +21,7 @@ COPY LICENSE /licenses
 COPY License.txt /licenses
 COPY packages.yaml /licenses
 
-USER 10000
+USER 1001010000
 
 ENTRYPOINT ["/usr/bin/cainjector"]
 
