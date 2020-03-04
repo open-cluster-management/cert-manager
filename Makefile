@@ -26,7 +26,7 @@ default::
 GOLDFLAGS := -ldflags "-X $(PACKAGE_NAME)/pkg/util.AppGitState=${GIT_STATE} -X $(PACKAGE_NAME)/pkg/util.AppGitCommit=${GIT_COMMIT} -X $(PACKAGE_NAME)/pkg/util.AppVersion=${APP_VERSION}"
 
 .PHONY: lint build go-binary docker-image docker-push rhel-image \
-	go-test go-fmt go-verify
+	go-test go-fmt go-verify go-coverage
 
 # Docker build flags
 DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
@@ -63,6 +63,18 @@ go-test:
 	$(eval FAILURES=$(shell cat results.txt | grep "FAIL:"))
 	cat results.txt
 	@$(if $(strip $(FAILURES)), echo "One or more unit tests failed. Failures: $(FAILURES)"; exit 1, echo "All unit tests passed successfully."; exit 0)
+
+go-coverage:
+	$(shell go test -coverprofile=coverage.out -json ./...\
+                $$(go list ./... | \
+			grep -v '/vendor/' | \
+			grep -v '/test/e2e' | \
+			grep -v '/pkg/client' | \
+			grep -v '/third_party' | \
+			grep -v '/docs/' \
+		) > report.json)
+	gosec --quiet -fmt sonarqube -out gosec.json -no-fail ./...
+	sonar-scanner --debug
 
 go-fmt:
 	@set -e; \
