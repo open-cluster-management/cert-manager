@@ -74,7 +74,7 @@ go-coverage:
 			grep -v '/docs/' \
 		) > report.json)
 	gosec --quiet -fmt sonarqube -out gosec.json -no-fail ./...
-	sonar-scanner --debug
+	sonar-scanner --debug || echo "Sonar scanner is not available"
 
 go-fmt:
 	@set -e; \
