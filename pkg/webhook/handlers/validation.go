@@ -90,7 +90,7 @@ func (c *funcBackedValidator) Validate(admissionSpec *admissionv1beta1.Admission
 	}
 
 	// ICP - run authentication before validating object
-	klog.V(2).Info("Checking authentication for user %s", admissionSpec.UserInfo.String())
+	klog.V(2).Infof("Checking authentication for user %s", admissionSpec.UserInfo.String())
 	authenticate, ok := c.authenticators[*gvk]
 	if ok {
 		allowed, msg := authenticate.Authenticate(admissionSpec, obj)
