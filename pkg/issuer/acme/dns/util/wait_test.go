@@ -172,6 +172,8 @@ func TestMatchCAA(t *testing.T) {
 }
 
 func TestPreCheckDNS(t *testing.T) {
+	// ICP - skip this test if in travis build.
+	skipTest(t)
 	// TODO: find a better TXT record to use in tests
 	ok, err := PreCheckDNS("google.com.", "v=spf1 include:_spf.google.com ~all", []string{"8.8.8.8:53"}, true)
 	if err != nil || !ok {
@@ -180,6 +182,8 @@ func TestPreCheckDNS(t *testing.T) {
 }
 
 func TestPreCheckDNSNonAuthoritative(t *testing.T) {
+	// ICP - skip this test if in travis build.
+	skipTest(t)
 	// TODO: find a better TXT record to use in tests
 	ok, err := PreCheckDNS("google.com.", "v=spf1 include:_spf.google.com ~all", []string{"1.1.1.1:53"}, false)
 	if err != nil || !ok {
@@ -230,6 +234,8 @@ func TestFindZoneByFqdn(t *testing.T) {
 }
 
 func TestCheckAuthoritativeNss(t *testing.T) {
+	// ICP - skip this test if in travis build.
+	skipTest(t)
 	for _, tt := range checkAuthoritativeNssTests {
 		ok, _ := checkAuthoritativeNss(tt.fqdn, tt.value, tt.ns)
 		if ok != tt.ok {

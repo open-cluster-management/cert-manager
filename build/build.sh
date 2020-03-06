@@ -2,6 +2,7 @@
 set -e
 
 export GOARCH=$(go env GOARCH)
+export SAVED_COMPONENT=$(cat COMPONENT_NAME 2> /dev/null)
 echo "Building certificate manager starting : $(date)"
 for PROJECT in `ls cmd`; do
 	export PROJECT
@@ -18,7 +19,15 @@ for PROJECT in `ls cmd`; do
 	export COMPONENT_DOCKER_REPO="quay.io/open-cluster-management"
 	export DOCKER_IMAGE_AND_TAG=${COMPONENT_DOCKER_REPO}/${COMPONENT_NAME}:${COMPONENT_VERSION}${COMPONENT_TAG_EXTENSION}
 	make docker/build
-	make component/push
+	if [ `go env GOOS` == "linux" ]; then
+		make component/push
+	fi
+
+	# Security scans read the image from the COMPONENT_NAME file
+	echo "$COMPONENT_NAME" > COMPONENT_NAME
+        make security/scans
+	# Undo changes
+	echo "$SAVED_COMPONENT" > COMPONENT_NAME
 	export COMPONENT_NAME=$(cat COMPONENT_NAME)
 	echo "Done building $PROJECT"
 done
