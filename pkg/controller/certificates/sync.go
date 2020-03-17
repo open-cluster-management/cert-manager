@@ -490,7 +490,11 @@ func (c *controller) updateSecret(ctx context.Context, crt *v1alpha1.Certificate
 	// if it is a new resource
 	if secret.SelfLink == "" {
 		if c.addOwnerReferences {
-			secret.SetOwnerReferences(append(secret.GetOwnerReferences(), ownerRef(crt)))
+			// ACM Uninstall support
+			ownedNS := os.Getenv("OWNED_NAMESPACE", "")
+			if ownedNS == "" || namespace == ownedNS {
+				secret.SetOwnerReferences(append(secret.GetOwnerReferences(), ownerRef(crt)))
+			}
 		}
 		secret, err = c.kClient.CoreV1().Secrets(namespace).Create(secret)
 	} else {
