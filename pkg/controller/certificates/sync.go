@@ -492,7 +492,7 @@ func (c *controller) updateSecret(ctx context.Context, crt *v1alpha1.Certificate
 	if secret.SelfLink == "" {
 		if c.addOwnerReferences {
 			// ACM Uninstall support
-			ownedNS := os.Getenv("OWNED_NAMESPACE", "")
+			ownedNS := os.Getenv("OWNED_NAMESPACE")
 			if ownedNS == "" || namespace == ownedNS {
 				secret.SetOwnerReferences(append(secret.GetOwnerReferences(), ownerRef(crt)))
 			}
