@@ -34,9 +34,9 @@ var _ = framework.CertManagerDescribe("CA Certificate", func() {
 	h := f.Helper()
 
 	issuerName := "test-ca-issuer"
-	issuerSecretName := "ca-issuer-signing-keypair"
+	issuerSecretName := "ca-issuer-signing-keypair" /* #nosec G101 */
 	certificateName := "test-ca-certificate"
-	certificateSecretName := "test-ca-certificate"
+	certificateSecretName := "test-ca-certificate" /* #nosec G101 */
 
 	JustBeforeEach(func() {
 		By("Creating an Issuer")

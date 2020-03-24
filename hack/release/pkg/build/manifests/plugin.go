@@ -152,7 +152,7 @@ func (p *Plugin) Build(ctx context.Context) error {
 
 func (p *Plugin) Publish(ctx context.Context) error {
 	for n, filepath := range p.variants {
-		f, err := os.Open(filepath)
+		f, err := os.Open(filepath) /* #nosec G304 */
 		if err != nil {
 			return err
 		}
@@ -183,7 +183,7 @@ func (p *Plugin) Complete() error {
 func concatFiles(files ...string) (*strings.Builder, error) {
 	builder := &strings.Builder{}
 	for _, f := range files {
-		d, err := ioutil.ReadFile(f)
+		d, err := ioutil.ReadFile(f) /* #nosec G304 */
 		if err != nil {
 			return nil, err
 		}

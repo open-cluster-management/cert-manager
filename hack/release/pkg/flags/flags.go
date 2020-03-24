@@ -170,7 +170,7 @@ func (g *Global) Complete() error {
 }
 
 func (g *Global) gitOutput(args ...string) (string, error) {
-	cmd := exec.Command(g.GitPath, args...)
+	cmd := exec.Command(g.GitPath, args...) /* #nosec G204 */
 	b, err := util.RunPrintCombined(log, cmd)
 	return strings.TrimSpace(string(b)), err
 }

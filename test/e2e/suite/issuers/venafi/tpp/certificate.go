@@ -37,7 +37,7 @@ var _ = TPPDescribe("Certificate with a properly configured Issuer", func() {
 		issuer                *cmapi.Issuer
 		tppAddon              = &vaddon.VenafiTPP{}
 		certificateName       = "test-venafi-cert"
-		certificateSecretName = "test-venafi-cert-tls"
+		certificateSecretName = "test-venafi-cert-tls" /* #nosec G101 */
 	)
 
 	BeforeEach(func() {

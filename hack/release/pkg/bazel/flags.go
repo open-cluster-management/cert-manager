@@ -62,7 +62,7 @@ func (g *Bazel) Cmd(ctx context.Context, args ...string) *exec.Cmd {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	cmd := exec.CommandContext(ctx, g.bazel, args...)
+	cmd := exec.CommandContext(ctx, g.bazel, args...) /* #nosec G204 */
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("DOCKER_REPO=%s", flags.Default.DockerRepo),
 		fmt.Sprintf("APP_VERSION=%s", flags.Default.AppVersion),

@@ -43,7 +43,7 @@ const (
 	acmeSolverListenPort = 8089
 
 	domainLabelKey               = "certmanager.k8s.io/acme-http-domain"
-	tokenLabelKey                = "certmanager.k8s.io/acme-http-token"
+	tokenLabelKey                = "certmanager.k8s.io/acme-http-token" /* #nosec G101 */
 	solverIdentificationLabelKey = "certmanager.k8s.io/acme-http01-solver"
 )
 
@@ -203,7 +203,7 @@ func testReachability(ctx context.Context, url *url.URL, key string) error {
 		// simpler by disabling keepalives
 		DisableKeepAlives: true,
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, /* #nosec G402 */
 		},
 	}
 	client := http.Client{
