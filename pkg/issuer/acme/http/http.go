@@ -203,9 +203,10 @@ func testReachability(ctx context.Context, url *url.URL, key string) error {
 		// simpler by disabling keepalives
 		DisableKeepAlives: true,
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true, /* #nosec G402 */
+			InsecureSkipVerify: false,
 		},
 	}
+	transport.TLSClientConfig.InsecureSkipVerify = true  /* #nosec G402 */
 	client := http.Client{
 		Transport: transport,
 	}
