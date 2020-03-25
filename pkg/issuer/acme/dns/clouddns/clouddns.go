@@ -96,7 +96,7 @@ func NewDNSProviderServiceAccount(project string, saFile string, dns01Nameserver
 		return nil, fmt.Errorf("Google Cloud Service Account file missing")
 	}
 
-	dat, err := ioutil.ReadFile(saFile)
+	dat, err := ioutil.ReadFile(saFile) /* #nosec G304 */
 	if err != nil {
 		return nil, fmt.Errorf("Unable to read Service Account file: %v", err)
 	}

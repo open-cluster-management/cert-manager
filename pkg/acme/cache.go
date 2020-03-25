@@ -73,7 +73,7 @@ func lookupClient(spec *cmapi.ACMEIssuer, pk *rsa.PrivateKey) *acmecl.Client {
 		clientRepo = make(map[repoKey]*acmecl.Client)
 	}
 	repokey := repoKey{
-		skiptls: spec.SkipTLSVerify,
+		skiptls: spec.SkipTLSVerify, /* #nosec G402 */
 		server:  spec.Server,
 	}
 	// Encoding a big.Int cannot fail
@@ -110,9 +110,10 @@ func ClearClientCache() {
 func buildHTTPClient(skipTLSVerify bool) *http.Client {
 	return acme.NewInstrumentedClient(&http.Client{
 		Transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
-			DialContext:           dialTimeout,
-			TLSClientConfig:       &tls.Config{InsecureSkipVerify: skipTLSVerify},
+			Proxy:       http.ProxyFromEnvironment,
+			DialContext: dialTimeout,
+			// #nosec G402 See comment above
+			TLSClientConfig:       &tls.Config{InsecureSkipVerify: skipTLSVerify}, // #nosec G402
 			MaxIdleConns:          100,
 			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,

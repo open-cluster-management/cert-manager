@@ -51,7 +51,7 @@ func testDNSProvider(name string, p dns01Provider) bool {
 
 		issuerName := "test-acme-issuer"
 		certificateName := "test-acme-certificate"
-		certificateSecretName := "test-acme-certificate"
+		certificateSecretName := "test-acme-certificate" /* #nosec G101 */
 		dnsDomain := ""
 
 		BeforeEach(func() {

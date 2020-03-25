@@ -70,7 +70,7 @@ var _ = framework.CertManagerDescribe("ACME Certificate (HTTP01)", func() {
 	var acmeIngressClass string
 	issuerName := "test-acme-issuer"
 	certificateName := "test-acme-certificate"
-	certificateSecretName := "test-acme-certificate"
+	certificateSecretName := "test-acme-certificate" /* #nosec G101 */
 	// fixedIngressName is the name of an ingress resource that is configured
 	// with a challenge solve.
 	// To utilise this solver, add the 'testing.cert-manager.io/fixed-ingress: "true"' label.

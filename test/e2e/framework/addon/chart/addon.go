@@ -183,7 +183,7 @@ func (c *Chart) buildHelmCmd(args ...string) *exec.Cmd {
 		"--kube-context", c.tillerDetails.KubeContext,
 		"--tiller-namespace", c.tillerDetails.Namespace,
 	}, args...)
-	cmd := exec.Command(c.config.Addons.Helm.Path, args...)
+	cmd := exec.Command(c.config.Addons.Helm.Path, args...) /* #nosec G204 */
 	cmd.Stdout = log.Writer
 	cmd.Stderr = log.Writer
 	return cmd

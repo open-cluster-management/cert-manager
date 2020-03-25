@@ -69,7 +69,7 @@ type VaultInitializer struct {
 
 func NewVaultInitializer(container, rootMount, intermediateMount, role, authPath string) (*VaultInitializer, error) {
 	args := []string{"port-forward", "-n", "vault", container, "8200:8200"}
-	cmd := exec.Command("kubectl", args...)
+	cmd := exec.Command("kubectl", args...) /* #nosec G204 */
 	err := cmd.Start()
 	if err != nil {
 		klog.Fatalf("Error starting port-forward: %s", err.Error())

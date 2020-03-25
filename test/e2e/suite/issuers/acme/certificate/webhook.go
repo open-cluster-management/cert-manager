@@ -73,7 +73,7 @@ var _ = framework.CertManagerDescribe("ACME webhook DNS provider", func() {
 
 		issuerName := "test-acme-issuer"
 		certificateName := "test-acme-certificate"
-		certificateSecretName := "test-acme-certificate"
+		certificateSecretName := "test-acme-certificate" /* #nosec G101 */
 		dnsDomain := ""
 
 		BeforeEach(func() {

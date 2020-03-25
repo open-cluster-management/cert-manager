@@ -73,7 +73,7 @@ var _ = framework.CertManagerDescribe("ACME Certificate (HTTP01) (Old format)", 
 	var acmeIngressClass string
 	issuerName := "test-acme-issuer"
 	certificateName := "test-acme-certificate"
-	certificateSecretName := "test-acme-certificate"
+	certificateSecretName := "test-acme-certificate" /* #nosec G101 */
 
 	BeforeEach(func() {
 		acmeURL := pebble.Details().Host
