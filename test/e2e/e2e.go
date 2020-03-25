@@ -70,7 +70,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {},
 		for k, v := range globalLogs {
 			outPath := path.Join(framework.DefaultConfig.Ginkgo.ReportDirectory, "logs", k)
 			// Create a directory for the file if needed
-			err := os.MkdirAll(path.Dir(outPath), 0755)
+			err := os.MkdirAll(path.Dir(outPath), 0755) /* #nosec G301 */
 			if err != nil {
 				log.Logf("Failed to create directory for logs: %v", err)
 				continue

@@ -192,7 +192,7 @@ func (g *Plugin) exportToDocker(ctx context.Context) error {
 
 		for _, taggedImage := range target.taggedImageNames() {
 			log.Info("tagging image", "tag", taggedImage)
-			cmd := exec.CommandContext(ctx, "docker", "tag", target.exportedImageName(), taggedImage)
+			cmd := exec.CommandContext(ctx, "docker", "tag", target.exportedImageName(), taggedImage) /* #nosec G204 */
 			err := util.RunE(log, cmd)
 			if err != nil {
 				return err
@@ -236,7 +236,7 @@ func (p *Plugin) pushImages(ctx context.Context, targets imageTargets) error {
 			args = append(args, "--config", p.configFileName)
 		}
 		args = append(args, "push", img)
-		cmd := exec.CommandContext(ctx, "docker", args...)
+		cmd := exec.CommandContext(ctx, "docker", args...) /* #nosec G204 */
 		err := util.RunE(log, cmd)
 		if err != nil {
 			return err

@@ -142,13 +142,14 @@ func (g *Helm) PackageE(ctx context.Context, target string, outputDir string, ar
 	if err := os.RemoveAll(subchartDir); err != nil {
 		return "", fmt.Errorf("failed to clean up existing subchart dir: %v", err)
 	}
-	if err := os.MkdirAll(subchartDir, 0755); err != nil {
+	// #nosec G301 Build component
+	if err := os.MkdirAll(subchartDir, 0755); err != nil { // #nosec G301
 		return "", fmt.Errorf("failed to create new subchart dir: %v", err)
 	}
 
 	for _, path := range childPackagePaths {
 		log.Info("copying file", "input", path)
-		input, err := ioutil.ReadFile(path)
+		input, err := ioutil.ReadFile(path) /* #nosec G304 */
 		if err != nil {
 			return "", fmt.Errorf("error reading file: %v", err)
 		}

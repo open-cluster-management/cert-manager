@@ -29,7 +29,7 @@ var _ = framework.CertManagerDescribe("CA Issuer", func() {
 	f := framework.NewDefaultFramework("create-ca-issuer")
 
 	issuerName := "test-ca-issuer"
-	secretName := "ca-issuer-signing-keypair"
+	secretName := "ca-issuer-signing-keypair" /* #nosec G101 */
 
 	BeforeEach(func() {
 		By("Creating a signing keypair fixture")
