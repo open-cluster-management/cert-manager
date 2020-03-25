@@ -143,7 +143,7 @@ func (g *Helm) PackageE(ctx context.Context, target string, outputDir string, ar
 		return "", fmt.Errorf("failed to clean up existing subchart dir: %v", err)
 	}
 	// #nosec G301 Build component
-	if err := os.MkdirAll(subchartDir, 0755); err != nil { // #nosec G301 
+	if err := os.MkdirAll(subchartDir, 0755); err != nil { // #nosec G301
 		return "", fmt.Errorf("failed to create new subchart dir: %v", err)
 	}
 

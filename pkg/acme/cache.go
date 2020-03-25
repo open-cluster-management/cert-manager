@@ -110,8 +110,8 @@ func ClearClientCache() {
 func buildHTTPClient(skipTLSVerify bool) *http.Client {
 	return acme.NewInstrumentedClient(&http.Client{
 		Transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
-			DialContext:           dialTimeout,
+			Proxy:       http.ProxyFromEnvironment,
+			DialContext: dialTimeout,
 			// #nosec G402 See comment above
 			TLSClientConfig:       &tls.Config{InsecureSkipVerify: skipTLSVerify}, // #nosec G402
 			MaxIdleConns:          100,

@@ -206,7 +206,7 @@ func testReachability(ctx context.Context, url *url.URL, key string) error {
 			InsecureSkipVerify: false,
 		},
 	}
-	transport.TLSClientConfig.InsecureSkipVerify = true  /* #nosec G402 Invalid cert is expected when attempting to get a valid cert */
+	transport.TLSClientConfig.InsecureSkipVerify = true /* #nosec G402 Invalid cert is expected when attempting to get a valid cert */
 	client := http.Client{
 		Transport: transport,
 	}

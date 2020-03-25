@@ -125,7 +125,7 @@ const (
 	defaultMaxConcurrentChallenges = 60
 
 	defaultWebhookNamespace         = "cert-manager"
-	defaultWebhookCASecretName      = "cert-manager-webhook-ca" /* #nosec G101 */
+	defaultWebhookCASecretName      = "cert-manager-webhook-ca"  /* #nosec G101 */
 	defaultWebhookServingSecretName = "cert-manager-webhook-tls" /* #nosec G101 */
 )
 
