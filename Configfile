@@ -36,7 +36,6 @@ DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(SEMVERSION)" \
 	--build-arg "IMAGE_SUMMARY=$(IMAGE_SUMMARY)" \
 	--build-arg "IMAGE_OPENSHIFT_TAGS=$(IMAGE_OPENSHIFT_TAGS)"
 
-
 # Path to dockerfiles directory-- check if can use $HOME for it?
 DOCKERFILES ?= /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
 

@@ -47,8 +47,18 @@ func (o IssuerOptions) CertificateNeedsRenew(ctx context.Context, cert *x509.Cer
 	return o.CalculateDurationUntilRenew(ctx, cert, crt) <= 0
 }
 
+func (o IssuerOptions) CertificateNeedsRenewWithIssuer(ctx context.Context, cert *x509.Certificate, crt *cmapi.Certificate, issuerCreation time.Time) bool {
+	return o.CalculateDurationUntilRenew(ctx, cert, crt) <= 0 || o.CertificateCreatedBeforeIssuer(cert, issuerCreation)
+}
+
 // to help testing
 var now = time.Now
+
+// CertificateCreatedBeforeIssuer shows if the certificate was issued before its issuer was created, signifying
+// that the issuer has changed.
+func (o IssuerOptions) CertificateCreatedBeforeIssuer(cert *x509.Certificate, issuerCreation time.Time) bool {
+	return cert.NotBefore.Before(issuerCreation)
+}
 
 // CalculateDurationUntilRenew calculates how long cert-manager should wait to
 // until attempting to renew this certificate resource.
