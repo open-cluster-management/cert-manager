@@ -297,7 +297,6 @@ func startLeaderElection(ctx context.Context, opts *options.ControllerOptions, l
 		os.Exit(1)
 	}
 	owner := *metav1.GetControllerOf(pod)
-	log.Info("Pod owner reference", owner)
 
 	// Lock required for leader election
 	rl := resourcelock.ConfigMapLock{
