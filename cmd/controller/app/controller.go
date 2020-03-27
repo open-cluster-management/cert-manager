@@ -290,11 +290,21 @@ func startLeaderElection(ctx context.Context, opts *options.ControllerOptions, l
 		os.Exit(1)
 	}
 
+	podNS := os.Getenv("POD_NAMESPACE")
+
+	pod, err := leaderElectionClient.CoreV1().Pods(podNS).Get(id, metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "error getting pod")
+		os.Exit(1)
+	}
+	owner := *metav1.GetControllerOf(pod)
+	
 	// Lock required for leader election
 	rl := resourcelock.ConfigMapLock{
 		ConfigMapMeta: metav1.ObjectMeta{
 			Namespace: opts.LeaderElectionNamespace,
 			Name:      "cert-manager-controller",
+			OwnerReferences: []metav1.OwnerReference{ owner, },
 		},
 		Client: leaderElectionClient.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
