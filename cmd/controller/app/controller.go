@@ -303,7 +303,7 @@ func startLeaderElection(ctx context.Context, opts *options.ControllerOptions, l
 		ConfigMapMeta: metav1.ObjectMeta{
 			Namespace:       opts.LeaderElectionNamespace,
 			Name:            "cert-manager-controller",
-			OwnerReferences: []metav1.OwnerReference{ owner, },
+			OwnerReferences: []metav1.OwnerReference{owner},
 		},
 		Client: leaderElectionClient.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
