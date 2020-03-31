@@ -76,7 +76,7 @@ type controller struct {
 	// a certificate currently requires renewal.
 	// This is a field on the controller struct to avoid having to maintain a reference
 	// to the controller context, and to make it easier to fake out this call during tests.
-	certificateNeedsRenew func(ctx context.Context, cert *x509.Certificate, crt *v1alpha1.Certificate) bool
+	certificateNeedsRenew func(ctx context.Context, cert *x509.Certificate, crt *v1alpha1.Certificate, issuerCreation time.Time) bool
 
 	// calculateDurationUntilRenew returns the amount of time before the controller should
 	// begin attempting to renew the certificate, given the provided existing certificate
@@ -170,7 +170,7 @@ func (c *controller) Register(ctx *controllerpkg.Context) (workqueue.RateLimitin
 	// asynchronous certificate issuance flows
 	c.localTemporarySigner = generateLocallySignedTemporaryCertificate
 	// use the controller context provided versions of these two methods
-	c.certificateNeedsRenew = ctx.IssuerOptions.CertificateNeedsRenew
+	c.certificateNeedsRenew = ctx.IssuerOptions.CertificateNeedsRenewWithIssuer
 	c.calculateDurationUntilRenew = ctx.IssuerOptions.CalculateDurationUntilRenew
 	c.cmClient = ctx.CMClient
 	c.kClient = ctx.Client
