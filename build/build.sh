@@ -10,8 +10,6 @@ for PROJECT in `ls cmd`; do
 	make go-binary
 	echo "Project: $PROJECT  cwd: $(pwd)"
 	cp -v LICENSE hack/build/dockerfiles/$PROJECT
-	cp -v License.txt hack/build/dockerfiles/$PROJECT
-	cp -v packages.yaml hack/build/dockerfiles/$PROJECT
 	export DOCKER_IMAGE=cert-manager-$PROJECT
 	echo "Docker dir: $(ls hack/build/dockerfiles/$PROJECT)"
 	export COMPONENT_NAME=$(cat COMPONENT_NAME 2> /dev/null)-$PROJECT
