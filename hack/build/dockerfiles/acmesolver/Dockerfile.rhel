@@ -20,8 +20,6 @@ RUN chmod a+x /usr/bin/acmesolver
 RUN mkdir /licenses
 
 COPY LICENSE /licenses
-COPY License.txt /licenses
-COPY packages.yaml /licenses
 
 USER 1001010000
 

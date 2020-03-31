@@ -18,8 +18,6 @@ ADD cert-manager-ingress-shim_linux_$GOARCH /usr/bin/ingress-shim
 RUN mkdir /licenses
 
 COPY LICENSE /licenses
-COPY License.txt /licenses
-COPY packages.yaml /licenses
 
 USER 1001010000
 

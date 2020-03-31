@@ -17,8 +17,6 @@ RUN microdnf update && \
 RUN mkdir licenses
 
 COPY LICENSE licenses
-COPY License.txt licenses
-COPY packages.yaml licenses
 
 WORKDIR /home/webhook
 USER 1001010000
