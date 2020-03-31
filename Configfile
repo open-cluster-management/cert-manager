@@ -21,7 +21,6 @@ IMAGE_DESCRIPTION =Certificate Manager $(PROJECT)
 IMAGE_SUMMARY =$(IMAGE_DESCRIPTION)
 IMAGE_OPENSHIFT_TAGS =Certificate Manager $(PROJECT)
 
-DOCKER_FILE_SUFFIX = .rhel
 DOCKER_BUILD_PATH = hack/build/dockerfiles/$(PROJECT)
 DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(SEMVERSION)" \
 	--build-arg "GOARCH=$(GOARCH)" \
@@ -35,7 +34,6 @@ DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(SEMVERSION)" \
 	--build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
 	--build-arg "IMAGE_SUMMARY=$(IMAGE_SUMMARY)" \
 	--build-arg "IMAGE_OPENSHIFT_TAGS=$(IMAGE_OPENSHIFT_TAGS)"
-
 
 # Path to dockerfiles directory-- check if can use $HOME for it?
 DOCKERFILES ?= /home/travis/gopath/src/github.com/jetstack/cert-manager/hack/build/dockerfiles
