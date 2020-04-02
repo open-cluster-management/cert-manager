@@ -11,20 +11,19 @@ ARG HOME
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
     groupadd -r webhook && \
-    adduser -rm -g webhook -u 1001010000 webhook && \
+    adduser -r -g webhook -u 10001 webhook && \
     microdnf clean all
+
+ADD cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
+RUN chmod a+x /usr/bin/webhook
 
 RUN mkdir licenses
 
 COPY LICENSE licenses
 
-WORKDIR /home/webhook
-USER 1001010000
+USER 10001
 
-RUN mkdir bin tmp
-ADD cert-manager-webhook_linux_$GOARCH bin/webhook
-
-ENTRYPOINT ["bin/webhook"]
+ENTRYPOINT ["/usr/bin/webhook"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="Red Hat" \
