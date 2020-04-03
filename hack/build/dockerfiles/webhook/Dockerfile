@@ -22,7 +22,7 @@ COPY LICENSE licenses
 WORKDIR /home/webhook
 USER 10001
 
-RUN mkdir tmp && chmod 777 tmp
+RUN ln -s /tmp tmp
 
 ENTRYPOINT ["/usr/bin/webhook"]
 
