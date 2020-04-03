@@ -19,8 +19,10 @@ RUN chmod a+x /usr/bin/webhook && mkdir licenses
 
 COPY LICENSE licenses
 
+WORKDIR /home/webhook
 USER 10001
-RUN mkdir -p /home/webhook/tmp && chmod 777 /home/webhook/tmp
+
+RUN mkdir tmp && chmod 777 tmp
 
 ENTRYPOINT ["/usr/bin/webhook"]
 
