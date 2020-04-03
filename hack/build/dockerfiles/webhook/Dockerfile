@@ -15,14 +15,12 @@ RUN microdnf update && \
     microdnf clean all
 
 ADD cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
-RUN chmod a+x /usr/bin/webhook
-RUN mkdir /home/webhook/tmp
-RUN chmod 777 /home/webhook/tmp
-RUN mkdir licenses
+RUN chmod a+x /usr/bin/webhook && mkdir licenses
 
 COPY LICENSE licenses
 
 USER 10001
+RUN mkdir -p /home/webhook/tmp && chmod 777 /home/webhook/tmp
 
 ENTRYPOINT ["/usr/bin/webhook"]
 
