@@ -11,7 +11,7 @@ ARG HOME
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
     groupadd -r webhook && \
-    adduser -r -g webhook -u 10001 webhook && \
+    adduser -rm -g webhook -u 10001 webhook && \
     microdnf clean all
 
 ADD cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
