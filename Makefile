@@ -73,7 +73,7 @@ go-coverage:
 			grep -v '/third_party' | \
 			grep -v '/docs/' \
 		) > report.json)
-	gosec --quiet -fmt sonarqube -out gosec.json -no-fail ./...
+	gosec -fmt sonarqube -out gosec.json -no-fail ./...
 	sonar-scanner --debug || echo "Sonar scanner is not available"
 
 go-fmt:
