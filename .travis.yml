@@ -54,6 +54,7 @@ jobs:
       os: linux
       script:
         - |
+          make copyright-check TRAVIS_BRANCH=${TRAVIS_BRANCH} TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}
           make init
           make component/test/unit
     - stage: test-e2e
