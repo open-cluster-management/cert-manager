@@ -12,6 +12,7 @@ include Configfile
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Copyright (c) 2020 Red Hat, Inc.
 
 # CICD BUILD HARNESS
 ####################
@@ -33,6 +34,9 @@ DOCKER_BUILD_FLAGS := --build-arg VCS_REF=$(GIT_COMMIT) $(DOCKER_BUILD_FLAGS)
 
 lint:
 	@git diff-tree --check $(shell git hash-object -t tree /dev/null) HEAD $(shell ls -d * | grep -v vendor | grep -v docs | grep -v deploy | grep -v hack)
+
+copyright-check:
+	./build/copyright-check.sh $(TRAVIS_BRANCH) $(TRAVIS_PULL_REQUEST_BRANCH)
 
 # Alias targets
 ###############
@@ -73,7 +77,7 @@ go-coverage:
 			grep -v '/third_party' | \
 			grep -v '/docs/' \
 		) > report.json)
-	gosec --quiet -fmt sonarqube -out gosec.json -no-fail ./...
+	gosec -fmt sonarqube -out gosec.json -no-fail ./...
 	sonar-scanner --debug || echo "Sonar scanner is not available"
 
 go-fmt:
