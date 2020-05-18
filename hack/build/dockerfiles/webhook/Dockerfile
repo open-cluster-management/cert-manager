@@ -11,7 +11,7 @@ ARG HOME
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
     groupadd -r webhook && \
-    adduser -rm -g webhook -u 1001010000 webhook && \
+    adduser -rm -g webhook -l -u 100101 webhook && \
     microdnf clean all
 
 RUN mkdir licenses
@@ -19,7 +19,7 @@ RUN mkdir licenses
 COPY LICENSE licenses
 
 WORKDIR /home/webhook
-USER 1001010000
+USER 100101
 
 RUN mkdir bin tmp
 ADD cert-manager-webhook_linux_$GOARCH bin/webhook
