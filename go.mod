@@ -85,17 +85,17 @@ require (
 	gopkg.in/ini.v1 v1.42.0 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/ory-am/dockertest.v3 v3.3.4 // indirect
-	k8s.io/api v0.17.0
+	k8s.io/api v0.16.5
 	k8s.io/apiextensions-apiserver v0.0.0-20191114105449-027877536833
 	k8s.io/apimachinery v0.17.0
 	k8s.io/apiserver v0.0.0-20191114103151-9ca1dc586682
-	k8s.io/client-go v0.17.0
+	k8s.io/client-go v0.16.5
 	k8s.io/code-generator v0.0.0-20191004115455-8e001e5d1894
 	k8s.io/component-base v0.0.0-20191114102325-35a9586014f7
 	k8s.io/klog v1.0.0
 	k8s.io/kube-aggregator v0.0.0-20191114103820-f023614fb9ea
 	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
-	k8s.io/utils v0.0.0-20191114184206-e782cd3c129f
+	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 	sigs.k8s.io/controller-runtime v0.3.1-0.20191022174215-ad57a976ffa1
 	sigs.k8s.io/controller-tools v0.2.2
