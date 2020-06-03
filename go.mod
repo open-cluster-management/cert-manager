@@ -87,7 +87,7 @@ require (
 	gopkg.in/ory-am/dockertest.v3 v3.3.4 // indirect
 	k8s.io/api v0.16.5
 	k8s.io/apiextensions-apiserver v0.0.0-20191114105449-027877536833
-	k8s.io/apimachinery v0.17.0
+	k8s.io/apimachinery v0.16.5
 	k8s.io/apiserver v0.0.0-20191114103151-9ca1dc586682
 	k8s.io/client-go v0.16.5
 	k8s.io/code-generator v0.0.0-20191004115455-8e001e5d1894
