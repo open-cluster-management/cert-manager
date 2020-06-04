@@ -76,7 +76,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {},
 				continue
 			}
 
-			err = ioutil.WriteFile(outPath, []byte(v), 0644)
+			err = ioutil.WriteFile(outPath, []byte(v), 0644) // #nosec G306 This is not part of cert-manager
 			if err != nil {
 				log.Logf("Failed to write log file: %v", err)
 				continue

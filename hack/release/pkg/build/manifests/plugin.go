@@ -139,7 +139,7 @@ func (p *Plugin) Build(ctx context.Context) error {
 			return err
 		}
 
-		if err := ioutil.WriteFile(outFile, []byte(b.String()), 0644); err != nil {
+		if err := ioutil.WriteFile(outFile, []byte(b.String()), 0600); err != nil {
 			return fmt.Errorf("error writing concatenated file: %v", err)
 		}
 

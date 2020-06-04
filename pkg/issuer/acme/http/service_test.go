@@ -106,6 +106,7 @@ func TestEnsureService(t *testing.T) {
 					t.Fail()
 					return
 				}
+				s.Builder.Sync()
 				services, err := s.Solver.serviceLister.List(labels.NewSelector())
 				if err != nil {
 					t.Errorf("unexpected error listing services: %v", err)
@@ -194,6 +195,7 @@ func TestGetServicesForChallenge(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				createdService := s.testResources[createdServiceKey].(*v1.Service)
 				resp := args[0].([]*v1.Service)
 				if len(resp) != 1 {

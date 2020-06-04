@@ -108,6 +108,7 @@ func TestEnsurePod(t *testing.T) {
 					t.Fail()
 					return
 				}
+				s.Builder.Sync()
 				pods, err := s.Solver.podLister.List(labels.NewSelector())
 				if err != nil {
 					t.Errorf("unexpected error listing pods: %v", err)

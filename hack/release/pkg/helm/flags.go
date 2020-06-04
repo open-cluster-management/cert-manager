@@ -80,7 +80,7 @@ func (g *Helm) TemplateE(ctx context.Context, target string, args ...string) (st
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer f.Close() // #nosec G307 This is not part of cert-manager
 
 	if err := g.Template(ctx, f, target, args...).Run(); err != nil {
 		return "", err
@@ -155,7 +155,7 @@ func (g *Helm) PackageE(ctx context.Context, target string, outputDir string, ar
 		}
 
 		outFile := filepath.Join(subchartDir, filepath.Base(path))
-		if err := ioutil.WriteFile(outFile, input, 0644); err != nil {
+		if err := ioutil.WriteFile(outFile, input, 0600); err != nil {
 			return "", fmt.Errorf("error writing new file: %v", err)
 		}
 		if err := os.RemoveAll(path); err != nil {
