@@ -48,6 +48,7 @@ func TestEnsureService(t *testing.T) {
 				}
 				s.testResources[createdServiceKey] = svc
 
+				s.Builder.Sync()
 				// TODO: replace this with expectedActions to make sure no other actions are performed
 				// create a reactor that fails the test if a service is created
 				s.FakeKubeClient().PrependReactor("create", "services", func(action coretesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -59,6 +60,7 @@ func TestEnsureService(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				createdService := s.testResources[createdServiceKey].(*v1.Service)
 				resp := args[0].(*v1.Service)
 				if resp == nil {
