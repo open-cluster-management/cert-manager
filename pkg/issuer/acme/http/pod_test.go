@@ -65,6 +65,7 @@ func TestEnsurePod(t *testing.T) {
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
 				s.Builder.Sync()
 				createdPod := s.testResources[createdPodKey].(*v1.Pod)
+				s.Builder.Sync()
 				resp := args[0].(*v1.Pod)
 				if resp == nil {
 					t.Errorf("unexpected pod = nil")

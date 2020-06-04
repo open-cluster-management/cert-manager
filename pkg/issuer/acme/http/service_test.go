@@ -101,6 +101,7 @@ func TestEnsureService(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				resp := args[0].(*v1.Service)
 				err := args[1]
 				if resp == nil && err == nil {
@@ -148,6 +149,7 @@ func TestEnsureService(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				services, err := s.Solver.serviceLister.List(labels.NewSelector())
 				if err != nil {
 					t.Errorf("error listing services: %v", err)

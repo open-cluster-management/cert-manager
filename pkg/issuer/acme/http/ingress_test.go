@@ -67,6 +67,7 @@ func TestGetIngressesForChallenge(t *testing.T) {
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
 				s.Builder.Sync()
 				createdIngress := s.testResources[createdIngressKey].(*v1beta1.Ingress)
+				s.Builder.Sync()
 				resp := args[0].([]*v1beta1.Ingress)
 				if len(resp) != 1 {
 					t.Errorf("expected one ingress to be returned, but got %d", len(resp))
