@@ -67,6 +67,7 @@ go-test:
 			grep -v '/vendor/' | \
 			grep -v '/test/e2e' | \
 			grep -v '/pkg/client' | \
+			grep -v '/pkg/issuer/acme/http' | \
 			grep -v '/third_party' | \
 			grep -v '/docs/' \
 		) > results.txt)
@@ -81,6 +82,7 @@ go-coverage:
 			grep -v '/test/e2e' | \
 			grep -v '/hack' | \
 			grep -v '/pkg/client' | \
+			grep -v '/pkg/issuer/acme/http' | \
 			grep -v '/third_party' | \
 			grep -v '/docs/' \
 		) > report.json)
