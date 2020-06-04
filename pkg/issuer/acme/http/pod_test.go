@@ -50,6 +50,7 @@ func TestEnsurePod(t *testing.T) {
 					t.Errorf("error preparing test: %v", err)
 				}
 				s.testResources[createdPodKey] = ing
+				s.Builder.Sync()
 
 				// TODO: replace this with expectedActions to make sure no other actions are performed
 				// create a reactor that fails the test if a pod is created
@@ -62,7 +63,9 @@ func TestEnsurePod(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				createdPod := s.testResources[createdPodKey].(*v1.Pod)
+				s.Builder.Sync()
 				resp := args[0].(*v1.Pod)
 				if resp == nil {
 					t.Errorf("unexpected pod = nil")
@@ -101,6 +104,7 @@ func TestEnsurePod(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				resp := args[0].(*v1.Pod)
 				err := args[1]
 				if resp == nil && err == nil {
@@ -108,6 +112,7 @@ func TestEnsurePod(t *testing.T) {
 					t.Fail()
 					return
 				}
+				s.Builder.Sync()
 				pods, err := s.Solver.podLister.List(labels.NewSelector())
 				if err != nil {
 					t.Errorf("unexpected error listing pods: %v", err)
@@ -149,6 +154,7 @@ func TestEnsurePod(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				pods, err := s.Solver.podLister.List(labels.NewSelector())
 				if err != nil {
 					t.Errorf("error listing pods: %v", err)
@@ -198,6 +204,7 @@ func TestGetPodsForCertificate(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				createdPod := s.testResources[createdPodKey].(*v1.Pod)
 				resp := args[0].([]*v1.Pod)
 				if len(resp) != 1 {

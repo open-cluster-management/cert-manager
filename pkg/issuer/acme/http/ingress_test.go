@@ -65,7 +65,9 @@ func TestGetIngressesForChallenge(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				createdIngress := s.testResources[createdIngressKey].(*v1beta1.Ingress)
+				s.Builder.Sync()
 				resp := args[0].([]*v1beta1.Ingress)
 				if len(resp) != 1 {
 					t.Errorf("expected one ingress to be returned, but got %d", len(resp))
@@ -154,6 +156,7 @@ func TestCleanupIngresses(t *testing.T) {
 				s.Builder.Sync()
 			},
 			CheckFn: func(t *testing.T, s *solverFixture, args ...interface{}) {
+				s.Builder.Sync()
 				createdIngress := s.testResources[createdIngressKey].(*v1beta1.Ingress)
 				ing, err := s.Builder.FakeKubeClient().ExtensionsV1beta1().Ingresses(s.Challenge.Namespace).Get(createdIngress.Name, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {

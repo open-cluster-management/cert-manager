@@ -529,7 +529,8 @@ func restart(deploymentsInterface v1.DeploymentInterface, statefulsetsInterface 
 
 	update := time.Now().Format("2006-1-2.1504")
 NEXT_DEPLOYMENT:
-	for _, deployment := range deployments.Items {
+	for _, adeployment := range deployments.Items {
+		deployment := adeployment
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && deployment.ObjectMeta.Annotations[noRestartAnnotation] != "true" {
 				deployment.ObjectMeta.Labels[restartLabel] = update
@@ -544,7 +545,8 @@ NEXT_DEPLOYMENT:
 		}
 	}
 NEXT_STATEFULSET:
-	for _, statefulset := range statefulsets.Items {
+	for _, astatefulset := range statefulsets.Items {
+		statefulset := astatefulset
 		for _, volume := range statefulset.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && statefulset.ObjectMeta.Annotations[noRestartAnnotation] != "true" {
 				statefulset.ObjectMeta.Labels[restartLabel] = update
@@ -559,7 +561,8 @@ NEXT_STATEFULSET:
 		}
 	}
 NEXT_DAEMONSET:
-	for _, daemonset := range daemonsets.Items {
+	for _, adaemonset := range daemonsets.Items {
+		daemonset := adaemonset
 		for _, volume := range daemonset.Spec.Template.Spec.Volumes {
 			if volume.Secret != nil && volume.Secret.SecretName != "" && volume.Secret.SecretName == secret && daemonset.ObjectMeta.Annotations[noRestartAnnotation] != "true" {
 				daemonset.ObjectMeta.Labels[restartLabel] = update

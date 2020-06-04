@@ -109,7 +109,8 @@ func ValidateACMEIssuerConfig(iss *v1alpha1.ACMEIssuer, fldPath *field.Path) fie
 	if iss.DNS01 != nil {
 		el = append(el, ValidateACMEIssuerDNS01Config(iss.DNS01, fldPath.Child("dns01"))...)
 	}
-	for _, sol := range iss.Solvers {
+	for _, asol := range iss.Solvers {
+		sol := asol
 		el = append(el, ValidateACMEIssuerChallengeSolverConfig(&sol, fldPath.Child("solver"))...)
 	}
 

@@ -469,7 +469,8 @@ func challengeSpecForAuthorization(ctx context.Context, cl acmecl.Interface, iss
 	}
 
 	// 2. filter solvers to only those that matchLabels
-	for _, cfg := range solvers {
+	for _, acfg := range solvers {
+		cfg := acfg
 		acmech := challengeForSolver(&cfg)
 		if acmech == nil {
 			dbg.Info("cannot use solver as the ACME authorization does not allow solvers of this type")

@@ -167,7 +167,8 @@ func validateUsages(a *v1alpha1.CertificateSpec, fldPath *field.Path) field.Erro
 
 func ValidateACMECertificateConfig(a *v1alpha1.ACMECertificateConfig, fldPath *field.Path) field.ErrorList {
 	el := field.ErrorList{}
-	for i, cfg := range a.Config {
+	for i, acfg := range a.Config {
+		cfg := acfg
 		el = append(el, ValidateDomainSolverConfig(&cfg, fldPath.Child("config").Index(i))...)
 	}
 	return el

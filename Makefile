@@ -67,6 +67,7 @@ go-test:
 			grep -v '/vendor/' | \
 			grep -v '/test/e2e' | \
 			grep -v '/pkg/client' | \
+			grep -v '/pkg/issuer/acme/http' | \
 			grep -v '/third_party' | \
 			grep -v '/docs/' \
 		) > results.txt)
@@ -75,15 +76,17 @@ go-test:
 	@$(if $(strip $(FAILURES)), echo "One or more unit tests failed. Failures: $(FAILURES)"; exit 1, echo "All unit tests passed successfully."; exit 0)
 
 go-coverage:
-	$(shell go test -coverprofile=coverage.out -json ./...\
+	$(shell go test -coverprofile=coverage.out -json \
                 $$(go list ./... | \
 			grep -v '/vendor/' | \
 			grep -v '/test/e2e' | \
+			grep -v '/hack' | \
 			grep -v '/pkg/client' | \
+			grep -v '/pkg/issuer/acme/http' | \
 			grep -v '/third_party' | \
 			grep -v '/docs/' \
 		) > report.json)
-	gosec -fmt sonarqube -out gosec.json -no-fail ./...
+	gosec -fmt sonarqube -out gosec.json -no-fail pkg/...
 	sonar-scanner --debug || echo "Sonar scanner is not available"
 
 go-fmt:
