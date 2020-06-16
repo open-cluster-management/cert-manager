@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2-267
 
 ARG VCS_REF
 ARG VCS_URL
@@ -11,7 +11,7 @@ ARG HOME
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
     groupadd -r webhook && \
-    adduser -rm -g webhook -u 1001010000 webhook && \
+    adduser -rm -g webhook -u 100101 webhook && \
     microdnf clean all
 
 RUN mkdir licenses

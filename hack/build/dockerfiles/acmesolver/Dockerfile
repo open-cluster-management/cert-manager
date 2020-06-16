@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2-267
 
 ARG VCS_REF
 ARG VCS_URL
@@ -10,7 +10,7 @@ ARG HOME
 
 RUN microdnf update && \
     microdnf install shadow-utils ca-certificates procps && \
-    adduser -r -u 1001010000 acmesolver && \
+    adduser -r -u 100101 acmesolver && \
     microdnf clean all
 
 ADD cert-manager-acmesolver_linux_$GOARCH /usr/bin/acmesolver
