@@ -19,7 +19,7 @@ RUN mkdir licenses
 COPY LICENSE licenses
 
 WORKDIR /home/webhook
-USER 1001010000
+USER 100101
 
 RUN mkdir bin tmp
 ADD cert-manager-webhook_linux_$GOARCH bin/webhook

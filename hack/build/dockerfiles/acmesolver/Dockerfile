@@ -21,7 +21,7 @@ RUN mkdir /licenses
 
 COPY LICENSE /licenses
 
-USER 1001010000
+USER 100101
 
 ENTRYPOINT ["/usr/bin/acmesolver"]
 
