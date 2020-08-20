@@ -57,7 +57,7 @@ go-verify: go-fmt go-test
 go-binary:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-a -tags netgo \
-		-o $(DOCKERFILES)/$(PROJECT)/${APP_NAME}-$(PROJECT)_$(GOOS)_$(GOARCH) \
+		-o $(DOCKERFILES)/$(PROJECT)/${APP_NAME}-$(PROJECT)_linux_$(GOARCH) \
 		$(GOLDFLAGS) \
 		./cmd/$(PROJECT)
 
