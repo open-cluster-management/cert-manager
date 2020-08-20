@@ -30,7 +30,7 @@ require (
 	github.com/hashicorp/vault/sdk v0.1.13
 	github.com/kr/pretty v0.1.0
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a
-	github.com/miekg/dns v1.1.15
+	github.com/miekg/dns v1.0.15
 	github.com/munnerz/goautoneg v0.0.0-20190414153302-2ae31c8b6b30 // indirect
 	github.com/onsi/ginkgo v1.10.1
 	github.com/onsi/gomega v1.7.0
@@ -42,7 +42,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
 	go.etcd.io/etcd v3.3.24+incompatible // indirect
-	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	google.golang.org/api v0.5.0
