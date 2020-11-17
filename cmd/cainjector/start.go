@@ -112,7 +112,7 @@ func (o InjectorControllerOptions) runCertificateBasedInjector(stopCh <-chan str
 	var err error
 	if os.Getenv("LIMIT_CACHE") == "true" {
 		basens := os.Getenv("POD_NAMESPACE")
-		namespaces := []string{basens, basens + "-observability", basens + "-issuer", "ibm-common-services"}
+		namespaces := []string{basens, basens + "-observability", basens + "-issuer", "ibm-common-services", ""}
 		cache := cache.MultiNamespacedCacheBuilder(namespaces)
 		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			Scheme:                  api.Scheme,
@@ -153,7 +153,7 @@ func (o InjectorControllerOptions) runSecretBasedInjector(stopCh <-chan struct{}
 	var err error
 	if os.Getenv("LIMIT_CACHE") == "true" {
 		basens := os.Getenv("POD_NAMESPACE")
-		namespaces := []string{basens, basens + "-observability", basens + "-issuer", "ibm-common-services"}
+		namespaces := []string{basens, basens + "-observability", basens + "-issuer", "ibm-common-services", ""}
 		cache := cache.MultiNamespacedCacheBuilder(namespaces)
 		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			Scheme:                  api.Scheme,
