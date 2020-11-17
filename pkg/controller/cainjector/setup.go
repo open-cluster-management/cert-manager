@@ -17,13 +17,16 @@ limitations under the License.
 package cainjector
 
 import (
+	"context"
 	"io/ioutil"
 
 	admissionreg "k8s.io/api/admissionregistration/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	apireg "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // injectorSet describes a particular setup of the injector controller
@@ -97,14 +100,36 @@ func dataFromSliceOrFile(data []byte, file string) ([]byte, error) {
 	return nil, nil
 }
 
+// customClient will do get secret without cache, other operations are like normal cache client
+type customClient struct {
+	client.Client
+	APIReader client.Reader
+}
+
+// newCustomClient creates custom client to do get secret without cache
+func newCustomClient(client client.Client, apiReader client.Reader) client.Client {
+	return customClient{
+		Client:    client,
+		APIReader: apiReader,
+	}
+}
+
+func (cc customClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+	if _, ok := obj.(*corev1.Secret); ok {
+		return cc.APIReader.Get(ctx, key, obj)
+	}
+	return cc.Client.Get(ctx, key, obj)
+}
+
 // RegisterCertificateBased registers all known injection controllers that
 // target Certificate resources with the  given manager, and adds relevant
 // indices.
 // The registered controllers require the cert-manager API to be available
 // in order to run.
 func RegisterCertificateBased(mgr ctrl.Manager) error {
+	client := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
 	sources := []caDataSource{
-		&certificateDataSource{client: mgr.GetClient()},
+		&certificateDataSource{client: client},
 	}
 	for _, setup := range injectorSetups {
 		if err := Register(mgr, setup, sources...); err != nil {
@@ -121,8 +146,9 @@ func RegisterCertificateBased(mgr ctrl.Manager) error {
 // The registered controllers only require the corev1 APi to be available in
 // order to run.
 func RegisterSecretBased(mgr ctrl.Manager) error {
+	client := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
 	sources := []caDataSource{
-		&secretDataSource{client: mgr.GetClient()},
+		&secretDataSource{client: client},
 		&kubeconfigDataSource{},
 	}
 	for _, setup := range injectorSetups {
