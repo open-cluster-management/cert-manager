@@ -108,14 +108,31 @@ func (o InjectorControllerOptions) RunInjectorController(stopCh <-chan struct{})
 }
 
 func (o InjectorControllerOptions) runCertificateBasedInjector(stopCh <-chan struct{}) {
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                  api.Scheme,
-		Namespace:               o.Namespace,
-		LeaderElection:          o.LeaderElect,
-		LeaderElectionNamespace: o.LeaderElectionNamespace,
-		LeaderElectionID:        "cert-manager-cainjector-leader-election",
-		MetricsBindAddress:      "0",
-	})
+	var mgr manager.Manager
+	var err error
+	if os.Getenv("LIMIT_CACHE") == "true" {
+		basens := os.Getenv("POD_NAMESPACE")
+		namespaces := []string{basens, basens + "-observability", basens + "-issuer", "ibm-common-services"}
+		cache := cache.MultiNamespacedCacheBuilder(namespaces)
+		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+			Scheme:                  api.Scheme,
+			Namespace:               o.Namespace,
+			LeaderElection:          o.LeaderElect,
+			LeaderElectionNamespace: o.LeaderElectionNamespace,
+			LeaderElectionID:        "cert-manager-cainjector-leader-election",
+			MetricsBindAddress:      "0",
+			NewCache:                cache,
+		})
+	} else {
+		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+			Scheme:                  api.Scheme,
+			Namespace:               o.Namespace,
+			LeaderElection:          o.LeaderElect,
+			LeaderElectionNamespace: o.LeaderElectionNamespace,
+			LeaderElectionID:        "cert-manager-cainjector-leader-election",
+			MetricsBindAddress:      "0",
+		})
+	}
 
 	if err != nil {
 		klog.Fatalf("error creating manager: %v", err)
