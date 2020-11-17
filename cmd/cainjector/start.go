@@ -19,12 +19,15 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/jetstack/cert-manager/pkg/api"
 	"github.com/jetstack/cert-manager/pkg/controller/cainjector"
@@ -129,15 +132,31 @@ func (o InjectorControllerOptions) runCertificateBasedInjector(stopCh <-chan str
 }
 
 func (o InjectorControllerOptions) runSecretBasedInjector(stopCh <-chan struct{}) {
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                  api.Scheme,
-		Namespace:               o.Namespace,
-		LeaderElection:          o.LeaderElect,
-		LeaderElectionNamespace: o.LeaderElectionNamespace,
-		LeaderElectionID:        "cert-manager-cainjector-leader-election-core",
-		MetricsBindAddress:      "0",
-	})
-
+	var mgr manager.Manager
+	var err error
+	if os.Getenv("LIMIT_CACHE") == "true" {
+		basens := os.Getenv("POD_NAMESPACE")
+		namespaces := []string{basens, basens + "-observability", basens + "-issuer", "ibm-common-services"}
+		cache := cache.MultiNamespacedCacheBuilder(namespaces)
+		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+			Scheme:                  api.Scheme,
+			Namespace:               o.Namespace,
+			LeaderElection:          o.LeaderElect,
+			LeaderElectionNamespace: o.LeaderElectionNamespace,
+			LeaderElectionID:        "cert-manager-cainjector-leader-election-core",
+			MetricsBindAddress:      "0",
+			NewCache:                cache,
+		})
+	} else {
+		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+			Scheme:                  api.Scheme,
+			Namespace:               o.Namespace,
+			LeaderElection:          o.LeaderElect,
+			LeaderElectionNamespace: o.LeaderElectionNamespace,
+			LeaderElectionID:        "cert-manager-cainjector-leader-election-core",
+			MetricsBindAddress:      "0",
+		})
+	}
 	if err != nil {
 		klog.Fatalf("error creating core-only manager: %v", err)
 	}
