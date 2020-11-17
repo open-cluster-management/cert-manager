@@ -111,9 +111,7 @@ func (o InjectorControllerOptions) runCertificateBasedInjector(stopCh <-chan str
 	var mgr manager.Manager
 	var err error
 	if os.Getenv("LIMIT_CACHE") == "true" {
-		basens := os.Getenv("POD_NAMESPACE")
-		namespaces := []string{basens, basens + "-observability", basens + "-issuer", "ibm-common-services", ""}
-		cache := cache.MultiNamespacedCacheBuilder(namespaces)
+		var cache cache.NewCacheFunc
 		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			Scheme:                  api.Scheme,
 			Namespace:               o.Namespace,
@@ -152,9 +150,7 @@ func (o InjectorControllerOptions) runSecretBasedInjector(stopCh <-chan struct{}
 	var mgr manager.Manager
 	var err error
 	if os.Getenv("LIMIT_CACHE") == "true" {
-		basens := os.Getenv("POD_NAMESPACE")
-		namespaces := []string{basens, basens + "-observability", basens + "-issuer", "ibm-common-services", ""}
-		cache := cache.MultiNamespacedCacheBuilder(namespaces)
+		var cache cache.NewCacheFunc
 		mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			Scheme:                  api.Scheme,
 			Namespace:               o.Namespace,
