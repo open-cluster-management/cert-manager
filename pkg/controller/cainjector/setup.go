@@ -21,11 +21,14 @@ import (
 	"io/ioutil"
 
 	admissionreg "k8s.io/api/admissionregistration/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	apireg "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 )
 
 // injectorSet describes a particular setup of the injector controller
@@ -73,9 +76,9 @@ func Register(mgr ctrl.Manager, setup injectorSetup, sources ...caDataSource) er
 			return err
 		}
 	}
-
+	client := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
 	return builder.Complete(&genericInjectReconciler{
-		Client:       mgr.GetClient(),
+		Client:       client,
 		sources:      sources,
 		log:          ctrl.Log.WithName("inject-controller"),
 		resourceName: setup.resourceName,
@@ -114,10 +117,13 @@ func newCustomClient(client client.Client, apiReader client.Reader) client.Clien
 }
 
 func (cc customClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
-	//if _, ok := obj.(*corev1.Secret); ok {
-	return cc.APIReader.Get(ctx, key, obj)
-	//}
-	//return cc.Client.Get(ctx, key, obj)
+	if _, ok := obj.(*corev1.Secret); ok {
+		return cc.APIReader.Get(ctx, key, obj)
+	}
+	if _, ok := obj.(*cmapi.Certificate); ok {
+		return cc.APIReader.Get(ctx, key, obj)
+	}
+	return cc.Client.Get(ctx, key, obj)
 }
 
 // RegisterCertificateBased registers all known injection controllers that
