@@ -31,8 +31,6 @@ import (
 	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 )
 
-var myclient client.Client
-
 // injectorSet describes a particular setup of the injector controller
 type injectorSetup struct {
 	resourceName string
@@ -78,11 +76,9 @@ func Register(mgr ctrl.Manager, setup injectorSetup, sources ...caDataSource) er
 			return err
 		}
 	}
-	if myclient == nil {
-		myclient = newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
-	}
+	myclient := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
 	return builder.Complete(&genericInjectReconciler{
-		Client:       myclient,
+		client:       myclient,
 		sources:      sources,
 		log:          ctrl.Log.WithName("inject-controller"),
 		resourceName: setup.resourceName,
@@ -113,7 +109,7 @@ type customClient struct {
 }
 
 // newCustomClient creates custom client to do get secret without cache
-func newCustomClient(client client.Client, apiReader client.Reader) client.Client {
+func newCustomClient(client client.Client, apiReader client.Reader) customClient {
 	return customClient{
 		Client:    client,
 		APIReader: apiReader,
@@ -136,9 +132,7 @@ func (cc customClient) Get(ctx context.Context, key client.ObjectKey, obj runtim
 // The registered controllers require the cert-manager API to be available
 // in order to run.
 func RegisterCertificateBased(mgr ctrl.Manager) error {
-	if myclient == nil {
-		myclient = newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
-	}
+	myclient := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
 	sources := []caDataSource{
 		&certificateDataSource{client: myclient},
 	}
@@ -157,9 +151,7 @@ func RegisterCertificateBased(mgr ctrl.Manager) error {
 // The registered controllers only require the corev1 APi to be available in
 // order to run.
 func RegisterSecretBased(mgr ctrl.Manager) error {
-	if myclient == nil {
-		myclient = newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
-	}
+	myclient := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
 	sources := []caDataSource{
 		&secretDataSource{client: myclient},
 		&kubeconfigDataSource{},

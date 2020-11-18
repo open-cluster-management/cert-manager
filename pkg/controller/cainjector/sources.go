@@ -142,19 +142,16 @@ func (c *certificateDataSource) ApplyTo(mgr ctrl.Manager, setup injectorSetup, b
 	if err := mgr.GetFieldIndexer().IndexField(typ, injectFromPath, injectableCAFromIndexer); err != nil {
 		return err
 	}
-	if myclient == nil {
-		myclient = newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
-	}
 	builder.Watches(&source.Kind{Type: &cmapi.Certificate{}},
 		&handler.EnqueueRequestsFromMapFunc{ToRequests: &certMapper{
-			Client:       myclient,
+			Client:       mgr.GetClient(),
 			log:          ctrl.Log.WithName("cert-mapper"),
 			toInjectable: buildCertToInjectableFunc(setup.listType, setup.resourceName),
 		}},
 	).
 		Watches(&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: &secretForCertificateMapper{
-				Client:                  myclient,
+				Client:                  mgr.GetClient(),
 				log:                     ctrl.Log.WithName("secret-for-certificate-mapper"),
 				certificateToInjectable: buildCertToInjectableFunc(setup.listType, setup.resourceName),
 			}},
@@ -217,12 +214,9 @@ func (c *secretDataSource) ApplyTo(mgr ctrl.Manager, setup injectorSetup, builde
 	if err := mgr.GetFieldIndexer().IndexField(typ, injectFromSecretPath, injectableCAFromSecretIndexer); err != nil {
 		return err
 	}
-	if myclient == nil {
-		myclient = newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
-	}
 	builder.Watches(&source.Kind{Type: &corev1.Secret{}},
 		&handler.EnqueueRequestsFromMapFunc{ToRequests: &secretForInjectableMapper{
-			Client:             myclient,
+			Client:             mgr.GetClient(),
 			log:                ctrl.Log.WithName("secret-mapper"),
 			secretToInjectable: buildSecretToInjectableFunc(setup.listType, setup.resourceName),
 		}},

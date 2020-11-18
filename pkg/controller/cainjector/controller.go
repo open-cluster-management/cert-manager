@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	certmanager "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	logf "github.com/jetstack/cert-manager/pkg/logs"
@@ -102,8 +101,8 @@ type genericInjectReconciler struct {
 	// the conversion webhook not being available.
 	sources []caDataSource
 
-	log logr.Logger
-	client.Client
+	log    logr.Logger
+	client customClient
 
 	resourceName string // just used for logging
 }
@@ -126,7 +125,7 @@ func (r *genericInjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 
 	// fetch the target object
 	target := r.injector.NewTarget()
-	if err := r.Client.Get(ctx, req.NamespacedName, target.AsObject()); err != nil {
+	if err := r.client.Get(ctx, req.NamespacedName, target.AsObject()); err != nil {
 		if dropNotFound(err) == nil {
 			// don't requeue on deletions, which yield a non-found object
 			return ctrl.Result{}, nil
@@ -163,7 +162,7 @@ func (r *genericInjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	target.SetCA(caData)
 
 	// actually update with injected CA data
-	if err := r.Client.Update(ctx, target.AsObject()); err != nil {
+	if err := r.client.Update(ctx, target.AsObject()); err != nil {
 		log.Error(err, "unable to update target object with new CA data")
 		return ctrl.Result{}, err
 	}
