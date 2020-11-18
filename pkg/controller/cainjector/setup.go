@@ -31,6 +31,8 @@ import (
 	cmapi "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 )
 
+var myclient client.Client
+
 // injectorSet describes a particular setup of the injector controller
 type injectorSetup struct {
 	resourceName string
@@ -76,9 +78,11 @@ func Register(mgr ctrl.Manager, setup injectorSetup, sources ...caDataSource) er
 			return err
 		}
 	}
-	client := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
+	if myclient == nil {
+		myclient = newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
+	}
 	return builder.Complete(&genericInjectReconciler{
-		Client:       client,
+		Client:       myclient,
 		sources:      sources,
 		log:          ctrl.Log.WithName("inject-controller"),
 		resourceName: setup.resourceName,
@@ -132,9 +136,11 @@ func (cc customClient) Get(ctx context.Context, key client.ObjectKey, obj runtim
 // The registered controllers require the cert-manager API to be available
 // in order to run.
 func RegisterCertificateBased(mgr ctrl.Manager) error {
-	client := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
+	if myclient == nil {
+		myclient = newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
+	}
 	sources := []caDataSource{
-		&certificateDataSource{client: client},
+		&certificateDataSource{client: myclient},
 	}
 	for _, setup := range injectorSetups {
 		if err := Register(mgr, setup, sources...); err != nil {
@@ -151,9 +157,11 @@ func RegisterCertificateBased(mgr ctrl.Manager) error {
 // The registered controllers only require the corev1 APi to be available in
 // order to run.
 func RegisterSecretBased(mgr ctrl.Manager) error {
-	client := newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
+	if myclient == nil {
+		myclient = newCustomClient(mgr.GetClient(), mgr.GetAPIReader())
+	}
 	sources := []caDataSource{
-		&secretDataSource{client: client},
+		&secretDataSource{client: myclient},
 		&kubeconfigDataSource{},
 	}
 	for _, setup := range injectorSetups {
