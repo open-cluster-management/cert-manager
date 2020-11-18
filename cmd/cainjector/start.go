@@ -105,7 +105,6 @@ func (o InjectorControllerOptions) RunInjectorController(stopCh <-chan struct{})
 }
 
 func (o InjectorControllerOptions) runCertificateBasedInjector(stopCh <-chan struct{}) {
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  api.Scheme,
 		Namespace:               o.Namespace,
@@ -130,7 +129,6 @@ func (o InjectorControllerOptions) runCertificateBasedInjector(stopCh <-chan str
 }
 
 func (o InjectorControllerOptions) runSecretBasedInjector(stopCh <-chan struct{}) {
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  api.Scheme,
 		Namespace:               o.Namespace,
