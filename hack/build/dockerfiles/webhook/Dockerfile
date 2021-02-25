@@ -18,13 +18,13 @@ RUN mkdir licenses
 
 COPY LICENSE licenses
 
-WORKDIR /home/webhook
 USER 100101
 
-RUN mkdir bin tmp
-ADD cert-manager-webhook_linux_$GOARCH bin/webhook
+WORKDIR /tmp
+RUN mkdir tmp
+ADD cert-manager-webhook_linux_$GOARCH /usr/bin/webhook
 
-ENTRYPOINT ["bin/webhook"]
+ENTRYPOINT ["/usr/bin/webhook"]
 
 # http://label-schema.org/rc1/
 LABEL org.label-schema.vendor="Red Hat" \
