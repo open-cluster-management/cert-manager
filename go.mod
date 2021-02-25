@@ -64,6 +64,6 @@ require (
 	sigs.k8s.io/testing_frameworks v0.1.1
 )
 
-replac (
+replace (
 	golang.org/x/text => golang.org/x/text v0.3.3 // CVE-2020-14040
 )
