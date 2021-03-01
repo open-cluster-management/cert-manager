@@ -1,5 +1,8 @@
 # cert-manager
 
+**This fork of the jetstack cert-manager repository is only being used temporarily while we transition to 
+an alternate solution soon.  This repository will then be archived.**
+
 cert-manager is a Kubernetes add-on to automate the management and issuance of
 TLS certificates from various issuing sources.
 
