@@ -1,3 +1,5 @@
+# Copyright Contributors to the Open Cluster Management project
+
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.1-398
 
 ARG VCS_REF

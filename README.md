@@ -1,3 +1,5 @@
+[comment]: # ( Copyright Contributors to the Open Cluster Management project )
+
 # cert-manager
 
 **This fork of the jetstack cert-manager repository is only being used temporarily while we transition to 
