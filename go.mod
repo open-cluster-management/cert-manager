@@ -2,8 +2,6 @@ module github.com/jetstack/cert-manager
 
 go 1.12
 
-replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.4
-
 require (
 	cloud.google.com/go v0.39.0
 	github.com/Azure/azure-sdk-for-go v32.5.0+incompatible
@@ -62,4 +60,9 @@ require (
 	sigs.k8s.io/controller-runtime v0.3.1-0.20191022174215-ad57a976ffa1
 	sigs.k8s.io/controller-tools v0.2.2
 	sigs.k8s.io/testing_frameworks v0.1.1
+)
+
+replace (
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.4
+	golang.org/x/text => golang.org/x/text v0.3.3 // CVE-2020-14040
 )
