@@ -492,7 +492,7 @@ func (c *controller) updateSecret(ctx context.Context, crt *v1alpha1.Certificate
 	secret.Data[v1alpha1.TLSCAKey] = ca
 
 	// if it is a new resource
-	if secret.SelfLink == "" {
+	if secret.ResourceVersion == "" {
 		// ACM Uninstall support - OWNED_NAMESPACE is set to ACM install namespace
 		if c.addOwnerReferences || namespace == os.Getenv("OWNED_NAMESPACE") {
 			secret.SetOwnerReferences(append(secret.GetOwnerReferences(), ownerRef(crt)))
