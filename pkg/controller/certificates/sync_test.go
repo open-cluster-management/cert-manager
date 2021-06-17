@@ -273,9 +273,9 @@ func TestSync(t *testing.T) {
 				KubeObjects: []runtime.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace: gen.DefaultTestNamespace,
-							Name:      "output",
-							SelfLink:  "abc",
+							Namespace:       gen.DefaultTestNamespace,
+							Name:            "output",
+							ResourceVersion: "123",
 							Labels: map[string]string{
 								cmapi.CertificateNameKey: "nottest",
 							},
@@ -300,9 +300,9 @@ func TestSync(t *testing.T) {
 						gen.DefaultTestNamespace,
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
-								Namespace: gen.DefaultTestNamespace,
-								Name:      "output",
-								SelfLink:  "abc",
+								Namespace:       gen.DefaultTestNamespace,
+								Name:            "output",
+								ResourceVersion: "123",
 								Labels: map[string]string{
 									cmapi.CertificateNameKey: "test",
 								},
@@ -393,9 +393,9 @@ func TestSync(t *testing.T) {
 				KubeObjects: []runtime.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace: gen.DefaultTestNamespace,
-							Name:      "output",
-							SelfLink:  "abc",
+							Namespace:       gen.DefaultTestNamespace,
+							Name:            "output",
+							ResourceVersion: "123",
 							Labels: map[string]string{
 								cmapi.CertificateNameKey: "nottest",
 							},
@@ -420,9 +420,9 @@ func TestSync(t *testing.T) {
 						gen.DefaultTestNamespace,
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
-								Namespace: gen.DefaultTestNamespace,
-								Name:      "output",
-								SelfLink:  "abc",
+								Namespace:       gen.DefaultTestNamespace,
+								Name:            "output",
+								ResourceVersion: "123",
 								Labels: map[string]string{
 									cmapi.CertificateNameKey: "test",
 								},
@@ -461,9 +461,9 @@ func TestSync(t *testing.T) {
 				KubeObjects: []runtime.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace: gen.DefaultTestNamespace,
-							Name:      "output",
-							SelfLink:  "abc",
+							Namespace:       gen.DefaultTestNamespace,
+							Name:            "output",
+							ResourceVersion: "123",
 							Labels: map[string]string{
 								cmapi.CertificateNameKey: "nottest",
 							},
@@ -505,9 +505,9 @@ func TestSync(t *testing.T) {
 						gen.DefaultTestNamespace,
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
-								Namespace: gen.DefaultTestNamespace,
-								Name:      "output",
-								SelfLink:  "abc",
+								Namespace:       gen.DefaultTestNamespace,
+								Name:            "output",
+								ResourceVersion: "123",
 								Labels: map[string]string{
 									cmapi.CertificateNameKey: "test",
 								},
@@ -546,9 +546,9 @@ func TestSync(t *testing.T) {
 				KubeObjects: []runtime.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace: gen.DefaultTestNamespace,
-							Name:      "output",
-							SelfLink:  "abc",
+							Namespace:       gen.DefaultTestNamespace,
+							Name:            "output",
+							ResourceVersion: "123",
 							Labels: map[string]string{
 								cmapi.CertificateNameKey: "test",
 							},
@@ -598,9 +598,9 @@ func TestSync(t *testing.T) {
 				KubeObjects: []runtime.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace: gen.DefaultTestNamespace,
-							Name:      "output",
-							SelfLink:  "abc",
+							Namespace:       gen.DefaultTestNamespace,
+							Name:            "output",
+							ResourceVersion: "123",
 							Labels: map[string]string{
 								cmapi.CertificateNameKey: "nottest",
 							},
@@ -625,9 +625,9 @@ func TestSync(t *testing.T) {
 						gen.DefaultTestNamespace,
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
-								Namespace: gen.DefaultTestNamespace,
-								Name:      "output",
-								SelfLink:  "abc",
+								Namespace:       gen.DefaultTestNamespace,
+								Name:            "output",
+								ResourceVersion: "123",
 								Labels: map[string]string{
 									cmapi.CertificateNameKey: "test",
 								},
@@ -670,9 +670,9 @@ func TestSync(t *testing.T) {
 				KubeObjects: []runtime.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace: gen.DefaultTestNamespace,
-							Name:      "output",
-							SelfLink:  "abc",
+							Namespace:       gen.DefaultTestNamespace,
+							Name:            "output",
+							ResourceVersion: "123",
 							Labels: map[string]string{
 								cmapi.CertificateNameKey: "test",
 							},
@@ -713,9 +713,9 @@ func TestSync(t *testing.T) {
 						gen.DefaultTestNamespace,
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
-								Namespace: gen.DefaultTestNamespace,
-								Name:      "output",
-								SelfLink:  "abc",
+								Namespace:       gen.DefaultTestNamespace,
+								Name:            "output",
+								ResourceVersion: "123",
 								Labels: map[string]string{
 									cmapi.CertificateNameKey: "test",
 								},
@@ -880,7 +880,7 @@ func TestSync(t *testing.T) {
 		//				ObjectMeta: metav1.ObjectMeta{
 		//					Namespace: gen.DefaultTestNamespace,
 		//					Name:      "output",
-		//					SelfLink:  "abc",
+		//					ResourceVersion:  "123",
 		//					Labels: map[string]string{
 		//						cmapi.CertificateNameKey: "nottest",
 		//					},
@@ -909,7 +909,7 @@ func TestSync(t *testing.T) {
 		//					ObjectMeta: metav1.ObjectMeta{
 		//						Namespace: gen.DefaultTestNamespace,
 		//						Name:      "output",
-		//						SelfLink:  "abc",
+		//						ResourceVersion:  "123",
 		//						Labels: map[string]string{
 		//							cmapi.CertificateNameKey: "test",
 		//						},
